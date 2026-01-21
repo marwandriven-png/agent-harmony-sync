@@ -2,95 +2,154 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Real Estate CRM Design System - Bitrix24 Inspired */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Core Background & Foreground */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
 
+    /* Card Surfaces */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 47% 11%;
 
+    /* Popover/Dropdown */
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary Brand - Deep Slate Blue */
+    --primary: 217 91% 50%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary - Soft Gray Blue */
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted Surfaces */
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent - Warm Coral */
+    --accent: 15 90% 55%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Success */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
 
-    --radius: 0.5rem;
+    /* Warning */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
 
-    --sidebar-background: 0 0% 98%;
+    /* Border & Input */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 50%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --radius: 0.75rem;
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Status Colors - Pipeline Stages */
+    --status-new: 217 91% 50%;
+    --status-contacted: 262 83% 58%;
+    --status-viewing: 38 92% 50%;
+    --status-viewed: 174 84% 40%;
+    --status-negotiation: 15 90% 55%;
+    --status-closed: 142 76% 36%;
+    --status-lost: 0 84% 60%;
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    /* Priority Colors */
+    --priority-hot: 0 84% 60%;
+    --priority-warm: 38 92% 50%;
+    --priority-cold: 199 89% 48%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
+    /* Pastel Backgrounds */
+    --pastel-blue: 217 91% 95%;
+    --pastel-purple: 262 83% 95%;
+    --pastel-orange: 38 92% 95%;
+    --pastel-green: 142 76% 95%;
+    --pastel-red: 0 84% 95%;
+    --pastel-cyan: 174 84% 95%;
 
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    /* Sidebar */
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 18%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 222 47% 20%;
+    --sidebar-ring: 217 91% 50%;
 
-    --sidebar-border: 220 13% 91%;
+    /* Kanban Column */
+    --kanban-bg: 210 20% 96%;
+    --kanban-header: 222 47% 11%;
 
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 50%) 0%, hsl(217 91% 60%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(15 90% 55%) 0%, hsl(38 92% 50%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(174 84% 40%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(217 91% 50%) 0%, hsl(262 83% 58%) 100%);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(222 47% 11% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(222 47% 11% / 0.1), 0 2px 4px -2px hsl(222 47% 11% / 0.1);
+    --shadow-lg: 0 10px 15px -3px hsl(222 47% 11% / 0.1), 0 4px 6px -4px hsl(222 47% 11% / 0.1);
+    --shadow-card: 0 1px 3px 0 hsl(222 47% 11% / 0.06), 0 1px 2px -1px hsl(222 47% 11% / 0.06);
+    --shadow-card-hover: 0 10px 25px -5px hsl(222 47% 11% / 0.1), 0 8px 10px -6px hsl(222 47% 11% / 0.1);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222 47% 6%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 222 47% 9%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 222 47% 9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 15 90% 55%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 60%;
+
+    --sidebar-background: 222 47% 6%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 222 47% 12%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 222 47% 15%;
+    --sidebar-ring: 217 91% 60%;
+
+    --kanban-bg: 222 47% 8%;
+    --kanban-header: 210 40% 98%;
+
+    --pastel-blue: 217 50% 20%;
+    --pastel-purple: 262 40% 20%;
+    --pastel-orange: 38 50% 20%;
+    --pastel-green: 142 40% 15%;
+    --pastel-red: 0 50% 20%;
+    --pastel-cyan: 174 40% 15%;
   }
 }
 
@@ -100,6 +159,200 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-muted rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full hover:bg-muted-foreground/50 transition-colors;
+  }
+}
+
+@layer components {
+  /* Kanban Card */
+  .kanban-card {
+    @apply bg-card rounded-lg p-4 cursor-grab active:cursor-grabbing transition-all duration-200;
+    box-shadow: var(--shadow-card);
+  }
+
+  .kanban-card:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-2px);
+  }
+
+  .kanban-card.dragging {
+    @apply opacity-50 rotate-2;
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Status Badge Variants */
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .status-badge-new {
+    @apply bg-pastel-blue text-status-new;
+  }
+
+  .status-badge-contacted {
+    @apply bg-pastel-purple text-status-contacted;
+  }
+
+  .status-badge-viewing {
+    @apply bg-pastel-orange text-status-viewing;
+  }
+
+  .status-badge-viewed {
+    @apply bg-pastel-cyan text-status-viewed;
+  }
+
+  .status-badge-negotiation {
+    @apply bg-pastel-orange text-status-negotiation;
+  }
+
+  .status-badge-closed {
+    @apply bg-pastel-green text-status-closed;
+  }
+
+  .status-badge-lost {
+    @apply bg-pastel-red text-status-lost;
+  }
+
+  /* Priority Indicators */
+  .priority-hot {
+    @apply text-priority-hot;
+  }
+
+  .priority-warm {
+    @apply text-priority-warm;
+  }
+
+  .priority-cold {
+    @apply text-priority-cold;
+  }
+
+  /* Metric Card */
+  .metric-card {
+    @apply bg-card rounded-xl p-6 relative overflow-hidden;
+    box-shadow: var(--shadow-card);
+  }
+
+  .metric-card::before {
+    content: '';
+    @apply absolute top-0 left-0 right-0 h-1 rounded-t-xl;
+  }
+
+  .metric-card-primary::before {
+    background: var(--gradient-primary);
+  }
+
+  .metric-card-accent::before {
+    background: var(--gradient-accent);
+  }
+
+  .metric-card-success::before {
+    background: var(--gradient-success);
+  }
+
+  /* Glass Effect */
+  .glass {
+    @apply bg-card/80 backdrop-blur-sm;
+  }
+
+  /* Animation Classes */
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+}
+
+@layer utilities {
+  /* Text Gradient */
+  .text-gradient {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-accent {
+    background: var(--gradient-accent);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Background Utilities */
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .bg-gradient-accent {
+    background: var(--gradient-accent);
+  }
+
+  .bg-gradient-success {
+    background: var(--gradient-success);
+  }
+
+  .bg-gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  /* Shadow Utilities */
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-card-hover {
+    box-shadow: var(--shadow-card-hover);
   }
 }
