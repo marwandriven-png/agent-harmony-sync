@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MainLayout, PageHeader, PageContent } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import {
-  Plus,
   Clock,
   MessageSquare,
   Edit,
@@ -13,71 +14,62 @@ import {
   Trash2,
   CheckCircle,
 } from 'lucide-react';
+import { useTemplates, useDeleteTemplate } from '@/hooks/useTemplates';
+import { CreateTemplateDialog } from '@/components/forms/CreateTemplateDialog';
+import type { Database } from '@/integrations/supabase/types';
 
-interface FollowUpTemplate {
-  id: string;
-  day: number;
-  title: string;
-  content: string;
-  isActive: boolean;
-}
-
-const defaultTemplates: FollowUpTemplate[] = [
-  {
-    id: '1',
-    day: 2,
-    title: 'Initial Follow-up',
-    content: 'Hi {{name}}, following up on your interest in {{bedrooms}}BR properties in {{locations}}. I\'ve found some excellent options within your {{budget}} budget. When\'s a good time to discuss?',
-    isActive: true,
-  },
-  {
-    id: '2',
-    day: 4,
-    title: 'Property Showcase',
-    content: 'Hi {{name}}, I wanted to share some handpicked properties that match your requirements. Would you like me to arrange viewings for any of these?',
-    isActive: true,
-  },
-  {
-    id: '3',
-    day: 6,
-    title: 'Pro Tip Follow-up',
-    content: 'Hi {{name}}, quick tip: Properties in {{locations}} are moving fast this season. Let me know if you\'d like priority access to new listings.',
-    isActive: true,
-  },
-];
+type TemplateRow = Database['public']['Tables']['follow_up_templates']['Row'];
 
 const scheduleDays = [0, 2, 4, 6, 9, 12, 16, 20];
 
 export default function TemplatesPage() {
-  const [templates, setTemplates] = useState<FollowUpTemplate[]>(defaultTemplates);
-  const [selectedTemplate, setSelectedTemplate] = useState<FollowUpTemplate | null>(templates[0] || null);
+  const { data: templates = [], isLoading } = useTemplates();
+  const deleteTemplate = useDeleteTemplate();
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateRow | null>(null);
+
+  // Auto-select first template when data loads
+  useEffect(() => {
+    if (templates.length > 0 && !selectedTemplate) {
+      setSelectedTemplate(templates[0]);
+    }
+  }, [templates, selectedTemplate]);
 
   const getTemplateForDay = (day: number) => {
     return templates.find((t) => t.day === day);
   };
 
-  const handleCopy = (template: FollowUpTemplate) => {
+  const handleCopy = (template: TemplateRow) => {
     navigator.clipboard.writeText(template.content);
+    toast.success('Template copied to clipboard');
   };
 
-  const handleDelete = (templateId: string) => {
-    setTemplates(templates.filter((t) => t.id !== templateId));
+  const handleDelete = async (templateId: string) => {
+    await deleteTemplate.mutateAsync(templateId);
     if (selectedTemplate?.id === templateId) {
-      setSelectedTemplate(templates[0] || null);
+      setSelectedTemplate(templates.find((t) => t.id !== templateId) || null);
     }
   };
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <PageHeader title="Follow-up Templates" subtitle="Manage automated follow-up messages" />
+        <PageContent>
+          <div className="space-y-6">
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-64 w-full" />
+          </div>
+        </PageContent>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
       <PageHeader
         title="Follow-up Templates"
         subtitle="Manage automated follow-up messages"
-        actions={
-          <Button className="bg-gradient-primary hover:opacity-90">
-            <Plus className="w-4 h-4 mr-2" />
-            New Template
-          </Button>
-        }
+        actions={<CreateTemplateDialog />}
       />
 
       <PageContent>
@@ -158,7 +150,7 @@ export default function TemplatesPage() {
                     {selectedTemplate.title}
                   </h3>
                   <MessageSquare className="w-4 h-4 text-muted-foreground" />
-                  {selectedTemplate.isActive && (
+                  {selectedTemplate.is_active && (
                     <Badge className="bg-pastel-green text-success">Active</Badge>
                   )}
                 </div>
@@ -216,7 +208,7 @@ export default function TemplatesPage() {
                     <div className="flex items-center gap-3">
                       <Badge variant="outline">Day {template.day}</Badge>
                       <span className="font-medium text-foreground">{template.title}</span>
-                      {template.isActive && (
+                      {template.is_active && (
                         <Badge className="bg-pastel-green text-success text-xs">Active</Badge>
                       )}
                     </div>

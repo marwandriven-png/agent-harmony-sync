@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SendTemplateDialog } from '@/components/leads/SendTemplateDialog';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import {
@@ -440,6 +441,7 @@ export default function LeadDetailPage() {
                   <Send className="w-4 h-4 mr-2" />
                   Send Properties
                 </Button>
+                <SendTemplateDialog lead={lead} />
               </div>
             </motion.div>
 

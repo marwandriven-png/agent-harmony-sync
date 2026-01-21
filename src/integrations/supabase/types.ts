@@ -183,6 +183,39 @@ export type Database = {
           },
         ]
       }
+      follow_up_templates: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          day: number
+          id: string
+          is_active: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          day: number
+          id?: string
+          is_active?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          day?: number
+          id?: string
+          is_active?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lead_attachments: {
         Row: {
           created_at: string
