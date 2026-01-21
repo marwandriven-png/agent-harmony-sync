@@ -108,6 +108,10 @@ export default function ReportsPage() {
     const currentColdCalls = coldCalls.filter(c => isInRange(c.created_at, range.current));
     const previousColdCalls = coldCalls.filter(c => isInRange(c.created_at, range.previous));
     
+    // New listings
+    const currentListings = properties.filter(p => isInRange(p.created_at, range.current));
+    const previousListings = properties.filter(p => isInRange(p.created_at, range.previous));
+    
     const completedTasks = currentTasks.filter(t => t.status === 'completed');
     const previousCompletedTasks = previousTasks.filter(t => t.status === 'completed');
     
@@ -131,6 +135,8 @@ export default function ReportsPage() {
       tasksCompleted: completedTasks.length,
       tasksCompletedChange: calculateChange(completedTasks.length, previousCompletedTasks.length),
       totalTasks: currentTasks.length,
+      newListings: currentListings.length,
+      newListingsChange: calculateChange(currentListings.length, previousListings.length),
       activities: currentActivities.length,
       activitiesChange: calculateChange(currentActivities.length, previousActivities.length),
       coldCalls: currentColdCalls.length,
@@ -339,8 +345,8 @@ export default function ReportsPage() {
                 ))}
               </div>
 
-              {/* Cold Calls & Conversions Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              {/* Cold Calls, Conversions & New Listings Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -385,6 +391,31 @@ export default function ReportsPage() {
                           metrics.conversionsChange >= 0 ? "text-success" : "text-destructive"
                         )}>
                           {metrics.conversionsChange >= 0 ? '+' : ''}{metrics.conversionsChange}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 }}
+                  className="bg-card rounded-xl p-6 shadow-card"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-xl bg-pastel-purple">
+                      <Building2 className="w-6 h-6 text-status-contacted" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">New Listings</p>
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-2xl font-bold text-foreground">{metrics.newListings}</p>
+                        <span className={cn(
+                          "text-sm",
+                          metrics.newListingsChange >= 0 ? "text-success" : "text-destructive"
+                        )}>
+                          {metrics.newListingsChange >= 0 ? '+' : ''}{metrics.newListingsChange}%
                         </span>
                       </div>
                     </div>
