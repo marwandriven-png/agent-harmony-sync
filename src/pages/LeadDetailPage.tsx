@@ -1,10 +1,12 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { MainLayout, PageHeader, PageContent } from '@/components/layout/MainLayout';
-import { useCRMStore } from '@/store/crmStore';
+import { useLeadById } from '@/hooks/useLeads';
+import { useActivitiesByLead, useCreateActivity } from '@/hooks/useActivities';
+import { useProperties } from '@/hooks/useProperties';
 import { formatCurrency, formatDateTime, formatRelativeTime, getDaysSinceCreation } from '@/lib/formatters';
-import { matchProperties } from '@/lib/propertyMatching';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -29,28 +31,42 @@ import {
   FileText,
   ArrowRightLeft,
 } from 'lucide-react';
-import { ActivityType, LeadPriority } from '@/types/crm';
+import type { Database } from '@/integrations/supabase/types';
+
+type ActivityType = Database['public']['Enums']['activity_type'];
+type LeadPriority = Database['public']['Enums']['lead_priority'];
 
 const activityIcons: Record<ActivityType, React.ElementType> = {
-  Call: Phone,
-  Email: Mail,
-  WhatsApp: MessageSquare,
-  Meeting: Calendar,
-  Note: FileText,
-  Task: FileText,
-  'Status Change': ArrowRightLeft,
-  'Property Sent': Send,
+  call: Phone,
+  email: Mail,
+  whatsapp: MessageSquare,
+  meeting: Calendar,
+  note: FileText,
+  task: FileText,
+  status_change: ArrowRightLeft,
+  property_sent: Send,
 };
 
 const activityColors: Record<ActivityType, string> = {
-  Call: 'bg-pastel-blue text-status-new',
-  Email: 'bg-pastel-purple text-status-contacted',
-  WhatsApp: 'bg-pastel-green text-status-closed',
-  Meeting: 'bg-pastel-orange text-status-viewing',
-  Note: 'bg-muted text-muted-foreground',
-  Task: 'bg-pastel-cyan text-status-viewed',
-  'Status Change': 'bg-pastel-orange text-status-negotiation',
-  'Property Sent': 'bg-pastel-blue text-primary',
+  call: 'bg-pastel-blue text-status-new',
+  email: 'bg-pastel-purple text-status-contacted',
+  whatsapp: 'bg-pastel-green text-status-closed',
+  meeting: 'bg-pastel-orange text-status-viewing',
+  note: 'bg-muted text-muted-foreground',
+  task: 'bg-pastel-cyan text-status-viewed',
+  status_change: 'bg-pastel-orange text-status-negotiation',
+  property_sent: 'bg-pastel-blue text-primary',
+};
+
+const activityLabels: Record<ActivityType, string> = {
+  call: 'Call',
+  email: 'Email',
+  whatsapp: 'WhatsApp',
+  meeting: 'Meeting',
+  note: 'Note',
+  task: 'Task',
+  status_change: 'Status Change',
+  property_sent: 'Property Sent',
 };
 
 const priorityConfig: Record<LeadPriority, { icon: React.ElementType; color: string; bg: string; label: string }> = {
@@ -72,14 +88,12 @@ const statusLabels: Record<string, string> = {
 export default function LeadDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { leads, activities, properties, getAgentById } = useCRMStore();
+  const { data: lead, isLoading: leadLoading, error } = useLeadById(id || '');
+  const { data: activities = [], isLoading: activitiesLoading } = useActivitiesByLead(id || '');
+  const { data: properties = [] } = useProperties();
+  const createActivity = useCreateActivity();
 
-  const lead = leads.find((l) => l.id === id);
-  const leadActivities = activities.filter((a) => a.leadId === id);
-  const matchedProperties = lead ? matchProperties(lead, properties) : [];
-  const agent = lead ? getAgentById(lead.assignedAgent) : null;
-
-  if (!lead) {
+  if (error) {
     return (
       <MainLayout>
         <PageContent>
@@ -96,7 +110,43 @@ export default function LeadDetailPage() {
     );
   }
 
+  if (leadLoading || !lead) {
+    return (
+      <MainLayout>
+        <PageContent>
+          <div className="space-y-6">
+            <Skeleton className="h-16 w-full" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-64 w-full" />
+              </div>
+              <div className="space-y-6">
+                <Skeleton className="h-48 w-full" />
+              </div>
+            </div>
+          </div>
+        </PageContent>
+      </MainLayout>
+    );
+  }
+
   const PriorityIcon = priorityConfig[lead.priority].icon;
+  const agentName = lead.profiles?.full_name || 'Unassigned';
+  const budgetMin = lead.budget_min || 0;
+  const budgetMax = lead.budget_max || 0;
+  const currency = lead.budget_currency || 'AED';
+  const bedrooms = lead.bedrooms || 0;
+  const locations = lead.locations || [];
+  const propertyTypes = lead.property_types || [];
+
+  const handleLogActivity = async (type: ActivityType) => {
+    await createActivity.mutateAsync({
+      lead_id: lead.id,
+      type,
+      title: `${activityLabels[type]} logged`,
+    });
+  };
 
   return (
     <MainLayout>
@@ -130,7 +180,7 @@ export default function LeadDetailPage() {
               </div>
             </div>
             <p className="text-muted-foreground">
-              {statusLabels[lead.status]} • Added {getDaysSinceCreation(lead.createdAt)} days ago
+              {statusLabels[lead.status]} • Added {getDaysSinceCreation(lead.created_at)} days ago
             </p>
           </div>
         </div>
@@ -163,7 +213,7 @@ export default function LeadDetailPage() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Email</p>
-                    <p className="font-medium text-foreground">{lead.email}</p>
+                    <p className="font-medium text-foreground">{lead.email || 'Not provided'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -172,7 +222,7 @@ export default function LeadDetailPage() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Source</p>
-                    <p className="font-medium text-foreground">{lead.source}</p>
+                    <p className="font-medium text-foreground capitalize">{lead.source.replace('_', ' ')}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -181,7 +231,7 @@ export default function LeadDetailPage() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Assigned To</p>
-                    <p className="font-medium text-foreground">{agent?.name || 'Unassigned'}</p>
+                    <p className="font-medium text-foreground">{agentName}</p>
                   </div>
                 </div>
               </div>
@@ -199,46 +249,57 @@ export default function LeadDetailPage() {
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">Budget Range</p>
                   <p className="text-xl font-bold text-foreground">
-                    {formatCurrency(lead.budget.min, lead.budget.currency)} - {formatCurrency(lead.budget.max, lead.budget.currency)}
+                    {formatCurrency(budgetMin, currency)} - {formatCurrency(budgetMax, currency)}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">Bedrooms</p>
                   <div className="flex items-center gap-2">
                     <Bed className="w-5 h-5 text-muted-foreground" />
-                    <span className="text-xl font-bold text-foreground">{lead.requirements.bedrooms}</span>
+                    <span className="text-xl font-bold text-foreground">{bedrooms}</span>
                   </div>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">Property Types</p>
                   <div className="flex flex-wrap gap-2">
-                    {lead.requirements.propertyType.map((type) => (
-                      <Badge key={type} variant="secondary">
+                    {propertyTypes.map((type) => (
+                      <Badge key={type} variant="secondary" className="capitalize">
                         <Building2 className="w-3 h-3 mr-1" />
                         {type}
                       </Badge>
                     ))}
+                    {propertyTypes.length === 0 && (
+                      <span className="text-muted-foreground">Not specified</span>
+                    )}
                   </div>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">Preferred Locations</p>
                   <div className="flex flex-wrap gap-2">
-                    {lead.requirements.locations.map((loc) => (
+                    {locations.map((loc) => (
                       <Badge key={loc} variant="secondary">
                         <MapPin className="w-3 h-3 mr-1" />
                         {loc}
                       </Badge>
                     ))}
+                    {locations.length === 0 && (
+                      <span className="text-muted-foreground">Not specified</span>
+                    )}
                   </div>
                 </div>
               </div>
+              {lead.requirements_notes && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <p className="text-sm text-muted-foreground mb-2">Notes</p>
+                  <p className="text-foreground">{lead.requirements_notes}</p>
+                </div>
+              )}
             </motion.div>
 
             {/* Tabs */}
             <Tabs defaultValue="activities" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="activities">Activities</TabsTrigger>
-                <TabsTrigger value="properties">Matched Properties</TabsTrigger>
                 <TabsTrigger value="attachments">Attachments</TabsTrigger>
               </TabsList>
               
@@ -252,8 +313,18 @@ export default function LeadDetailPage() {
                     </Button>
                   </div>
                   <div className="space-y-4">
-                    {leadActivities.length > 0 ? (
-                      leadActivities.map((activity, index) => {
+                    {activitiesLoading ? (
+                      [1, 2, 3].map((i) => (
+                        <div key={i} className="flex gap-4">
+                          <Skeleton className="w-10 h-10 rounded-lg" />
+                          <div className="flex-1">
+                            <Skeleton className="h-4 w-1/3 mb-2" />
+                            <Skeleton className="h-3 w-2/3" />
+                          </div>
+                        </div>
+                      ))
+                    ) : activities.length > 0 ? (
+                      activities.map((activity, index) => {
                         const Icon = activityIcons[activity.type];
                         return (
                           <motion.div
@@ -267,7 +338,7 @@ export default function LeadDetailPage() {
                               <div className={cn("p-2 rounded-lg", activityColors[activity.type])}>
                                 <Icon className="w-4 h-4" />
                               </div>
-                              {index < leadActivities.length - 1 && (
+                              {index < activities.length - 1 && (
                                 <div className="absolute top-10 left-1/2 -translate-x-1/2 w-0.5 h-8 bg-border" />
                               )}
                             </div>
@@ -275,7 +346,7 @@ export default function LeadDetailPage() {
                               <div className="flex items-center justify-between">
                                 <p className="font-medium text-foreground">{activity.title}</p>
                                 <span className="text-xs text-muted-foreground">
-                                  {formatDateTime(activity.createdAt)}
+                                  {formatDateTime(activity.created_at)}
                                 </span>
                               </div>
                               {activity.description && (
@@ -293,38 +364,6 @@ export default function LeadDetailPage() {
                       </p>
                     )}
                   </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="properties" className="mt-4">
-                <div className="bg-card rounded-xl p-6 shadow-card">
-                  <h3 className="text-lg font-semibold text-foreground mb-4">Matched Properties</h3>
-                  {matchedProperties.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {matchedProperties.map((match) => (
-                        <div key={match.property.id} className="p-4 border border-border rounded-lg">
-                          <div className="flex justify-between items-start mb-2">
-                            <h4 className="font-medium text-foreground">{match.property.title}</h4>
-                            <Badge variant="secondary">{match.score}% match</Badge>
-                          </div>
-                          <p className="text-lg font-bold text-foreground mb-2">
-                            {formatCurrency(match.property.price, match.property.currency)}
-                          </p>
-                          <div className="flex flex-wrap gap-1">
-                            {match.matchReasons.map((reason) => (
-                              <Badge key={reason} variant="outline" className="text-xs">
-                                {reason}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-center text-muted-foreground py-8">
-                      No matching properties found.
-                    </p>
-                  )}
                 </div>
               </TabsContent>
 
@@ -356,23 +395,48 @@ export default function LeadDetailPage() {
             >
               <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
               <div className="space-y-2">
-                <Button className="w-full justify-start" variant="outline">
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => handleLogActivity('call')}
+                  disabled={createActivity.isPending}
+                >
                   <Phone className="w-4 h-4 mr-2" />
                   Log Call
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => handleLogActivity('email')}
+                  disabled={createActivity.isPending}
+                >
                   <Mail className="w-4 h-4 mr-2" />
                   Send Email
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => handleLogActivity('whatsapp')}
+                  disabled={createActivity.isPending}
+                >
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Send WhatsApp
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => handleLogActivity('meeting')}
+                  disabled={createActivity.isPending}
+                >
                   <Calendar className="w-4 h-4 mr-2" />
                   Schedule Viewing
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => handleLogActivity('property_sent')}
+                  disabled={createActivity.isPending}
+                >
                   <Send className="w-4 h-4 mr-2" />
                   Send Properties
                 </Button>
@@ -380,7 +444,7 @@ export default function LeadDetailPage() {
             </motion.div>
 
             {/* Next Follow-up */}
-            {lead.nextFollowUp && (
+            {lead.next_follow_up && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -391,8 +455,8 @@ export default function LeadDetailPage() {
                   <Clock className="w-5 h-5" />
                   <h3 className="font-semibold">Next Follow-up</h3>
                 </div>
-                <p className="text-2xl font-bold">{formatRelativeTime(lead.nextFollowUp)}</p>
-                <p className="text-sm opacity-80 mt-1">{formatDateTime(lead.nextFollowUp)}</p>
+                <p className="text-2xl font-bold">{formatRelativeTime(lead.next_follow_up)}</p>
+                <p className="text-sm opacity-80 mt-1">{formatDateTime(lead.next_follow_up)}</p>
               </motion.div>
             )}
 
@@ -411,28 +475,28 @@ export default function LeadDetailPage() {
                       cx="40"
                       cy="40"
                       r="36"
-                      fill="none"
-                      stroke="hsl(var(--muted))"
                       strokeWidth="8"
+                      className="fill-none stroke-muted"
                     />
                     <circle
                       cx="40"
                       cy="40"
                       r="36"
-                      fill="none"
-                      stroke="hsl(var(--primary))"
                       strokeWidth="8"
-                      strokeDasharray={`${75 * 2.26} ${100 * 2.26}`}
+                      className="fill-none stroke-primary"
+                      strokeDasharray={`${lead.priority === 'hot' ? 75 : lead.priority === 'warm' ? 50 : 25} 100`}
                       strokeLinecap="round"
                     />
                   </svg>
                   <span className="absolute inset-0 flex items-center justify-center text-xl font-bold text-foreground">
-                    75
+                    {lead.priority === 'hot' ? '85' : lead.priority === 'warm' ? '65' : '35'}
                   </span>
                 </div>
                 <div>
-                  <p className="font-medium text-foreground">High Quality Lead</p>
-                  <p className="text-sm text-muted-foreground">Based on engagement and budget fit</p>
+                  <p className="font-semibold text-foreground">
+                    {lead.priority === 'hot' ? 'High Intent' : lead.priority === 'warm' ? 'Medium Intent' : 'Low Intent'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Based on engagement</p>
                 </div>
               </div>
             </motion.div>

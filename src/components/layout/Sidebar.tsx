@@ -1,6 +1,6 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { useCRMStore } from '@/store/crmStore';
+import { useAuth } from '@/hooks/useAuth';
 import { 
   LayoutDashboard, 
   Users, 
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -34,8 +35,17 @@ const bottomNavItems = [
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const { currentAgent, getMetrics } = useCRMStore();
-  const metrics = getMetrics();
+  const navigate = useNavigate();
+  const { profile, userRole, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success('Signed out successfully');
+    navigate('/auth');
+  };
+
+  const displayName = profile?.full_name || 'User';
+  const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase();
 
   return (
     <motion.aside
@@ -113,13 +123,6 @@ export function Sidebar() {
                       </motion.span>
                     )}
                   </AnimatePresence>
-                  
-                  {/* Badge for specific items */}
-                  {!collapsed && item.to === '/tasks' && metrics.followUpsDue > 0 && (
-                    <span className="ml-auto bg-accent text-accent-foreground text-xs font-bold px-2 py-0.5 rounded-full">
-                      {metrics.followUpsDue}
-                    </span>
-                  )}
                 </NavLink>
               </li>
             );
@@ -163,7 +166,7 @@ export function Sidebar() {
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-sidebar-accent flex items-center justify-center flex-shrink-0">
             <span className="text-sm font-semibold text-sidebar-foreground">
-              {currentAgent.name.split(' ').map(n => n[0]).join('')}
+              {initials}
             </span>
           </div>
           <AnimatePresence>
@@ -175,16 +178,20 @@ export function Sidebar() {
                 className="flex-1 min-w-0 overflow-hidden"
               >
                 <p className="text-sm font-medium text-sidebar-foreground truncate">
-                  {currentAgent.name}
+                  {displayName}
                 </p>
                 <p className="text-xs text-sidebar-foreground/60 capitalize truncate">
-                  {currentAgent.role}
+                  {userRole || 'Agent'}
                 </p>
               </motion.div>
             )}
           </AnimatePresence>
           {!collapsed && (
-            <button className="p-1.5 hover:bg-sidebar-accent rounded-lg transition-colors text-sidebar-foreground/60 hover:text-sidebar-foreground">
+            <button 
+              onClick={handleSignOut}
+              className="p-1.5 hover:bg-sidebar-accent rounded-lg transition-colors text-sidebar-foreground/60 hover:text-sidebar-foreground"
+              title="Sign out"
+            >
               <LogOut className="w-4 h-4" />
             </button>
           )}
