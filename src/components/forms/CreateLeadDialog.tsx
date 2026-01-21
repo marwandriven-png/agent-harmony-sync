@@ -38,6 +38,9 @@ const leadSchema = z.object({
   phone: z.string().trim().min(1, 'Phone is required').max(20, 'Phone must be less than 20 characters'),
   source: z.enum(Constants.public.Enums.lead_source as unknown as [string, ...string[]]),
   priority: z.enum(Constants.public.Enums.lead_priority as unknown as [string, ...string[]]),
+  lead_type: z.enum(['buyer', 'landlord', 'tenant'] as const),
+  building_name: z.string().max(200).optional(),
+  area_name: z.string().max(200).optional(),
   budget_min: z.coerce.number().min(0).optional(),
   budget_max: z.coerce.number().min(0).optional(),
   budget_currency: z.string().default('AED'),
@@ -66,6 +69,9 @@ export function CreateLeadDialog({ trigger }: CreateLeadDialogProps) {
       phone: '',
       source: 'website',
       priority: 'warm',
+      lead_type: 'buyer',
+      building_name: '',
+      area_name: '',
       budget_min: undefined,
       budget_max: undefined,
       budget_currency: 'AED',
@@ -100,6 +106,9 @@ export function CreateLeadDialog({ trigger }: CreateLeadDialogProps) {
       email: data.email || null,
       source: data.source as any,
       priority: data.priority as any,
+      lead_type: data.lead_type as any,
+      building_name: data.building_name || null,
+      area_name: data.area_name || null,
       budget_min: data.budget_min,
       budget_max: data.budget_max,
       budget_currency: data.budget_currency,
@@ -168,8 +177,8 @@ export function CreateLeadDialog({ trigger }: CreateLeadDialogProps) {
               )}
             />
 
-            {/* Source & Priority */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Source & Priority & Lead Type */}
+            <div className="grid grid-cols-3 gap-4">
               <FormField
                 control={form.control}
                 name="source"
@@ -214,6 +223,58 @@ export function CreateLeadDialog({ trigger }: CreateLeadDialogProps) {
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="lead_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lead Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="buyer">Buyer</SelectItem>
+                        <SelectItem value="landlord">Landlord</SelectItem>
+                        <SelectItem value="tenant">Tenant</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Building & Area */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="building_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Building Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Burj Khalifa" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="area_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Area Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Downtown Dubai" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
