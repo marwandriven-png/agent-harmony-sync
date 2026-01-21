@@ -11,7 +11,8 @@ import LeadDetailPage from "./pages/LeadDetailPage";
 import ColdCallsPage from "./pages/ColdCallsPage";
 import CalendarPage from "./pages/CalendarPage";
 import TasksPage from "./pages/TasksPage";
-import PropertiesPage from "./pages/PropertiesPage";
+import PropertyInventoryPage from "./pages/PropertyInventoryPage";
+import TemplatesPage from "./pages/TemplatesPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthPage from "./pages/AuthPage";
@@ -87,7 +88,15 @@ const App = () => (
               path="/properties"
               element={
                 <ProtectedRoute>
-                  <PropertiesPage />
+                  <PropertyInventoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/templates"
+              element={
+                <ProtectedRoute>
+                  <TemplatesPage />
                 </ProtectedRoute>
               }
             />

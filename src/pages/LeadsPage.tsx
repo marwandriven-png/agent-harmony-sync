@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CreateLeadDialog } from '@/components/forms/CreateLeadDialog';
 import { cn } from '@/lib/utils';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { AnimatePresence } from 'framer-motion';
@@ -102,10 +103,14 @@ export default function LeadsPage() {
         title="Leads Pipeline"
         subtitle="Manage and track your leads through the sales process"
         actions={
-          <Button className="bg-gradient-primary hover:opacity-90">
-            <UserPlus className="w-4 h-4 mr-2" />
-            Add Lead
-          </Button>
+          <CreateLeadDialog
+            trigger={
+              <Button className="bg-gradient-primary hover:opacity-90">
+                <UserPlus className="w-4 h-4 mr-2" />
+                Add Lead
+              </Button>
+            }
+          />
         }
       />
 

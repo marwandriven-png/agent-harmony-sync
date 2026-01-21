@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react';
 import { MainLayout, PageHeader, PageContent } from '@/components/layout/MainLayout';
-import { useCRMStore } from '@/store/crmStore';
+import { useTasks, useCompleteTask, TaskWithRelations } from '@/hooks/useTasks';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate, formatRelativeTime } from '@/lib/formatters';
+import { CreateTaskDialog } from '@/components/forms/CreateTaskDialog';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -22,12 +24,16 @@ import {
   Plus,
   Filter,
 } from 'lucide-react';
-import { TaskType, TaskStatus, LeadPriority } from '@/types/crm';
+import type { Database } from '@/integrations/supabase/types';
+
+type TaskType = Database['public']['Enums']['task_type'];
+type TaskStatus = Database['public']['Enums']['task_status'];
+type LeadPriority = Database['public']['Enums']['lead_priority'];
 
 const taskTypeIcons: Record<TaskType, React.ElementType> = {
   call: Phone,
   viewing: Eye,
-  'follow-up': MessageSquare,
+  follow_up: MessageSquare,
   meeting: Calendar,
   document: FileText,
   other: FileText,
@@ -58,7 +64,8 @@ const statusColors: Record<TaskStatus, string> = {
 };
 
 export default function TasksPage() {
-  const { tasks, updateTask } = useCRMStore();
+  const { data: tasks = [], isLoading } = useTasks();
+  const completeTask = useCompleteTask();
   const navigate = useNavigate();
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>('all');
   const [filterType, setFilterType] = useState<TaskType | 'all'>('all');
@@ -74,25 +81,37 @@ export default function TasksPage() {
       filtered = filtered.filter(t => t.type === filterType);
     }
 
-    // Sort by due date, overdue first, then pending, then completed
     return [...filtered].sort((a, b) => {
       if (a.status === 'overdue' && b.status !== 'overdue') return -1;
       if (a.status !== 'overdue' && b.status === 'overdue') return 1;
       if (a.status === 'pending' && b.status === 'completed') return -1;
       if (a.status === 'completed' && b.status === 'pending') return 1;
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
     });
   }, [tasks, filterStatus, filterType]);
 
   const handleComplete = (taskId: string) => {
-    updateTask(taskId, { status: 'completed', completedAt: new Date().toISOString() });
+    completeTask.mutate(taskId);
   };
 
   const overdueTasks = tasks.filter(t => t.status === 'overdue').length;
   const dueTodayTasks = tasks.filter(t => {
     const today = new Date().toISOString().split('T')[0];
-    return t.status === 'pending' && t.dueDate.startsWith(today);
+    return t.status === 'pending' && t.due_date.startsWith(today);
   }).length;
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <PageHeader title="Tasks" subtitle="Manage your follow-ups and scheduled activities" />
+        <PageContent>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full" />)}
+          </div>
+        </PageContent>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -100,10 +119,14 @@ export default function TasksPage() {
         title="Tasks"
         subtitle="Manage your follow-ups and scheduled activities"
         actions={
-          <Button className="bg-gradient-primary hover:opacity-90">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Task
-          </Button>
+          <CreateTaskDialog
+            trigger={
+              <Button className="bg-gradient-primary hover:opacity-90">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Task
+              </Button>
+            }
+          />
         }
       />
 
@@ -177,7 +200,7 @@ export default function TasksPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Type:</span>
-            {(['all', 'call', 'viewing', 'meeting', 'follow-up'] as const).map((type) => (
+            {(['all', 'call', 'viewing', 'meeting', 'follow_up'] as const).map((type) => (
               <button
                 key={type}
                 onClick={() => setFilterType(type)}
@@ -188,7 +211,7 @@ export default function TasksPage() {
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
               >
-                {type.charAt(0).toUpperCase() + type.slice(1)}
+                {type === 'follow_up' ? 'Follow-up' : type.charAt(0).toUpperCase() + type.slice(1)}
               </button>
             ))}
           </div>
@@ -204,9 +227,9 @@ export default function TasksPage() {
             <AnimatePresence mode="popLayout">
               {sortedTasks.map((task, index) => {
                 const TypeIcon = taskTypeIcons[task.type];
-                const PriorityIcon = priorityIcons[task.leadPriority];
-                const StatusIcon = statusIcons[task.status];
-                const isOverdue = task.status === 'overdue' || (task.status === 'pending' && new Date(task.dueDate) < new Date());
+                const leadPriority = task.leads?.priority || 'warm';
+                const PriorityIcon = priorityIcons[leadPriority];
+                const isOverdue = task.status === 'overdue' || (task.status === 'pending' && new Date(task.due_date) < new Date());
 
                 return (
                   <motion.div
@@ -219,10 +242,9 @@ export default function TasksPage() {
                       "p-4 hover:bg-muted/30 transition-colors cursor-pointer group",
                       isOverdue && "bg-pastel-red/50"
                     )}
-                    onClick={() => navigate(`/leads/${task.leadId}`)}
+                    onClick={() => navigate(`/leads/${task.lead_id}`)}
                   >
                     <div className="flex items-center gap-4">
-                      {/* Checkbox */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -243,7 +265,6 @@ export default function TasksPage() {
                         )}
                       </button>
 
-                      {/* Task Type Icon */}
                       <div className={cn(
                         "p-2 rounded-lg flex-shrink-0",
                         task.status === 'completed' ? "bg-muted" : "bg-pastel-blue"
@@ -254,7 +275,6 @@ export default function TasksPage() {
                         )} />
                       </div>
 
-                      {/* Task Details */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className={cn(
@@ -265,19 +285,15 @@ export default function TasksPage() {
                           )}>
                             {task.title}
                           </p>
-                          <PriorityIcon className={cn(
-                            "w-4 h-4 flex-shrink-0",
-                            priorityColors[task.leadPriority]
-                          )} />
+                          <PriorityIcon className={cn("w-4 h-4 flex-shrink-0", priorityColors[leadPriority])} />
                         </div>
                         <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                          <span>{task.leadName}</span>
+                          <span>{task.leads?.name || 'Unknown'}</span>
                           <span>•</span>
-                          <span className="capitalize">{task.type}</span>
+                          <span className="capitalize">{task.type.replace('_', '-')}</span>
                         </div>
                       </div>
 
-                      {/* Due Date */}
                       <div className="text-right flex-shrink-0">
                         <p className={cn(
                           "text-sm font-medium",
@@ -287,10 +303,10 @@ export default function TasksPage() {
                             ? "text-muted-foreground"
                             : "text-foreground"
                         )}>
-                          {isOverdue && task.status !== 'completed' ? 'Overdue' : formatDate(task.dueDate)}
+                          {isOverdue && task.status !== 'completed' ? 'Overdue' : formatDate(task.due_date)}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {formatRelativeTime(task.dueDate)}
+                          {formatRelativeTime(task.due_date)}
                         </p>
                       </div>
                     </div>
