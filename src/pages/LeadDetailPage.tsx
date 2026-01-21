@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MainLayout, PageHeader, PageContent } from '@/components/layout/MainLayout';
 import { useLeadById } from '@/hooks/useLeads';
@@ -9,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SendTemplateDialog } from '@/components/leads/SendTemplateDialog';
+import { EditLeadDialog } from '@/components/forms/EditLeadDialog';
+import { DeleteLeadDialog } from '@/components/forms/DeleteLeadDialog';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import {
@@ -93,6 +96,9 @@ export default function LeadDetailPage() {
   const { data: activities = [], isLoading: activitiesLoading } = useActivitiesByLead(id || '');
   const { data: properties = [] } = useProperties();
   const createActivity = useCreateActivity();
+  
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   if (error) {
     return (
@@ -155,11 +161,11 @@ export default function LeadDetailPage() {
         title=""
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
               <Edit className="w-4 h-4 mr-2" />
               Edit
             </Button>
-            <Button variant="destructive" size="sm">
+            <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
               <Trash2 className="w-4 h-4 mr-2" />
               Delete
             </Button>
