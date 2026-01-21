@@ -27,6 +27,7 @@ const navItems = [
   { to: '/properties', icon: Building2, label: 'Properties' },
   { to: '/templates', icon: Calendar, label: 'Templates' },
   { to: '/reports', icon: BarChart3, label: 'Reports' },
+  { to: '/setup', icon: Settings, label: 'Setup Wizard' },
 ];
 
 const bottomNavItems = [
