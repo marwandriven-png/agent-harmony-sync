@@ -378,36 +378,27 @@ function LeadCard({ lead, getAgentName, lastActivity, lastNote }: LeadCardProps)
       </div>
 
       {/* Last Note */}
-      {lastNote && (
+      {lastNote && lastNote.description && (
         <div className="mb-2 p-2 bg-muted/50 rounded-md">
           <div className="flex items-start gap-1.5">
             <MessageSquare className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
             <p className="text-xs text-muted-foreground line-clamp-2">
-              {lastNote.description || lastNote.title}
+              {lastNote.description}
             </p>
           </div>
         </div>
       )}
 
-      {/* Last Activity */}
-      {lastActivity && (
-        <div className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground">
-          <Activity className="w-3 h-3 shrink-0" />
-          <span className="truncate">{lastActivity.title}</span>
-          <span className="text-muted-foreground/60 shrink-0">
-            · {formatRelativeTime(lastActivity.created_at)}
+      {/* Footer - Location (Building & Area) */}
+      <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-2">
+        <div className="flex items-center gap-1 flex-1 min-w-0">
+          <MapPin className="w-3 h-3 shrink-0" />
+          <span className="truncate">
+            {locations.length > 0 ? locations.slice(0, 2).join(', ') : 'No location'}
           </span>
         </div>
-      )}
-
-      {/* Footer */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-2">
-        <div className="flex items-center gap-1">
-          <MapPin className="w-3 h-3" />
-          <span className="truncate max-w-[100px]">{locations[0] || 'No location'}</span>
-        </div>
         {lead.next_follow_up && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0 ml-2">
             <Clock className="w-3 h-3" />
             <span>{formatRelativeTime(lead.next_follow_up)}</span>
           </div>
