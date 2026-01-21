@@ -1,12 +1,15 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MainLayout, PageHeader, PageContent } from '@/components/layout/MainLayout';
 import { useProperties, usePropertyMetrics, PropertyWithProfile } from '@/hooks/useProperties';
+import { useDataSources, useSyncFromSheet } from '@/hooks/useDataSources';
 import { formatCurrency } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -14,6 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import {
@@ -31,8 +42,11 @@ import {
   TrendingUp,
   Bell,
   XCircle,
+  AlertCircle,
+  Settings,
 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
+import { CreatePropertyDialog } from '@/components/forms/CreatePropertyDialog';
 
 type PropertyStatus = Database['public']['Enums']['property_status'];
 type PropertyType = Database['public']['Enums']['property_type'];
@@ -47,7 +61,10 @@ const statusConfig: Record<PropertyStatus, { label: string; color: string; bg: s
 const tabs = ['All Properties', 'High Demand', 'Exclusive', 'New Listings'] as const;
 
 export default function PropertyInventoryPage() {
+  const navigate = useNavigate();
   const { data: properties = [], isLoading } = useProperties();
+  const { data: dataSources = [] } = useDataSources('properties');
+  const syncFromSheet = useSyncFromSheet();
   const metrics = usePropertyMetrics();
   const [searchQuery, setSearchQuery] = useState('');
   const [locationFilter, setLocationFilter] = useState<string>('all');
@@ -55,6 +72,21 @@ export default function PropertyInventoryPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<typeof tabs[number]>('All Properties');
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
+  const [showSetupDialog, setShowSetupDialog] = useState(false);
+
+  // Find a valid properties data source
+  const propertiesSource = dataSources.find(
+    (s) => Object.keys(s.column_mappings || {}).length > 0
+  );
+
+  const handleSyncFromSheet = async () => {
+    if (!propertiesSource) {
+      setShowSetupDialog(true);
+      return;
+    }
+
+    await syncFromSheet.mutateAsync(propertiesSource.id);
+  };
 
   const locations = useMemo(() => {
     const locs = [...new Set(properties.map((p) => p.location))];
@@ -126,14 +158,22 @@ export default function PropertyInventoryPage() {
         subtitle={`Manage ${metrics.totalProperties} properties with AI-powered matching`}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Sync from Sheet
+            <Button 
+              variant="outline" 
+              onClick={handleSyncFromSheet}
+              disabled={syncFromSheet.isPending}
+            >
+              <RefreshCw className={cn("w-4 h-4 mr-2", syncFromSheet.isPending && "animate-spin")} />
+              {syncFromSheet.isPending ? 'Syncing...' : 'Sync from Sheet'}
             </Button>
-            <Button className="bg-gradient-primary hover:opacity-90">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Property
-            </Button>
+            <CreatePropertyDialog
+              trigger={
+                <Button className="bg-gradient-primary hover:opacity-90">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Property
+                </Button>
+              }
+            />
           </div>
         }
       />
@@ -388,6 +428,41 @@ export default function PropertyInventoryPage() {
           </motion.div>
         </div>
       </PageContent>
+
+      {/* Setup Required Dialog */}
+      <Dialog open={showSetupDialog} onOpenChange={setShowSetupDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-warning" />
+              Data Source Not Configured
+            </DialogTitle>
+            <DialogDescription>
+              No Google Sheet is connected for properties, or the column mappings are missing. 
+              Please go to the Setup Wizard to connect your properties data source.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground mb-2">To sync properties from Google Sheets:</p>
+            <ol className="list-decimal list-inside space-y-1">
+              <li>Go to Setup Wizard → Data Sources</li>
+              <li>Select "Properties" as the target table</li>
+              <li>Paste your Google Sheet URL (must be publicly shared)</li>
+              <li>Map the sheet columns to property fields</li>
+              <li>Save and sync</li>
+            </ol>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSetupDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => navigate('/setup')}>
+              <Settings className="w-4 h-4 mr-2" />
+              Open Setup Wizard
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
