@@ -14,16 +14,629 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      activities: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          lead_id: string
+          metadata: Json | null
+          title: string
+          type: Database["public"]["Enums"]["activity_type"]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          lead_id: string
+          metadata?: Json | null
+          title: string
+          type: Database["public"]["Enums"]["activity_type"]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          lead_id?: string
+          metadata?: Json | null
+          title?: string
+          type?: Database["public"]["Enums"]["activity_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activities_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          record_id: string
+          source: string
+          table_name: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id: string
+          source?: string
+          table_name: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string
+          source?: string
+          table_name?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      cold_calls: {
+        Row: {
+          assigned_agent_id: string | null
+          bedrooms: number | null
+          budget: number | null
+          converted_lead_id: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          google_sheet_row_id: string | null
+          id: string
+          last_call_date: string | null
+          location: string | null
+          name: string
+          next_follow_up: string | null
+          notes: string | null
+          phone: string
+          source: Database["public"]["Enums"]["lead_source"]
+          status: Database["public"]["Enums"]["cold_call_status"]
+          updated_at: string
+        }
+        Insert: {
+          assigned_agent_id?: string | null
+          bedrooms?: number | null
+          budget?: number | null
+          converted_lead_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          google_sheet_row_id?: string | null
+          id?: string
+          last_call_date?: string | null
+          location?: string | null
+          name: string
+          next_follow_up?: string | null
+          notes?: string | null
+          phone: string
+          source?: Database["public"]["Enums"]["lead_source"]
+          status?: Database["public"]["Enums"]["cold_call_status"]
+          updated_at?: string
+        }
+        Update: {
+          assigned_agent_id?: string | null
+          bedrooms?: number | null
+          budget?: number | null
+          converted_lead_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          google_sheet_row_id?: string | null
+          id?: string
+          last_call_date?: string | null
+          location?: string | null
+          name?: string
+          next_follow_up?: string | null
+          notes?: string | null
+          phone?: string
+          source?: Database["public"]["Enums"]["lead_source"]
+          status?: Database["public"]["Enums"]["cold_call_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cold_calls_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cold_calls_converted_lead_id_fkey"
+            columns: ["converted_lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cold_calls_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          folder: string
+          id: string
+          lead_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          folder?: string
+          id?: string
+          lead_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          folder?: string
+          id?: string
+          lead_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_attachments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          assigned_agent_id: string | null
+          bedrooms: number | null
+          budget_currency: string | null
+          budget_max: number | null
+          budget_min: number | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          google_sheet_row_id: string | null
+          id: string
+          last_contacted_at: string | null
+          locations: string[] | null
+          name: string
+          next_follow_up: string | null
+          phone: string
+          priority: Database["public"]["Enums"]["lead_priority"]
+          property_types: Database["public"]["Enums"]["property_type"][] | null
+          requirements_notes: string | null
+          source: Database["public"]["Enums"]["lead_source"]
+          status: Database["public"]["Enums"]["lead_status"]
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_agent_id?: string | null
+          bedrooms?: number | null
+          budget_currency?: string | null
+          budget_max?: number | null
+          budget_min?: number | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          google_sheet_row_id?: string | null
+          id?: string
+          last_contacted_at?: string | null
+          locations?: string[] | null
+          name: string
+          next_follow_up?: string | null
+          phone: string
+          priority?: Database["public"]["Enums"]["lead_priority"]
+          property_types?: Database["public"]["Enums"]["property_type"][] | null
+          requirements_notes?: string | null
+          source?: Database["public"]["Enums"]["lead_source"]
+          status?: Database["public"]["Enums"]["lead_status"]
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_agent_id?: string | null
+          bedrooms?: number | null
+          budget_currency?: string | null
+          budget_max?: number | null
+          budget_min?: number | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          google_sheet_row_id?: string | null
+          id?: string
+          last_contacted_at?: string | null
+          locations?: string[] | null
+          name?: string
+          next_follow_up?: string | null
+          phone?: string
+          priority?: Database["public"]["Enums"]["lead_priority"]
+          property_types?: Database["public"]["Enums"]["property_type"][] | null
+          requirements_notes?: string | null
+          source?: Database["public"]["Enums"]["lead_source"]
+          status?: Database["public"]["Enums"]["lead_status"]
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      properties: {
+        Row: {
+          bathrooms: number
+          bedrooms: number
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          description: string | null
+          features: string[] | null
+          id: string
+          images: string[] | null
+          location: string
+          price: number
+          size: number
+          size_unit: string | null
+          status: Database["public"]["Enums"]["property_status"]
+          title: string
+          type: Database["public"]["Enums"]["property_type"]
+          updated_at: string
+        }
+        Insert: {
+          bathrooms: number
+          bedrooms: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          features?: string[] | null
+          id?: string
+          images?: string[] | null
+          location: string
+          price: number
+          size: number
+          size_unit?: string | null
+          status?: Database["public"]["Enums"]["property_status"]
+          title: string
+          type: Database["public"]["Enums"]["property_type"]
+          updated_at?: string
+        }
+        Update: {
+          bathrooms?: number
+          bedrooms?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          features?: string[] | null
+          id?: string
+          images?: string[] | null
+          location?: string
+          price?: number
+          size?: number
+          size_unit?: string | null
+          status?: Database["public"]["Enums"]["property_status"]
+          title?: string
+          type?: Database["public"]["Enums"]["property_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "properties_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sync_logs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          operation: string
+          record_id: string | null
+          source: string
+          status: string
+          table_name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          operation: string
+          record_id?: string | null
+          source?: string
+          status?: string
+          table_name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          operation?: string
+          record_id?: string | null
+          source?: string
+          status?: string
+          table_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_logs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string
+          google_sheet_row_id: string | null
+          id: string
+          lead_id: string
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          type: Database["public"]["Enums"]["task_type"]
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date: string
+          google_sheet_row_id?: string | null
+          id?: string
+          lead_id: string
+          status?: Database["public"]["Enums"]["task_status"]
+          title: string
+          type?: Database["public"]["Enums"]["task_type"]
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string
+          google_sheet_row_id?: string | null
+          id?: string
+          lead_id?: string
+          status?: Database["public"]["Enums"]["task_status"]
+          title?: string
+          type?: Database["public"]["Enums"]["task_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_access_lead: { Args: { _lead_id: string }; Returns: boolean }
+      get_user_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: never; Returns: boolean }
+      is_agent_assigned_to_lead: {
+        Args: { _lead_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      activity_type:
+        | "call"
+        | "email"
+        | "whatsapp"
+        | "meeting"
+        | "note"
+        | "task"
+        | "status_change"
+        | "property_sent"
+      app_role: "admin" | "agent"
+      cold_call_status:
+        | "new"
+        | "called"
+        | "interested"
+        | "not_interested"
+        | "converted"
+      lead_priority: "hot" | "warm" | "cold"
+      lead_source:
+        | "website"
+        | "referral"
+        | "cold_call"
+        | "social_media"
+        | "property_portal"
+        | "walk_in"
+        | "other"
+      lead_status:
+        | "new"
+        | "contacted"
+        | "viewing"
+        | "viewed"
+        | "negotiation"
+        | "closed"
+        | "lost"
+      property_status: "available" | "under_offer" | "sold" | "rented"
+      property_type:
+        | "apartment"
+        | "villa"
+        | "townhouse"
+        | "penthouse"
+        | "studio"
+        | "commercial"
+        | "land"
+      task_status: "pending" | "completed" | "overdue"
+      task_type:
+        | "call"
+        | "viewing"
+        | "follow_up"
+        | "meeting"
+        | "document"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +763,63 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      activity_type: [
+        "call",
+        "email",
+        "whatsapp",
+        "meeting",
+        "note",
+        "task",
+        "status_change",
+        "property_sent",
+      ],
+      app_role: ["admin", "agent"],
+      cold_call_status: [
+        "new",
+        "called",
+        "interested",
+        "not_interested",
+        "converted",
+      ],
+      lead_priority: ["hot", "warm", "cold"],
+      lead_source: [
+        "website",
+        "referral",
+        "cold_call",
+        "social_media",
+        "property_portal",
+        "walk_in",
+        "other",
+      ],
+      lead_status: [
+        "new",
+        "contacted",
+        "viewing",
+        "viewed",
+        "negotiation",
+        "closed",
+        "lost",
+      ],
+      property_status: ["available", "under_offer", "sold", "rented"],
+      property_type: [
+        "apartment",
+        "villa",
+        "townhouse",
+        "penthouse",
+        "studio",
+        "commercial",
+        "land",
+      ],
+      task_status: ["pending", "completed", "overdue"],
+      task_type: [
+        "call",
+        "viewing",
+        "follow_up",
+        "meeting",
+        "document",
+        "other",
+      ],
+    },
   },
 } as const
