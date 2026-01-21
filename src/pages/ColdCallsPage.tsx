@@ -1,13 +1,22 @@
 import { useState, useMemo } from 'react';
 import { MainLayout, PageHeader, PageContent } from '@/components/layout/MainLayout';
-import { useCRMStore } from '@/store/crmStore';
+import { useColdCalls, useUpdateColdCall } from '@/hooks/useColdCalls';
+import { CreateColdCallDialog } from '@/components/forms/CreateColdCallDialog';
+import { ConvertColdCallDialog } from '@/components/forms/ConvertColdCallDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { formatDate, formatCurrency } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import {
   Phone,
   Search,
@@ -17,11 +26,13 @@ import {
   XCircle,
   MessageSquare,
   ArrowRight,
-  Flame,
-  Thermometer,
-  Snowflake,
+  MoreHorizontal,
+  Building2,
 } from 'lucide-react';
-import { ColdCallStatus } from '@/types/crm';
+import type { Database } from '@/integrations/supabase/types';
+import type { ColdCallWithProfile } from '@/hooks/useColdCalls';
+
+type ColdCallStatus = Database['public']['Enums']['cold_call_status'];
 
 const statusConfig: Record<ColdCallStatus, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   new: { label: 'New', color: 'text-status-new', bg: 'bg-pastel-blue', icon: Phone },
@@ -32,10 +43,13 @@ const statusConfig: Record<ColdCallStatus, { label: string; color: string; bg: s
 };
 
 export default function ColdCallsPage() {
-  const { coldCalls, convertColdCallToLead, updateColdCallStatus, agents } = useCRMStore();
-  const navigate = useNavigate();
+  const { data: coldCalls = [], isLoading } = useColdCalls();
+  const updateColdCall = useUpdateColdCall();
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<ColdCallStatus | 'all'>('all');
+  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [selectedColdCall, setSelectedColdCall] = useState<ColdCallWithProfile | null>(null);
 
   const filteredCalls = useMemo(() => {
     return coldCalls.filter((call) => {
@@ -49,20 +63,33 @@ export default function ColdCallsPage() {
     });
   }, [coldCalls, searchQuery, filterStatus]);
 
-  const getAgentName = (agentId: string) => {
-    const agent = agents.find((a) => a.id === agentId);
-    return agent?.name || 'Unassigned';
+  const handleStatusChange = async (callId: string, status: ColdCallStatus) => {
+    await updateColdCall.mutateAsync({
+      id: callId,
+      status,
+      ...(status === 'called' ? { last_call_date: new Date().toISOString() } : {}),
+    });
   };
 
-  const handleConvert = (callId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    convertColdCallToLead(callId);
+  const handleConvertClick = (coldCall: ColdCallWithProfile) => {
+    setSelectedColdCall(coldCall);
+    setConvertDialogOpen(true);
   };
 
-  const handleStatusChange = (callId: string, status: ColdCallStatus, e: React.MouseEvent) => {
-    e.stopPropagation();
-    updateColdCallStatus(callId, status);
-  };
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <PageHeader title="Cold Calls" subtitle="Manage and track your cold call prospects" />
+        <PageContent>
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </div>
+        </PageContent>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -70,10 +97,14 @@ export default function ColdCallsPage() {
         title="Cold Calls"
         subtitle="Manage and track your cold call prospects"
         actions={
-          <Button className="bg-gradient-primary hover:opacity-90">
-            <Phone className="w-4 h-4 mr-2" />
-            Add Prospect
-          </Button>
+          <CreateColdCallDialog
+            trigger={
+              <Button className="bg-gradient-primary hover:opacity-90">
+                <Phone className="w-4 h-4 mr-2" />
+                Add Prospect
+              </Button>
+            }
+          />
         }
       />
 
@@ -132,6 +163,7 @@ export default function ColdCallsPage() {
                 <AnimatePresence mode="popLayout">
                   {filteredCalls.map((call, index) => {
                     const StatusIcon = statusConfig[call.status].icon;
+                    const agentName = call.profiles?.full_name || 'Unassigned';
                     
                     return (
                       <motion.tr
@@ -140,7 +172,7 @@ export default function ColdCallsPage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ delay: index * 0.05 }}
-                        className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
+                        className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
                       >
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-3">
@@ -161,14 +193,36 @@ export default function ColdCallsPage() {
                           <span className="text-sm text-foreground">{call.phone}</span>
                         </td>
                         <td className="py-4 px-4">
-                          <Badge className={cn(
-                            "gap-1",
-                            statusConfig[call.status].bg,
-                            statusConfig[call.status].color
-                          )}>
-                            <StatusIcon className="w-3 h-3" />
-                            {statusConfig[call.status].label}
-                          </Badge>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="focus:outline-none">
+                                <Badge className={cn(
+                                  "gap-1 cursor-pointer hover:opacity-80",
+                                  statusConfig[call.status].bg,
+                                  statusConfig[call.status].color
+                                )}>
+                                  <StatusIcon className="w-3 h-3" />
+                                  {statusConfig[call.status].label}
+                                </Badge>
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              {(['new', 'called', 'interested', 'not_interested'] as ColdCallStatus[]).map((status) => {
+                                const config = statusConfig[status];
+                                const Icon = config.icon;
+                                return (
+                                  <DropdownMenuItem
+                                    key={status}
+                                    onClick={() => handleStatusChange(call.id, status)}
+                                    disabled={call.status === 'converted' || updateColdCall.isPending}
+                                  >
+                                    <Icon className={cn("w-4 h-4 mr-2", config.color)} />
+                                    {config.label}
+                                  </DropdownMenuItem>
+                                );
+                              })}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </td>
                         <td className="py-4 px-4">
                           <span className="text-sm text-muted-foreground">
@@ -182,41 +236,63 @@ export default function ColdCallsPage() {
                         </td>
                         <td className="py-4 px-4">
                           <span className="text-sm text-muted-foreground">
-                            {getAgentName(call.assignedAgent)}
+                            {agentName}
                           </span>
                         </td>
                         <td className="py-4 px-4">
                           <span className="text-sm text-muted-foreground">
-                            {call.lastCallDate ? formatDate(call.lastCallDate) : 'Never'}
+                            {call.last_call_date ? formatDate(call.last_call_date) : 'Never'}
                           </span>
                         </td>
                         <td className="py-4 px-6">
                           <div className="flex items-center justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => handleStatusChange(call.id, 'called', e)}
-                              disabled={call.status === 'converted'}
-                            >
-                              <Phone className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => handleStatusChange(call.id, 'interested', e)}
-                              disabled={call.status === 'converted'}
-                            >
-                              <MessageSquare className="w-4 h-4" />
-                            </Button>
-                            {call.status !== 'converted' && (
-                              <Button
-                                size="sm"
-                                onClick={(e) => handleConvert(call.id, e)}
-                                className="bg-gradient-success hover:opacity-90"
-                              >
-                                <ArrowRight className="w-4 h-4 mr-1" />
-                                Convert
-                              </Button>
+                            {call.status !== 'converted' ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleStatusChange(call.id, 'called')}
+                                  disabled={updateColdCall.isPending}
+                                  title="Mark as Called"
+                                >
+                                  <Phone className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleStatusChange(call.id, 'interested')}
+                                  disabled={updateColdCall.isPending}
+                                  title="Mark as Interested"
+                                >
+                                  <MessageSquare className="w-4 h-4" />
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      className="bg-gradient-success hover:opacity-90"
+                                    >
+                                      <ArrowRight className="w-4 h-4 mr-1" />
+                                      Convert
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleConvertClick(call)}>
+                                      <UserPlus className="w-4 h-4 mr-2" />
+                                      Convert to Lead
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleConvertClick(call)}>
+                                      <Building2 className="w-4 h-4 mr-2" />
+                                      Convert to Listing
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </>
+                            ) : (
+                              <Badge variant="secondary">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Converted
+                              </Badge>
                             )}
                           </div>
                         </td>
@@ -237,6 +313,13 @@ export default function ColdCallsPage() {
           )}
         </motion.div>
       </PageContent>
+
+      {/* Convert Dialog */}
+      <ConvertColdCallDialog
+        coldCall={selectedColdCall}
+        open={convertDialogOpen}
+        onOpenChange={setConvertDialogOpen}
+      />
     </MainLayout>
   );
 }
