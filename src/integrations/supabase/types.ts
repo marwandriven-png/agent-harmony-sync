@@ -369,17 +369,20 @@ export type Database = {
       }
       leads: {
         Row: {
+          area_name: string | null
           assigned_agent_id: string | null
           bedrooms: number | null
           budget_currency: string | null
           budget_max: number | null
           budget_min: number | null
+          building_name: string | null
           created_at: string
           created_by: string | null
           email: string | null
           google_sheet_row_id: string | null
           id: string
           last_contacted_at: string | null
+          lead_type: Database["public"]["Enums"]["lead_type"] | null
           locations: string[] | null
           name: string
           next_follow_up: string | null
@@ -393,17 +396,20 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          area_name?: string | null
           assigned_agent_id?: string | null
           bedrooms?: number | null
           budget_currency?: string | null
           budget_max?: number | null
           budget_min?: number | null
+          building_name?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
           google_sheet_row_id?: string | null
           id?: string
           last_contacted_at?: string | null
+          lead_type?: Database["public"]["Enums"]["lead_type"] | null
           locations?: string[] | null
           name: string
           next_follow_up?: string | null
@@ -417,17 +423,20 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          area_name?: string | null
           assigned_agent_id?: string | null
           bedrooms?: number | null
           budget_currency?: string | null
           budget_max?: number | null
           budget_min?: number | null
+          building_name?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
           google_sheet_row_id?: string | null
           id?: string
           last_contacted_at?: string | null
+          lead_type?: Database["public"]["Enums"]["lead_type"] | null
           locations?: string[] | null
           name?: string
           next_follow_up?: string | null
@@ -791,6 +800,7 @@ export type Database = {
         | "negotiation"
         | "closed"
         | "lost"
+      lead_type: "buyer" | "landlord" | "tenant"
       property_status: "available" | "under_offer" | "sold" | "rented"
       property_type:
         | "apartment"
@@ -972,6 +982,7 @@ export const Constants = {
         "closed",
         "lost",
       ],
+      lead_type: ["buyer", "landlord", "tenant"],
       property_status: ["available", "under_offer", "sold", "rented"],
       property_type: [
         "apartment",

@@ -326,8 +326,10 @@ function LeadCard({ lead, getAgentName, lastActivity, lastNote }: LeadCardProps)
   const budgetMax = lead.budget_max || 0;
   const currency = lead.budget_currency || 'AED';
   const bedrooms = lead.bedrooms || 0;
-  const locations = lead.locations || [];
   const propertyTypes = lead.property_types || [];
+  const buildingName = (lead as any).building_name;
+  const areaName = (lead as any).area_name;
+  const leadType = (lead as any).lead_type;
 
   return (
     <>
@@ -389,14 +391,21 @@ function LeadCard({ lead, getAgentName, lastActivity, lastNote }: LeadCardProps)
         </div>
       )}
 
-      {/* Footer - Location (Building & Area) */}
+      {/* Footer - Building & Area */}
       <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-2">
         <div className="flex items-center gap-1 flex-1 min-w-0">
           <MapPin className="w-3 h-3 shrink-0" />
           <span className="truncate">
-            {locations.length > 0 ? locations.slice(0, 2).join(', ') : 'No location'}
+            {buildingName || areaName 
+              ? [buildingName, areaName].filter(Boolean).join(', ')
+              : 'No location'}
           </span>
         </div>
+        {leadType && (
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize shrink-0 ml-1">
+            {leadType}
+          </Badge>
+        )}
         {lead.next_follow_up && (
           <div className="flex items-center gap-1 shrink-0 ml-2">
             <Clock className="w-3 h-3" />

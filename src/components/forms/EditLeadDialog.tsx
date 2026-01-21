@@ -33,6 +33,7 @@ type LeadSource = Database['public']['Enums']['lead_source'];
 type LeadPriority = Database['public']['Enums']['lead_priority'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 type PropertyType = Database['public']['Enums']['property_type'];
+type LeadType = Database['public']['Enums']['lead_type'];
 
 const leadSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -41,6 +42,9 @@ const leadSchema = z.object({
   source: z.string(),
   priority: z.string(),
   status: z.string(),
+  lead_type: z.string(),
+  building_name: z.string().optional(),
+  area_name: z.string().optional(),
   budget_min: z.number().optional(),
   budget_max: z.number().optional(),
   bedrooms: z.number().optional(),
@@ -85,6 +89,9 @@ export function EditLeadDialog({ lead, open, onOpenChange }: EditLeadDialogProps
         source: lead.source,
         priority: lead.priority,
         status: lead.status,
+        lead_type: (lead as any).lead_type || 'buyer',
+        building_name: (lead as any).building_name || '',
+        area_name: (lead as any).area_name || '',
         budget_min: lead.budget_min || undefined,
         budget_max: lead.budget_max || undefined,
         bedrooms: lead.bedrooms || undefined,
@@ -126,6 +133,9 @@ export function EditLeadDialog({ lead, open, onOpenChange }: EditLeadDialogProps
       source: data.source as LeadSource,
       priority: data.priority as LeadPriority,
       status: data.status as LeadStatus,
+      lead_type: data.lead_type as LeadType,
+      building_name: data.building_name || null,
+      area_name: data.area_name || null,
       budget_min: data.budget_min,
       budget_max: data.budget_max,
       bedrooms: data.bedrooms,
@@ -212,8 +222,8 @@ export function EditLeadDialog({ lead, open, onOpenChange }: EditLeadDialogProps
             </div>
           </div>
 
-          {/* Status & Priority */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Status & Priority & Lead Type */}
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <Select
@@ -250,6 +260,36 @@ export function EditLeadDialog({ lead, open, onOpenChange }: EditLeadDialogProps
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="lead_type">Lead Type</Label>
+              <Select
+                value={watch('lead_type')}
+                onValueChange={(value) => setValue('lead_type', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="buyer">Buyer</SelectItem>
+                  <SelectItem value="landlord">Landlord</SelectItem>
+                  <SelectItem value="tenant">Tenant</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Building & Area */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="building_name">Building Name</Label>
+              <Input id="building_name" placeholder="e.g. Burj Khalifa" {...register('building_name')} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="area_name">Area Name</Label>
+              <Input id="area_name" placeholder="e.g. Downtown Dubai" {...register('area_name')} />
             </div>
           </div>
 
