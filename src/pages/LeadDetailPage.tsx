@@ -511,6 +511,18 @@ export default function LeadDetailPage() {
           </div>
         </div>
       </PageContent>
+
+      {/* Dialogs */}
+      <EditLeadDialog
+        lead={lead}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+      />
+      <DeleteLeadDialog
+        lead={lead}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+      />
     </MainLayout>
   );
 }
