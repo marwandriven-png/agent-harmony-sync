@@ -18,6 +18,24 @@ export interface ActivityWithProfile extends ActivityRow {
   } | null;
 }
 
+export function useActivities() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['activities', 'all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('activities')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as ActivityRow[];
+    },
+    enabled: !!user,
+  });
+}
+
 export function useActivitiesByLead(leadId: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
