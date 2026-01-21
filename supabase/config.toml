@@ -1,1 +1,13 @@
 project_id = "kapakvcxzqrhknxnwdhe"
+
+[functions.parse-sheet]
+verify_jwt = false
+
+[functions.parse-file]
+verify_jwt = false
+
+[functions.sync-data]
+verify_jwt = false
+
+[functions.test-integration]
+verify_jwt = false

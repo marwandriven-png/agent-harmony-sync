@@ -98,6 +98,50 @@ export type Database = {
         }
         Relationships: []
       }
+      api_integrations: {
+        Row: {
+          config: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          is_connected: boolean
+          last_tested_at: string | null
+          name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_connected?: boolean
+          last_tested_at?: string | null
+          name: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_connected?: boolean
+          last_tested_at?: string | null
+          name?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_integrations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cold_calls: {
         Row: {
           assigned_agent_id: string | null
@@ -176,6 +220,62 @@ export type Database = {
           },
           {
             foreignKeyName: "cold_calls_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_sources: {
+        Row: {
+          column_mappings: Json
+          connection_url: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          last_synced_at: string | null
+          name: string
+          sheet_id: string | null
+          sync_error: string | null
+          sync_status: string
+          table_name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          column_mappings?: Json
+          connection_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_synced_at?: string | null
+          name: string
+          sheet_id?: string | null
+          sync_error?: string | null
+          sync_status?: string
+          table_name: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          column_mappings?: Json
+          connection_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_synced_at?: string | null
+          name?: string
+          sheet_id?: string | null
+          sync_error?: string | null
+          sync_status?: string
+          table_name?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_sources_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -450,6 +550,44 @@ export type Database = {
             foreignKeyName: "properties_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      setup_wizard_progress: {
+        Row: {
+          completed_steps: number[]
+          created_at: string
+          current_step: number
+          id: string
+          is_complete: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_steps?: number[]
+          created_at?: string
+          current_step?: number
+          id?: string
+          is_complete?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_steps?: number[]
+          created_at?: string
+          current_step?: number
+          id?: string
+          is_complete?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "setup_wizard_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },

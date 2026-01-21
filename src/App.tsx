@@ -16,6 +16,7 @@ import TemplatesPage from "./pages/TemplatesPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthPage from "./pages/AuthPage";
+import SetupPage from "./pages/SetupPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -36,6 +37,14 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
+            <Route
+              path="/setup"
+              element={
+                <ProtectedRoute>
+                  <SetupPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/"
               element={
