@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { MainLayout, PageHeader, PageContent } from '@/components/layout/MainLayout';
 import { useLeads, useUpdateLeadStatus, LeadWithProfile } from '@/hooks/useLeads';
 import { formatCurrency, formatRelativeTime } from '@/lib/formatters';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateLeadDialog } from '@/components/forms/CreateLeadDialog';
+import { ScheduleViewingDialog } from '@/components/forms/ScheduleViewingDialog';
 import { cn } from '@/lib/utils';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { AnimatePresence } from 'framer-motion';
@@ -50,6 +51,14 @@ export default function LeadsPage() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPriority, setFilterPriority] = useState<LeadPriority | 'all'>('all');
+  
+  // State for viewing scheduling dialog
+  const [viewingDialogOpen, setViewingDialogOpen] = useState(false);
+  const [pendingViewingLead, setPendingViewingLead] = useState<{
+    id: string;
+    name: string;
+    originalStatus: LeadStatus;
+  } | null>(null);
 
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
@@ -71,14 +80,41 @@ export default function LeadsPage() {
     }, {} as Record<LeadStatus, LeadWithProfile[]>);
   }, [filteredLeads]);
 
-  const handleDragEnd = (result: DropResult) => {
+  const handleDragEnd = useCallback((result: DropResult) => {
     if (!result.destination) return;
 
-    const { draggableId, destination } = result;
+    const { draggableId, source, destination } = result;
     const newStatus = destination.droppableId as LeadStatus;
+    const oldStatus = source.droppableId as LeadStatus;
 
+    // If moving to "viewing" status, show the scheduling dialog
+    if (newStatus === 'viewing' && oldStatus !== 'viewing') {
+      const lead = leads.find(l => l.id === draggableId);
+      if (lead) {
+        setPendingViewingLead({
+          id: draggableId,
+          name: lead.name,
+          originalStatus: oldStatus,
+        });
+        setViewingDialogOpen(true);
+        return;
+      }
+    }
+
+    // For other status changes, update directly
     updateLeadStatus.mutate({ id: draggableId, status: newStatus });
-  };
+  }, [leads, updateLeadStatus]);
+
+  const handleViewingConfirmed = useCallback(() => {
+    if (pendingViewingLead) {
+      updateLeadStatus.mutate({ id: pendingViewingLead.id, status: 'viewing' });
+      setPendingViewingLead(null);
+    }
+  }, [pendingViewingLead, updateLeadStatus]);
+
+  const handleViewingCancelled = useCallback(() => {
+    setPendingViewingLead(null);
+  }, []);
 
   const getAgentName = (lead: LeadWithProfile) => {
     return lead.profiles?.full_name?.split(' ')[0] || 'Unassigned';
@@ -227,6 +263,18 @@ export default function LeadsPage() {
           )}
         </div>
       </PageContent>
+
+      {/* Viewing Scheduling Dialog */}
+      {pendingViewingLead && (
+        <ScheduleViewingDialog
+          open={viewingDialogOpen}
+          onOpenChange={setViewingDialogOpen}
+          leadId={pendingViewingLead.id}
+          leadName={pendingViewingLead.name}
+          onConfirm={handleViewingConfirmed}
+          onCancel={handleViewingCancelled}
+        />
+      )}
     </MainLayout>
   );
 }
