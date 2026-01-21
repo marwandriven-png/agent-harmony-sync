@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { MainLayout, PageHeader, PageContent } from '@/components/layout/MainLayout';
 import { useLeads, useUpdateLeadStatus, LeadWithProfile } from '@/hooks/useLeads';
+import { useActivities, ActivityWithProfile } from '@/hooks/useActivities';
 import { formatCurrency, formatRelativeTime } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +24,8 @@ import {
   Clock,
   Bed,
   Loader2,
+  MessageSquare,
+  Activity,
 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -47,6 +50,7 @@ const priorityConfig: Record<LeadPriority, { icon: React.ElementType; color: str
 
 export default function LeadsPage() {
   const { data: leads = [], isLoading, error } = useLeads();
+  const { data: activities = [] } = useActivities();
   const updateLeadStatus = useUpdateLeadStatus();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,6 +63,31 @@ export default function LeadsPage() {
     name: string;
     originalStatus: LeadStatus;
   } | null>(null);
+
+  // Create a map of lead_id to latest activity and latest note
+  const leadActivityMap = useMemo(() => {
+    const map: Record<string, { lastActivity: ActivityWithProfile | null; lastNote: ActivityWithProfile | null }> = {};
+    
+    activities.forEach((activity) => {
+      if (!activity.lead_id) return;
+      
+      if (!map[activity.lead_id]) {
+        map[activity.lead_id] = { lastActivity: null, lastNote: null };
+      }
+      
+      // Set latest activity (first one we encounter since activities are sorted desc)
+      if (!map[activity.lead_id].lastActivity) {
+        map[activity.lead_id].lastActivity = activity;
+      }
+      
+      // Set latest note
+      if (!map[activity.lead_id].lastNote && activity.type === 'note') {
+        map[activity.lead_id].lastNote = activity;
+      }
+    });
+    
+    return map;
+  }, [activities]);
 
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
@@ -246,7 +275,12 @@ export default function LeadsPage() {
                                       snapshot.isDragging && "dragging shadow-lg rotate-2"
                                     )}
                                   >
-                                    <LeadCard lead={lead} getAgentName={getAgentName} />
+                                    <LeadCard 
+                                      lead={lead} 
+                                      getAgentName={getAgentName}
+                                      lastActivity={leadActivityMap[lead.id]?.lastActivity || null}
+                                      lastNote={leadActivityMap[lead.id]?.lastNote || null}
+                                    />
                                   </div>
                                 )}
                               </Draggable>
@@ -282,9 +316,11 @@ export default function LeadsPage() {
 interface LeadCardProps {
   lead: LeadWithProfile;
   getAgentName: (lead: LeadWithProfile) => string;
+  lastActivity: ActivityWithProfile | null;
+  lastNote: ActivityWithProfile | null;
 }
 
-function LeadCard({ lead, getAgentName }: LeadCardProps) {
+function LeadCard({ lead, getAgentName, lastActivity, lastNote }: LeadCardProps) {
   const PriorityIcon = priorityConfig[lead.priority].icon;
   const budgetMin = lead.budget_min || 0;
   const budgetMax = lead.budget_max || 0;
@@ -296,7 +332,7 @@ function LeadCard({ lead, getAgentName }: LeadCardProps) {
   return (
     <>
       {/* Header */}
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
           <div className={cn(
             "w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold",
@@ -315,15 +351,21 @@ function LeadCard({ lead, getAgentName }: LeadCardProps) {
         </div>
       </div>
 
+      {/* Contact Info */}
+      <div className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground">
+        <Phone className="w-3 h-3" />
+        <span>{lead.phone}</span>
+      </div>
+
       {/* Budget */}
-      <div className="mb-3">
+      <div className="mb-2">
         <p className="text-sm font-semibold text-foreground">
           {formatCurrency(budgetMin, currency)} - {formatCurrency(budgetMax, currency)}
         </p>
       </div>
 
       {/* Requirements */}
-      <div className="flex flex-wrap gap-1.5 mb-3">
+      <div className="flex flex-wrap gap-1.5 mb-2">
         <Badge variant="secondary" className="text-xs">
           <Bed className="w-3 h-3 mr-1" />
           {bedrooms} BR
@@ -335,8 +377,31 @@ function LeadCard({ lead, getAgentName }: LeadCardProps) {
         ))}
       </div>
 
+      {/* Last Note */}
+      {lastNote && (
+        <div className="mb-2 p-2 bg-muted/50 rounded-md">
+          <div className="flex items-start gap-1.5">
+            <MessageSquare className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
+            <p className="text-xs text-muted-foreground line-clamp-2">
+              {lastNote.description || lastNote.title}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Last Activity */}
+      {lastActivity && (
+        <div className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground">
+          <Activity className="w-3 h-3 shrink-0" />
+          <span className="truncate">{lastActivity.title}</span>
+          <span className="text-muted-foreground/60 shrink-0">
+            · {formatRelativeTime(lastActivity.created_at)}
+          </span>
+        </div>
+      )}
+
       {/* Footer */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-3">
+      <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-2">
         <div className="flex items-center gap-1">
           <MapPin className="w-3 h-3" />
           <span className="truncate max-w-[100px]">{locations[0] || 'No location'}</span>
