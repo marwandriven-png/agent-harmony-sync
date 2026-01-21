@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+import type { Json } from '@/integrations/supabase/types';
 
 export interface DataSource {
   id: string;
@@ -200,23 +201,48 @@ export function useApiIntegrations() {
 
   const upsertIntegration = useMutation({
     mutationFn: async (integration: Omit<ApiIntegration, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
-      const insertData = {
-        name: integration.name,
-        type: integration.type as string,
-        is_connected: integration.is_connected,
-        config: integration.config as Record<string, unknown>,
-        last_tested_at: integration.last_tested_at,
-        created_by: user?.id,
-      };
-      
-      const { data, error } = await supabase
+      // Check if integration already exists for this user and type
+      const { data: existing } = await supabase
         .from('api_integrations')
-        .insert(insertData)
-        .select()
-        .single();
+        .select('id')
+        .eq('type', integration.type)
+        .eq('created_by', user?.id ?? '')
+        .maybeSingle();
 
-      if (error) throw error;
-      return data;
+      if (existing) {
+        // Update existing
+        const { data, error } = await supabase
+          .from('api_integrations')
+          .update({
+            name: integration.name,
+            is_connected: integration.is_connected,
+            config: integration.config as Json,
+            last_tested_at: integration.last_tested_at,
+          })
+          .eq('id', existing.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data;
+      } else {
+        // Insert new
+        const { data, error } = await supabase
+          .from('api_integrations')
+          .insert([{
+            name: integration.name,
+            type: integration.type,
+            is_connected: integration.is_connected,
+            config: integration.config as Json,
+            last_tested_at: integration.last_tested_at,
+            created_by: user?.id,
+          }])
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['api-integrations'] });
