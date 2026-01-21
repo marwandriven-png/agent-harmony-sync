@@ -118,24 +118,47 @@ export function DataSourceStep() {
       return;
     }
 
+    // Extract sheet ID from URL if it's a Google Sheets source
+    let sheetId: string | undefined;
+    if (activeTab === 'sheets' && sheetsUrl) {
+      const sheetIdMatch = sheetsUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      if (sheetIdMatch) {
+        sheetId = sheetIdMatch[1];
+      }
+    }
+
     createDataSource.mutate({
-      name: `${selectedTable} import`,
+      name: `${selectedTable.replace('_', ' ')} - ${activeTab === 'sheets' ? 'Google Sheets' : 'File Upload'}`,
       type: activeTab === 'sheets' ? 'google_sheets' : 'csv',
       connection_url: sheetsUrl || undefined,
+      sheet_id: sheetId,
       table_name: selectedTable,
       column_mappings: columnMappings,
       sync_status: 'pending',
+    }, {
+      onSuccess: async (data) => {
+        // Auto-trigger sync after saving
+        if (data?.id) {
+          await handleSync(data.id);
+        }
+        // Reset form
+        setParsedData(null);
+        setColumnMappings({});
+        setSheetsUrl('');
+      }
     });
-
-    // Reset form
-    setParsedData(null);
-    setColumnMappings({});
-    setSheetsUrl('');
   };
 
   const handleSync = async (sourceId: string) => {
+    const source = dataSources.find(s => s.id === sourceId);
+    
+    // Check if column mappings are configured
+    if (!source || Object.keys(source.column_mappings || {}).length === 0) {
+      toast.error('No column mappings configured. Please delete and re-connect the data source with proper column mappings.');
+      return;
+    }
+    
     toast.info('Syncing data...');
-    // Trigger sync via edge function
     try {
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-data`, {
         method: 'POST',
@@ -146,10 +169,22 @@ export function DataSourceStep() {
         body: JSON.stringify({ sourceId }),
       });
 
-      if (!response.ok) throw new Error('Sync failed');
-      toast.success('Data synced successfully!');
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Sync failed');
+      }
+      
+      if (result.inserted > 0 || result.updated > 0) {
+        toast.success(`Data synced! ${result.inserted || 0} records imported.`);
+      } else if (result.rows === 0) {
+        toast.warning('No data found in the sheet. Check if the sheet has data.');
+      } else {
+        toast.success('Sync completed!');
+      }
     } catch (error) {
-      toast.error('Failed to sync data');
+      console.error('Sync error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to sync data');
     }
   };
 
@@ -280,12 +315,17 @@ export function DataSourceStep() {
                     <Badge
                       variant={source.sync_status === 'success' ? 'default' : 'secondary'}
                       className={cn(
-                        source.sync_status === 'success' && 'bg-green-500',
-                        source.sync_status === 'error' && 'bg-destructive'
+                        source.sync_status === 'success' && 'bg-status-closed text-white',
+                        source.sync_status === 'error' && 'bg-destructive text-destructive-foreground'
                       )}
                     >
                       {source.sync_status}
                     </Badge>
+                    {Object.keys(source.column_mappings || {}).length === 0 && (
+                      <Badge variant="outline" className="text-amber-600 border-amber-400">
+                        No mappings
+                      </Badge>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
