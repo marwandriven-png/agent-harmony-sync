@@ -59,7 +59,17 @@ serve(async (req) => {
       const response = await fetch(url);
       
       if (!response.ok) {
-        throw new Error("Failed to fetch sheet data");
+        const errorText = await response.text();
+        console.error("Sheets API error:", errorText);
+        
+        let errorMessage = "Failed to fetch sheet data";
+        if (errorText.includes("FAILED_PRECONDITION") || errorText.includes("not supported")) {
+          errorMessage = "This appears to be an Excel file, not a native Google Sheet. Please open it in Google Sheets and re-share.";
+        } else if (errorText.includes("NOT_FOUND") || errorText.includes("PERMISSION_DENIED")) {
+          errorMessage = "Sheet not accessible. Make sure it's shared publicly.";
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();

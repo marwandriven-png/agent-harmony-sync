@@ -37,8 +37,19 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Google Sheets API error:", errorText);
+      
+      // Check for specific error types
+      let errorMessage = "Failed to fetch sheet data.";
+      if (errorText.includes("FAILED_PRECONDITION") || errorText.includes("not supported")) {
+        errorMessage = "This appears to be an Excel file uploaded to Google Drive, not a native Google Sheet. Please open the file in Google Sheets and re-share the new URL.";
+      } else if (errorText.includes("NOT_FOUND")) {
+        errorMessage = "Sheet not found. Make sure the sheet is shared publicly ('Anyone with the link can view').";
+      } else if (errorText.includes("PERMISSION_DENIED")) {
+        errorMessage = "Permission denied. Make sure the sheet is shared publicly ('Anyone with the link can view').";
+      }
+      
       return new Response(
-        JSON.stringify({ error: "Failed to fetch sheet data. Check if the sheet is public." }),
+        JSON.stringify({ error: errorMessage }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
