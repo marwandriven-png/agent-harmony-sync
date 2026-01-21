@@ -25,6 +25,7 @@ const navItems = [
   { to: '/calendar', icon: Calendar, label: 'Calendar' },
   { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
   { to: '/properties', icon: Building2, label: 'Properties' },
+  { to: '/templates', icon: Calendar, label: 'Templates' },
   { to: '/reports', icon: BarChart3, label: 'Reports' },
 ];
 

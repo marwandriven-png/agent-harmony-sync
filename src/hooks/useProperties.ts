@@ -2,16 +2,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+import { useEffect } from 'react';
 import type { Database } from '@/integrations/supabase/types';
 
 type PropertyRow = Database['public']['Tables']['properties']['Row'];
 type PropertyInsert = Database['public']['Tables']['properties']['Insert'];
 type PropertyUpdate = Database['public']['Tables']['properties']['Update'];
 
+export type PropertyWithProfile = PropertyRow;
+
 export function useProperties() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['properties'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -24,6 +28,32 @@ export function useProperties() {
     },
     enabled: !!user,
   });
+
+  // Set up realtime subscription
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('properties-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'properties',
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['properties'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, queryClient]);
+
+  return query;
 }
 
 export function usePropertyById(id: string) {
@@ -119,4 +149,20 @@ export function useDeleteProperty() {
       toast.error(`Failed to delete property: ${error.message}`);
     },
   });
+}
+
+export function usePropertyMetrics() {
+  const { data: properties = [] } = useProperties();
+
+  const totalProperties = properties.length;
+  const availableCount = properties.filter((p) => p.status === 'available').length;
+  const soldReservedCount = properties.filter((p) => p.status === 'sold' || p.status === 'rented').length;
+
+  return {
+    totalProperties,
+    availableCount,
+    highDemand: 0,
+    withMatches: 0,
+    soldReservedCount,
+  };
 }
