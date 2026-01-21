@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.test-integration]
 verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = false
+
+[functions.sheets-sync]
+verify_jwt = false
