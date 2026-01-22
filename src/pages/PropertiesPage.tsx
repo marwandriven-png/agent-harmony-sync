@@ -115,8 +115,7 @@ export default function PropertiesPage() {
 
   const handleDelete = async () => {
     if (propertyToDelete) {
-      // Soft delete - change status to archived/sold
-      await updateProperty.mutateAsync({ id: propertyToDelete, status: 'sold' });
+      await deleteProperty.mutateAsync(propertyToDelete);
       setDeleteDialogOpen(false);
       setPropertyToDelete(null);
     }
