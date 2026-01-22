@@ -378,165 +378,255 @@ export default function PropertiesPage() {
 
         {/* Properties Table */}
         <div className="bg-card rounded-xl shadow-card overflow-hidden border border-border">
-          {/* Table Header */}
-          <div className="bg-sidebar text-sidebar-foreground px-4 py-3 grid grid-cols-12 gap-4 text-xs font-semibold">
-            <div className="col-span-2">Building Name</div>
-            <div className="col-span-1">Size</div>
-            <div className="col-span-2">Buyer/Seller</div>
-            <div className="col-span-2">Owner Mobile</div>
-            <div className="col-span-1">Country</div>
-            <div className="col-span-1">Status</div>
-            <div className="col-span-1">Matches</div>
-            <div className="col-span-2">Actions</div>
+          {/* Table Header - Desktop */}
+          <div className="hidden md:grid bg-sidebar text-sidebar-foreground px-4 py-3 grid-cols-12 gap-2 text-xs font-semibold uppercase tracking-wide">
+            <div className="col-span-3">Building</div>
+            <div className="col-span-2">Owner</div>
+            <div className="col-span-2">Mobile</div>
+            <div className="col-span-1 text-center">Size</div>
+            <div className="col-span-1 text-center">Type</div>
+            <div className="col-span-1 text-center">Status</div>
+            <div className="col-span-1 text-center">Matches</div>
+            <div className="col-span-1 text-center">Actions</div>
           </div>
 
           {/* Table Rows */}
           <div className="divide-y divide-border">
             {filteredProperties.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
-                No properties found. Add your first property or sync from Google Sheets.
+                <Building2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No properties found</p>
+                <p className="text-sm mt-1">Add your first property or sync from Google Sheets.</p>
               </div>
             ) : (
-              filteredProperties.map((property) => (
-                <div key={property.id}>
-                  {/* Main Row */}
-                  <div
-                    className={cn(
-                      'relative overflow-hidden transition-all',
-                      dragOverRow === property.id && 'bg-primary/10 ring-2 ring-primary ring-inset'
-                    )}
-                    onDragOver={(e) => handleRowDragOver(e, property.id)}
-                    onDrop={(e) => handleRowDrop(e, property.id)}
-                    onDragLeave={() => setDragOverRow(null)}
-                  >
-                    {/* Swipe Action Buttons (Background) */}
-                    {swipedRow === property.id && (
-                      <div className="absolute inset-0 bg-muted flex items-center gap-2 px-4 z-0">
-                        <button
-                          onClick={() => setShowModal({ type: 'status', propertyId: property.id })}
-                          className="bg-primary text-primary-foreground p-2 rounded-lg hover:opacity-90 transition"
-                          title="Change Status"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setShowModal({ type: 'note', propertyId: property.id })}
-                          className="bg-secondary text-secondary-foreground p-2 rounded-lg hover:opacity-90 transition"
-                          title="Add Note"
-                        >
-                          <MessageSquare className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleConvertToListing(property.id)}
-                          className="bg-success text-success-foreground p-2 rounded-lg hover:opacity-90 transition"
-                          title="Convert to Listing"
-                        >
-                          <Home className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setShowModal({ type: 'attach', propertyId: property.id })}
-                          className="bg-accent text-accent-foreground p-2 rounded-lg hover:opacity-90 transition"
-                          title="Attach Documents"
-                        >
-                          <Paperclip className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setShowModal({ type: 'activity', propertyId: property.id })}
-                          className="bg-warning text-warning-foreground p-2 rounded-lg hover:opacity-90 transition"
-                          title="Add Activity"
-                        >
-                          <Calendar className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setPropertyToDelete(property.id);
-                            setDeleteDialogOpen(true);
-                          }}
-                          className="bg-destructive text-destructive-foreground p-2 rounded-lg hover:opacity-90 transition"
-                          title="Archive Property"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Row Content */}
+              filteredProperties.map((property) => {
+                // Resolve display name with priority: building_name > title (if valid) > location > fallback
+                const displayName = property.building_name || 
+                  (property.title && !property.title.startsWith('Property 1K') ? property.title : null) ||
+                  property.location || 
+                  'Unnamed Property';
+                
+                return (
+                  <div key={property.id}>
+                    {/* Main Row */}
                     <div
                       className={cn(
-                        'relative z-10 bg-card px-4 py-3 grid grid-cols-12 gap-4 items-center cursor-pointer hover:bg-muted/50 transition-all',
-                        swipedRow === property.id && 'translate-x-12'
+                        'relative overflow-hidden transition-all',
+                        dragOverRow === property.id && 'bg-primary/10 ring-2 ring-primary ring-inset'
                       )}
-                      style={{
-                        transform: swipeOffset[property.id]
-                          ? `translateX(${swipeOffset[property.id]}px)`
-                          : undefined,
-                      }}
-                      onTouchStart={(e) => handleTouchStart(e, property.id)}
-                      onTouchMove={(e) => handleTouchMove(e, property.id)}
-                      onTouchEnd={() => handleTouchEnd(property.id)}
-                      onClick={() => handleRowClick(property.id)}
+                      onDragOver={(e) => handleRowDragOver(e, property.id)}
+                      onDrop={(e) => handleRowDrop(e, property.id)}
+                      onDragLeave={() => setDragOverRow(null)}
                     >
-                      <div className="col-span-2 font-semibold text-foreground text-sm">
-                        {property.building_name || 
-                          (property.title?.startsWith('Property 1K') ? property.location || 'Property' : property.title) || 
-                          'Unknown Building'}
-                      </div>
-                      <div className="col-span-1 text-muted-foreground text-sm">
-                        {property.size} {property.size_unit}
-                      </div>
-                      <div className="col-span-2 text-foreground text-sm">
-                        {property.owner_name || '-'}
-                      </div>
-                      <div className="col-span-2 text-muted-foreground text-sm flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        {property.owner_mobile || '-'}
-                      </div>
-                      <div className="col-span-1 text-muted-foreground text-sm">
-                        {property.country || 'UAE'}
-                      </div>
-                      <div className="col-span-1">
-                        <Badge
-                          className={cn(
-                            'text-xs font-medium',
-                            property.status === 'available' && 'bg-success text-success-foreground',
-                            property.status === 'under_offer' && 'bg-warning text-warning-foreground',
-                            property.status === 'sold' && 'bg-status-contacted text-white',
-                            property.status === 'rented' && 'bg-primary text-primary-foreground'
-                          )}
-                        >
-                          {property.status?.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                      <div className="col-span-1">
-                        <Badge variant="outline" className="font-mono bg-pastel-blue text-primary">
-                          {property.matches || 0}
-                        </Badge>
-                      </div>
-                      <div className="col-span-2 flex items-center gap-2">
-                        {swipedRow === property.id ? (
+                      {/* Swipe Action Buttons (Background) */}
+                      {swipedRow === property.id && (
+                        <div className="absolute inset-0 bg-muted flex items-center gap-2 px-4 z-0">
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSwipedRow(null);
-                            }}
-                            className="text-muted-foreground hover:text-foreground"
+                            onClick={() => setShowModal({ type: 'status', propertyId: property.id })}
+                            className="bg-primary text-primary-foreground p-2 rounded-lg hover:opacity-90 transition"
+                            title="Change Status"
                           >
-                            <X className="w-5 h-5" />
+                            <Edit3 className="w-4 h-4" />
                           </button>
-                        ) : (
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSwipedRow(property.id);
-                            }}
-                            className="text-primary hover:text-primary/80"
+                            onClick={() => setShowModal({ type: 'note', propertyId: property.id })}
+                            className="bg-secondary text-secondary-foreground p-2 rounded-lg hover:opacity-90 transition"
+                            title="Add Note"
                           >
-                            <ChevronRight className="w-5 h-5" />
+                            <MessageSquare className="w-4 h-4" />
                           </button>
+                          <button
+                            onClick={() => handleConvertToListing(property.id)}
+                            className="bg-success text-success-foreground p-2 rounded-lg hover:opacity-90 transition"
+                            title="Convert to Listing"
+                          >
+                            <Home className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setShowModal({ type: 'attach', propertyId: property.id })}
+                            className="bg-accent text-accent-foreground p-2 rounded-lg hover:opacity-90 transition"
+                            title="Attach Documents"
+                          >
+                            <Paperclip className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setShowModal({ type: 'activity', propertyId: property.id })}
+                            className="bg-warning text-warning-foreground p-2 rounded-lg hover:opacity-90 transition"
+                            title="Add Activity"
+                          >
+                            <Calendar className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setPropertyToDelete(property.id);
+                              setDeleteDialogOpen(true);
+                            }}
+                            className="bg-destructive text-destructive-foreground p-2 rounded-lg hover:opacity-90 transition"
+                            title="Archive Property"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Row Content - Desktop */}
+                      <div
+                        className={cn(
+                          'relative z-10 bg-card hidden md:grid px-4 py-3 grid-cols-12 gap-2 items-center cursor-pointer hover:bg-muted/50 transition-all',
+                          swipedRow === property.id && 'translate-x-12'
                         )}
+                        style={{
+                          transform: swipeOffset[property.id]
+                            ? `translateX(${swipeOffset[property.id]}px)`
+                            : undefined,
+                        }}
+                        onTouchStart={(e) => handleTouchStart(e, property.id)}
+                        onTouchMove={(e) => handleTouchMove(e, property.id)}
+                        onTouchEnd={() => handleTouchEnd(property.id)}
+                        onClick={() => handleRowClick(property.id)}
+                      >
+                        <div className="col-span-3">
+                          <p className="font-semibold text-foreground text-sm truncate" title={displayName}>
+                            {displayName}
+                          </p>
+                          {property.unit_number && (
+                            <p className="text-xs text-muted-foreground">Unit {property.unit_number}</p>
+                          )}
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-sm text-foreground truncate">
+                            {property.owner_name || <span className="text-muted-foreground italic">No owner</span>}
+                          </p>
+                          {property.party_type && (
+                            <p className="text-xs text-muted-foreground">{property.party_type}</p>
+                          )}
+                        </div>
+                        <div className="col-span-2 text-sm">
+                          {property.owner_mobile ? (
+                            <a 
+                              href={`tel:${property.owner_mobile}`} 
+                              className="text-primary hover:underline flex items-center gap-1"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Phone className="w-3 h-3" />
+                              {property.owner_mobile}
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground italic">No phone</span>
+                          )}
+                        </div>
+                        <div className="col-span-1 text-center text-sm text-muted-foreground">
+                          {property.size > 0 ? `${property.size}` : '-'}
+                        </div>
+                        <div className="col-span-1 text-center">
+                          <span className="text-xs capitalize text-muted-foreground">{property.type}</span>
+                        </div>
+                        <div className="col-span-1 text-center">
+                          <Badge
+                            className={cn(
+                              'text-xs font-medium',
+                              property.status === 'available' && 'bg-success text-success-foreground',
+                              property.status === 'under_offer' && 'bg-warning text-warning-foreground',
+                              property.status === 'sold' && 'bg-status-contacted text-white',
+                              property.status === 'rented' && 'bg-primary text-primary-foreground'
+                            )}
+                          >
+                            {property.status?.replace('_', ' ')}
+                          </Badge>
+                        </div>
+                        <div className="col-span-1 text-center">
+                          <Badge variant="outline" className="font-mono bg-pastel-blue text-primary">
+                            {property.matches || 0}
+                          </Badge>
+                        </div>
+                        <div className="col-span-1 flex items-center justify-center gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditProperty(property);
+                            }}
+                            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                            title="Edit"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          {swipedRow === property.id ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSwipedRow(null);
+                              }}
+                              className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSwipedRow(property.id);
+                              }}
+                              className="p-1.5 rounded-md hover:bg-muted text-primary hover:text-primary/80 transition"
+                              title="More actions"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Row Content - Mobile */}
+                      <div
+                        className={cn(
+                          'relative z-10 bg-card md:hidden px-4 py-3 cursor-pointer hover:bg-muted/50 transition-all',
+                          swipedRow === property.id && 'translate-x-12'
+                        )}
+                        style={{
+                          transform: swipeOffset[property.id]
+                            ? `translateX(${swipeOffset[property.id]}px)`
+                            : undefined,
+                        }}
+                        onTouchStart={(e) => handleTouchStart(e, property.id)}
+                        onTouchMove={(e) => handleTouchMove(e, property.id)}
+                        onTouchEnd={() => handleTouchEnd(property.id)}
+                        onClick={() => handleRowClick(property.id)}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-foreground text-sm truncate">{displayName}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {property.owner_name || 'No owner'} • {property.type}
+                            </p>
+                            {property.owner_mobile && (
+                              <a 
+                                href={`tel:${property.owner_mobile}`}
+                                className="text-xs text-primary mt-1 inline-flex items-center gap-1"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Phone className="w-3 h-3" />
+                                {property.owner_mobile}
+                              </a>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <Badge
+                              className={cn(
+                                'text-xs font-medium',
+                                property.status === 'available' && 'bg-success text-success-foreground',
+                                property.status === 'under_offer' && 'bg-warning text-warning-foreground',
+                                property.status === 'sold' && 'bg-status-contacted text-white',
+                                property.status === 'rented' && 'bg-primary text-primary-foreground'
+                              )}
+                            >
+                              {property.status?.replace('_', ' ')}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs font-mono">
+                              {property.matches || 0} matches
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
                   {/* Expanded Details */}
                   <AnimatePresence>
