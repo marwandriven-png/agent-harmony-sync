@@ -10,31 +10,35 @@ const corsHeaders = {
 // Google Sheets column mappings for properties (exact 1:1 match with sheet headers)
 // IMPORTANT: Column names must match EXACTLY character-for-character with Google Sheet headers
 const PROPERTY_COLUMN_MAPPINGS: Record<string, string> = {
-  // Exact column names from user's Google Sheet (as shown in screenshot)
-  "BuildingNameEn": "building_name",      // Column A
-  "ProcedureValue": "procedure_value",    // Column B
+  // EXACT column names from user's Google Sheet (Downtown Special 2025)
+  "BuildingName": "building_name",        // Column A - exact match
+  "Sold Value": "price",                  // Column B - price value
   "Size": "size",                         // Column C
   "UnitNumber": "unit_number",            // Column D
-  "PropertyTypeEn": "type",               // Column E
-  "ProcedurePartyTypeName": "party_type", // Column F (Buyer/Seller)
-  "NameEn": "owner_name",                 // Column G (Owner name)
-  "Mobile": "owner_mobile",               // Column H
-  "CountryNameEn": "country",             // Country column
+  "PropertyType": "type",                 // Column E - Flat/Unit maps to apartment
+  "Buyer / Seller": "party_type",         // Column F - exact match with spaces
+  "Owner Name": "owner_name",             // Column G - exact match with space
+  "Owner Mobile": "owner_mobile",         // Column H - exact match with space
+  "Nationality": "country",               // Column I - maps to country field
+  "Status": "status",                     // Column O
+  "Matches": "matches",                   // Column P
+  // Legacy/alternative names (fallbacks)
+  "BuildingNameEn": "building_name",
+  "ProcedureValue": "procedure_value",
+  "PropertyTypeEn": "type",
+  "ProcedurePartyTypeName": "party_type",
+  "NameEn": "owner_name",
+  "Mobile": "owner_mobile",
+  "CountryNameEn": "country",
+  "CountryName": "country",
+  "Country": "country",
+  "Name": "owner_name",
+  "Owner": "owner_name",
   "IdNumber": "id_number",
   "UaeIdNumber": "uae_id_number",
   "PassportExpiryDate": "passport_expiry_date",
   "BirthDate": "birth_date",
   "UnifiedNumber": "unified_number",
-  "Status": "status",
-  "Matches": "matches",
-  // Alternative names (fallbacks for compatibility)
-  "BuildingName": "building_name",
-  "PropertyType": "type",
-  "Name": "owner_name",
-  "CountryName": "country",
-  "Country": "country",
-  "Buyer / Seller": "party_type",
-  "Owner": "owner_name",
 };
 
 // Reverse mappings for CRM to Sheets (push operations)
