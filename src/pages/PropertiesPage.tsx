@@ -42,6 +42,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { SwipeableRow } from '@/components/ui/swipeable-row';
 import { motion } from 'framer-motion';
 import {
   Building2,
@@ -358,7 +359,12 @@ export default function PropertiesPage() {
                       </TableRow>
                     ) : (
                       filteredProperties.map((property) => (
-                        <TableRow key={property.id} className="hover:bg-muted/50">
+                        <SwipeableRow
+                          key={property.id}
+                          onDelete={() => deleteProperty.mutate(property.id)}
+                          className="border-b"
+                        >
+                          <TableRow className="hover:bg-muted/50 border-0">
                           <TableCell className="font-mono text-xs">
                             {property.regis || '-'}
                           </TableCell>
@@ -447,6 +453,7 @@ export default function PropertiesPage() {
                             </div>
                           </TableCell>
                         </TableRow>
+                        </SwipeableRow>
                       ))
                     )}
                   </TableBody>
