@@ -11,7 +11,7 @@ import LeadDetailPage from "./pages/LeadDetailPage";
 import ColdCallsPage from "./pages/ColdCallsPage";
 import CalendarPage from "./pages/CalendarPage";
 import TasksPage from "./pages/TasksPage";
-import PropertyInventoryPage from "./pages/PropertyInventoryPage";
+import PropertiesPage from "./pages/PropertiesPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -97,7 +97,7 @@ const App = () => (
               path="/properties"
               element={
                 <ProtectedRoute>
-                  <PropertyInventoryPage />
+                  <PropertiesPage />
                 </ProtectedRoute>
               }
             />
