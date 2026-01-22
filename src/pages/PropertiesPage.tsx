@@ -129,7 +129,9 @@ export default function PropertiesPage() {
       const log: ActivityLogEntry = {
         id: Date.now(),
         propertyId,
-        buildingName: property.building_name || property.title || 'Unknown',
+        buildingName: property.building_name || 
+          (property.title?.startsWith('Property 1K') ? property.location || 'Property' : property.title) || 
+          'Unknown',
         action,
         oldValue,
         newValue,
@@ -475,7 +477,9 @@ export default function PropertiesPage() {
                       onClick={() => handleRowClick(property.id)}
                     >
                       <div className="col-span-2 font-semibold text-foreground text-sm">
-                        {property.building_name || property.title || 'Unknown Building'}
+                        {property.building_name || 
+                          (property.title?.startsWith('Property 1K') ? property.location || 'Property' : property.title) || 
+                          'Unknown Building'}
                       </div>
                       <div className="col-span-1 text-muted-foreground text-sm">
                         {property.size} {property.size_unit}
