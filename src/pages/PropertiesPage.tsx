@@ -401,57 +401,51 @@ export default function PropertiesPage() {
                           <TableCell>{property.procedure_name || '-'}</TableCell>
                           <TableCell>{property.country || 'UAE'}</TableCell>
                           <TableCell>
-                            <Badge className={cn("text-xs", statusColors[property.status])}>
-                              {property.status.replace('_', ' ')}
-                            </Badge>
+                            <Select
+                              value={property.status}
+                              onValueChange={(value) => handleStatusChange(property.id, value as PropertyStatus)}
+                            >
+                              <SelectTrigger className={cn("w-[120px] h-8 text-xs", statusColors[property.status])}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Constants.public.Enums.property_status.map((status) => (
+                                  <SelectItem key={status} value={status} className="capitalize">
+                                    {status.replace('_', ' ')}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="font-mono">
                               {property.matches || 0}%
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button size="icon" variant="ghost">
-                                  <MoreVertical className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  View Details
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEditProperty(property)}>
-                                  <Edit className="w-4 h-4 mr-2" />
-                                  Edit Property
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-muted-foreground">
-                                  Change Status:
-                                </DropdownMenuItem>
-                                {Constants.public.Enums.property_status.map((status) => (
-                                  <DropdownMenuItem
-                                    key={status}
-                                    onClick={() => handleStatusChange(property.id, status)}
-                                    disabled={property.status === status}
-                                  >
-                                    <span className="capitalize ml-4">{status.replace('_', ' ')}</span>
-                                  </DropdownMenuItem>
-                                ))}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => {
-                                    setPropertyToDelete(property.id);
-                                    setDeleteDialogOpen(true);
-                                  }}
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Archive
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                          <TableCell>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                                onClick={() => handleEditProperty(property)}
+                                title="Edit Property"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => {
+                                  setPropertyToDelete(property.id);
+                                  setDeleteDialogOpen(true);
+                                }}
+                                title="Delete Property"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
