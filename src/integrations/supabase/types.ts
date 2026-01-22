@@ -500,6 +500,7 @@ export type Database = {
         Row: {
           bathrooms: number
           bedrooms: number
+          birth_date: string | null
           building_name: string | null
           country: string | null
           created_at: string
@@ -509,6 +510,7 @@ export type Database = {
           features: string[] | null
           google_sheet_row_id: string | null
           id: string
+          id_number: string | null
           images: string[] | null
           location: string
           master_project: string | null
@@ -516,6 +518,7 @@ export type Database = {
           owner_mobile: string | null
           owner_name: string | null
           party_type: string | null
+          passport_expiry_date: string | null
           price: number
           procedure_name: string | null
           procedure_value: number | null
@@ -525,12 +528,15 @@ export type Database = {
           status: Database["public"]["Enums"]["property_status"]
           title: string
           type: Database["public"]["Enums"]["property_type"]
+          uae_id_number: string | null
+          unified_number: string | null
           unit_number: string | null
           updated_at: string
         }
         Insert: {
           bathrooms: number
           bedrooms: number
+          birth_date?: string | null
           building_name?: string | null
           country?: string | null
           created_at?: string
@@ -540,6 +546,7 @@ export type Database = {
           features?: string[] | null
           google_sheet_row_id?: string | null
           id?: string
+          id_number?: string | null
           images?: string[] | null
           location: string
           master_project?: string | null
@@ -547,6 +554,7 @@ export type Database = {
           owner_mobile?: string | null
           owner_name?: string | null
           party_type?: string | null
+          passport_expiry_date?: string | null
           price: number
           procedure_name?: string | null
           procedure_value?: number | null
@@ -556,12 +564,15 @@ export type Database = {
           status?: Database["public"]["Enums"]["property_status"]
           title: string
           type: Database["public"]["Enums"]["property_type"]
+          uae_id_number?: string | null
+          unified_number?: string | null
           unit_number?: string | null
           updated_at?: string
         }
         Update: {
           bathrooms?: number
           bedrooms?: number
+          birth_date?: string | null
           building_name?: string | null
           country?: string | null
           created_at?: string
@@ -571,6 +582,7 @@ export type Database = {
           features?: string[] | null
           google_sheet_row_id?: string | null
           id?: string
+          id_number?: string | null
           images?: string[] | null
           location?: string
           master_project?: string | null
@@ -578,6 +590,7 @@ export type Database = {
           owner_mobile?: string | null
           owner_name?: string | null
           party_type?: string | null
+          passport_expiry_date?: string | null
           price?: number
           procedure_name?: string | null
           procedure_value?: number | null
@@ -587,6 +600,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["property_status"]
           title?: string
           type?: Database["public"]["Enums"]["property_type"]
+          uae_id_number?: string | null
+          unified_number?: string | null
           unit_number?: string | null
           updated_at?: string
         }

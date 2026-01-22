@@ -34,19 +34,24 @@ import type { Database } from '@/integrations/supabase/types';
 
 type PropertyRow = Database['public']['Tables']['properties']['Row'];
 
-// Schema matches Google Sheets columns exactly
+// Schema matches Google Sheets columns exactly (1:1 mapping)
 const propertySchema = z.object({
-  procedure_value: z.coerce.number().min(0, 'Value must be positive').optional(),
-  master_project: z.string().max(200).optional(),
+  // Core Google Sheets columns (exact order)
   building_name: z.string().trim().min(1, 'Building name is required').max(200),
+  procedure_value: z.coerce.number().min(0, 'Value must be positive').optional(),
   size: z.coerce.number().min(0),
   unit_number: z.string().max(50).optional(),
   type: z.enum(Constants.public.Enums.property_type as unknown as [string, ...string[]]),
   party_type: z.string().max(100).optional(),
   owner_name: z.string().max(200).optional(),
   owner_mobile: z.string().max(20).optional(),
-  procedure_name: z.string().max(200).optional(),
   country: z.string().default('UAE'),
+  // New owner identity fields
+  id_number: z.string().max(50).optional(),
+  uae_id_number: z.string().max(50).optional(),
+  passport_expiry_date: z.string().optional(),
+  birth_date: z.string().optional(),
+  unified_number: z.string().max(50).optional(),
   status: z.enum(Constants.public.Enums.property_status as unknown as [string, ...string[]]),
   // Additional CRM fields
   location: z.string().trim().min(1, 'Location is required').max(200),
@@ -72,17 +77,20 @@ export function EditPropertyDialog({ property, open, onOpenChange }: EditPropert
   const form = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
     defaultValues: {
-      procedure_value: property.procedure_value || 0,
-      master_project: property.master_project || '',
       building_name: property.building_name || property.title || '',
+      procedure_value: property.procedure_value || 0,
       size: property.size || 0,
       unit_number: property.unit_number || '',
       type: property.type,
       party_type: property.party_type || '',
       owner_name: property.owner_name || '',
       owner_mobile: property.owner_mobile || '',
-      procedure_name: property.procedure_name || '',
       country: property.country || 'UAE',
+      id_number: (property as any).id_number || '',
+      uae_id_number: (property as any).uae_id_number || '',
+      passport_expiry_date: (property as any).passport_expiry_date || '',
+      birth_date: (property as any).birth_date || '',
+      unified_number: (property as any).unified_number || '',
       status: property.status,
       location: property.location || '',
       bedrooms: property.bedrooms || 1,
@@ -98,17 +106,20 @@ export function EditPropertyDialog({ property, open, onOpenChange }: EditPropert
   useEffect(() => {
     if (property) {
       form.reset({
-        procedure_value: property.procedure_value || 0,
-        master_project: property.master_project || '',
         building_name: property.building_name || property.title || '',
+        procedure_value: property.procedure_value || 0,
         size: property.size || 0,
         unit_number: property.unit_number || '',
         type: property.type,
         party_type: property.party_type || '',
         owner_name: property.owner_name || '',
         owner_mobile: property.owner_mobile || '',
-        procedure_name: property.procedure_name || '',
         country: property.country || 'UAE',
+        id_number: (property as any).id_number || '',
+        uae_id_number: (property as any).uae_id_number || '',
+        passport_expiry_date: (property as any).passport_expiry_date || '',
+        birth_date: (property as any).birth_date || '',
+        unified_number: (property as any).unified_number || '',
         status: property.status,
         location: property.location || '',
         bedrooms: property.bedrooms || 1,
@@ -140,15 +151,20 @@ export function EditPropertyDialog({ property, open, onOpenChange }: EditPropert
       size_unit: data.size_unit,
       description: data.description || null,
       features: featuresArray,
+      // Google Sheets aligned fields
       procedure_value: data.procedure_value || null,
-      master_project: data.master_project || null,
       building_name: data.building_name,
       unit_number: data.unit_number || null,
       party_type: data.party_type || null,
       owner_name: data.owner_name || null,
       owner_mobile: data.owner_mobile || null,
-      procedure_name: data.procedure_name || null,
       country: data.country,
+      // New owner identity fields
+      id_number: data.id_number || null,
+      uae_id_number: data.uae_id_number || null,
+      passport_expiry_date: data.passport_expiry_date || null,
+      birth_date: data.birth_date || null,
+      unified_number: data.unified_number || null,
     });
     
     onOpenChange(false);
@@ -176,7 +192,7 @@ export function EditPropertyDialog({ property, open, onOpenChange }: EditPropert
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Google Sheets Aligned Fields */}
+            {/* Google Sheets Aligned Fields - Exact Column Order */}
             <div className="space-y-4 border-b pb-4">
               <h3 className="text-sm font-medium text-muted-foreground">Property Details (Synced with Sheets)</h3>
               
@@ -186,7 +202,7 @@ export function EditPropertyDialog({ property, open, onOpenChange }: EditPropert
                   name="building_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>BuildingNameEn *</FormLabel>
+                      <FormLabel>BuildingName *</FormLabel>
                       <FormControl>
                         <Input placeholder="Park Heights Tower 1" {...field} />
                       </FormControl>
@@ -241,7 +257,7 @@ export function EditPropertyDialog({ property, open, onOpenChange }: EditPropert
                   name="type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>PropertyTypeEn *</FormLabel>
+                      <FormLabel>PropertyType *</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -263,6 +279,19 @@ export function EditPropertyDialog({ property, open, onOpenChange }: EditPropert
               </div>
 
               <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="party_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ProcedurePartyTypeName</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Owner / Tenant" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="status"
@@ -287,19 +316,6 @@ export function EditPropertyDialog({ property, open, onOpenChange }: EditPropert
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="country"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>CountryNameEn</FormLabel>
-                      <FormControl>
-                        <Input placeholder="UAE" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
             </div>
 
@@ -313,7 +329,7 @@ export function EditPropertyDialog({ property, open, onOpenChange }: EditPropert
                   name="owner_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>NameEn</FormLabel>
+                      <FormLabel>Name</FormLabel>
                       <FormControl>
                         <Input placeholder="John Smith" {...field} />
                       </FormControl>
@@ -336,14 +352,85 @@ export function EditPropertyDialog({ property, open, onOpenChange }: EditPropert
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="id_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>IdNumber</FormLabel>
+                      <FormControl>
+                        <Input placeholder="ID Number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="uae_id_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>UaeIdNumber</FormLabel>
+                      <FormControl>
+                        <Input placeholder="UAE ID Number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="passport_expiry_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>PassportExpiryDate</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="birth_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>BirthDate</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="unified_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>UnifiedNumber</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Unified Number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <FormField
                 control={form.control}
-                name="procedure_name"
+                name="country"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>ProcedureNameEn</FormLabel>
+                    <FormLabel>CountryName</FormLabel>
                     <FormControl>
-                      <Input placeholder="Sale / Rent" {...field} />
+                      <Input placeholder="UAE" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
