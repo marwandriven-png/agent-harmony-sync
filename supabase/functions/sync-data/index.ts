@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.91.0";
+import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,6 +41,65 @@ const PROPERTY_COLUMN_MAPPINGS: Record<string, string> = {
 const PROPERTY_REVERSE_MAPPINGS: Record<string, string> = Object.fromEntries(
   Object.entries(PROPERTY_COLUMN_MAPPINGS).map(([k, v]) => [v, k])
 );
+
+// Function to fetch Excel file from Google Drive and parse it
+async function fetchExcelFromDrive(fileId: string, apiKey: string): Promise<{ headers: string[]; rows: Record<string, string>[] }> {
+  console.log("Attempting to fetch Excel file from Google Drive:", fileId);
+  
+  // Try to export as xlsx using Google Drive API
+  const exportUrl = `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet&key=${apiKey}`;
+  
+  let response = await fetch(exportUrl);
+  
+  // If export fails, try direct download (for actual Excel files)
+  if (!response.ok) {
+    console.log("Export failed, trying direct download...");
+    const downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
+    response = await fetch(downloadUrl);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Drive download error:", errorText);
+      throw new Error("Could not download file from Google Drive. Make sure the file is shared publicly.");
+    }
+  }
+  
+  const arrayBuffer = await response.arrayBuffer();
+  const data = new Uint8Array(arrayBuffer);
+  
+  console.log("File downloaded, size:", data.length, "bytes");
+  
+  // Parse the Excel file using SheetJS
+  const workbook = XLSX.read(data, { type: "array" });
+  const firstSheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[firstSheetName];
+  
+  // Convert to JSON with header row
+  const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+    header: 1,
+    defval: ""
+  }) as unknown[][];
+  
+  if (jsonData.length === 0) {
+    return { headers: [], rows: [] };
+  }
+  
+  const headers = (jsonData[0] || []).map(h => String(h || "").trim());
+  console.log("Excel headers found:", headers);
+  
+  const rows = jsonData.slice(1).map(row => {
+    const obj: Record<string, string> = {};
+    const rowArray = row as unknown[];
+    headers.forEach((header, index) => {
+      if (header) {
+        obj[header] = String(rowArray[index] ?? "");
+      }
+    });
+    return obj;
+  });
+  
+  return { headers, rows };
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -91,37 +151,49 @@ serve(async (req) => {
         throw new Error("Google Sheets API key not configured");
       }
 
+      // First try Google Sheets API (for native sheets)
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${dataSource.sheet_id}/values/A1:Z1000?key=${GOOGLE_SHEETS_API_KEY}`;
       const response = await fetch(url);
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Sheets API error:", errorText);
+        console.log("Sheets API response:", errorText);
         
-        let errorMessage = "Failed to fetch sheet data";
+        // Check if it's an Excel file - try to parse it directly
         if (errorText.includes("FAILED_PRECONDITION") || errorText.includes("not supported")) {
-          errorMessage = "This appears to be an Excel file, not a native Google Sheet. Please open it in Google Sheets and re-share.";
+          console.log("Detected Excel file, attempting to parse with SheetJS...");
+          
+          try {
+            const result = await fetchExcelFromDrive(dataSource.sheet_id, GOOGLE_SHEETS_API_KEY);
+            headers = result.headers;
+            rows = result.rows;
+            console.log(`Successfully parsed Excel file: ${rows.length} rows`);
+          } catch (excelError) {
+            console.error("Excel parsing failed:", excelError);
+            throw new Error("Could not parse the file. If it's an Excel file on Google Drive, make sure it's shared as 'Anyone with the link can view'.");
+          }
         } else if (errorText.includes("NOT_FOUND") || errorText.includes("PERMISSION_DENIED")) {
-          errorMessage = "Sheet not accessible. Make sure it's shared publicly.";
+          throw new Error("Sheet not accessible. Make sure it's shared publicly.");
+        } else {
+          throw new Error("Failed to fetch sheet data: " + errorText);
         }
-        
-        throw new Error(errorMessage);
-      }
+      } else {
+        // Native Google Sheets - parse normally
+        const data = await response.json();
+        const values = data.values || [];
 
-      const data = await response.json();
-      const values = data.values || [];
-
-      if (values.length > 0) {
-        headers = values[0] as string[];
-        console.log("Sheet headers found:", headers);
-        
-        rows = values.slice(1).map((row: string[]) => {
-          const obj: Record<string, string> = {};
-          headers.forEach((header, index) => {
-            obj[header] = row[index] || "";
+        if (values.length > 0) {
+          headers = values[0] as string[];
+          console.log("Sheet headers found:", headers);
+          
+          rows = values.slice(1).map((row: string[]) => {
+            const obj: Record<string, string> = {};
+            headers.forEach((header, index) => {
+              obj[header] = row[index] || "";
+            });
+            return obj;
           });
-          return obj;
-        });
+        }
       }
     }
 
@@ -142,6 +214,7 @@ serve(async (req) => {
       : (dataSource.column_mappings as Record<string, string>);
 
     console.log("Using column mappings:", columnMappings);
+    console.log("Total rows to process:", rows.length);
 
     for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
       const row = rows[rowIndex];
@@ -260,7 +333,7 @@ serve(async (req) => {
         }
       }
 
-      console.log(`Processing row ${rowIndex}:`, mappedRow);
+      console.log(`Processing row ${rowIndex}:`, JSON.stringify(mappedRow));
 
       try {
         // Check if record exists
