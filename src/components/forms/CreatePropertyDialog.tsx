@@ -149,12 +149,12 @@ export function CreatePropertyDialog({ trigger, open: controlledOpen, onOpenChan
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="master_project"
+                  name="building_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Master Project</FormLabel>
+                      <FormLabel>BuildingNameEn *</FormLabel>
                       <FormControl>
-                        <Input placeholder="Dubai Hills Estate" {...field} />
+                        <Input placeholder="Park Heights Tower 1" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -162,12 +162,12 @@ export function CreatePropertyDialog({ trigger, open: controlledOpen, onOpenChan
                 />
                 <FormField
                   control={form.control}
-                  name="building_name"
+                  name="procedure_value"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Building Name *</FormLabel>
+                      <FormLabel>ProcedureValue</FormLabel>
                       <FormControl>
-                        <Input placeholder="Park Heights Tower 1" {...field} />
+                        <Input type="number" placeholder="1500000" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -178,10 +178,23 @@ export function CreatePropertyDialog({ trigger, open: controlledOpen, onOpenChan
               <div className="grid grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
+                  name="size"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Size *</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="1200" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="unit_number"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Unit Number</FormLabel>
+                      <FormLabel>UnitNumber</FormLabel>
                       <FormControl>
                         <Input placeholder="1205" {...field} />
                       </FormControl>
@@ -194,7 +207,7 @@ export function CreatePropertyDialog({ trigger, open: controlledOpen, onOpenChan
                   name="type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Property Type *</FormLabel>
+                      <FormLabel>PropertyTypeEn *</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -213,6 +226,9 @@ export function CreatePropertyDialog({ trigger, open: controlledOpen, onOpenChan
                     </FormItem>
                   )}
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="status"
@@ -237,53 +253,14 @@ export function CreatePropertyDialog({ trigger, open: controlledOpen, onOpenChan
                     </FormItem>
                   )}
                 />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
-                  name="procedure_value"
+                  name="country"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Procedure Value</FormLabel>
+                      <FormLabel>CountryNameEn</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="1500000" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="currency"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Currency</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="AED">AED</SelectItem>
-                          <SelectItem value="USD">USD</SelectItem>
-                          <SelectItem value="EUR">EUR</SelectItem>
-                          <SelectItem value="GBP">GBP</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="size"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Size *</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="1200" {...field} />
+                        <Input placeholder="UAE" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -296,13 +273,13 @@ export function CreatePropertyDialog({ trigger, open: controlledOpen, onOpenChan
             <div className="space-y-4 border-b pb-4">
               <h3 className="text-sm font-medium text-muted-foreground">Owner Information</h3>
               
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="owner_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Owner Name</FormLabel>
+                      <FormLabel>NameEn</FormLabel>
                       <FormControl>
                         <Input placeholder="John Smith" {...field} />
                       </FormControl>
@@ -315,22 +292,9 @@ export function CreatePropertyDialog({ trigger, open: controlledOpen, onOpenChan
                   name="owner_mobile"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Owner Mobile</FormLabel>
+                      <FormLabel>Mobile</FormLabel>
                       <FormControl>
                         <Input placeholder="+971501234567" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="party_type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Party Type</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Seller / Landlord" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -343,7 +307,7 @@ export function CreatePropertyDialog({ trigger, open: controlledOpen, onOpenChan
                 name="procedure_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Procedure Name</FormLabel>
+                    <FormLabel>ProcedureNameEn</FormLabel>
                     <FormControl>
                       <Input placeholder="Sale / Rent" {...field} />
                     </FormControl>
@@ -357,34 +321,19 @@ export function CreatePropertyDialog({ trigger, open: controlledOpen, onOpenChan
             <div className="space-y-4 border-b pb-4">
               <h3 className="text-sm font-medium text-muted-foreground">Location Details</h3>
               
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Dubai Marina, Dubai" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="country"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Country</FormLabel>
-                      <FormControl>
-                        <Input placeholder="UAE" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Dubai Marina, Dubai" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             {/* Additional Details */}
