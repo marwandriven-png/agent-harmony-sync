@@ -327,24 +327,24 @@ export default function PropertiesPage() {
               </div>
             </div>
 
-            {/* Property Table - Matches Google Sheets columns */}
+            {/* Property Table - Matches Google Sheets columns EXACTLY */}
             <div className="bg-card rounded-xl shadow-card overflow-hidden">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold">Regis</TableHead>
+                      {/* Exact Google Sheets column order */}
+                      <TableHead className="font-semibold">BuildingName</TableHead>
                       <TableHead className="font-semibold">ProcedureValue</TableHead>
-                      <TableHead className="font-semibold">Master Project</TableHead>
-                      <TableHead className="font-semibold">BuildingNameEn</TableHead>
                       <TableHead className="font-semibold">Size</TableHead>
                       <TableHead className="font-semibold">UnitNumber</TableHead>
-                      <TableHead className="font-semibold">PropertyTypeEn</TableHead>
-                      <TableHead className="font-semibold">ProcedurePartyTypeNameEn</TableHead>
-                      <TableHead className="font-semibold">NameEn</TableHead>
+                      <TableHead className="font-semibold">PropertyType</TableHead>
+                      <TableHead className="font-semibold">ProcedurePartyTypeName</TableHead>
+                      <TableHead className="font-semibold">Name</TableHead>
                       <TableHead className="font-semibold">Mobile</TableHead>
-                      <TableHead className="font-semibold">ProcedureNameEn</TableHead>
-                      <TableHead className="font-semibold">CountryNameEn</TableHead>
+                      <TableHead className="font-semibold">CountryName</TableHead>
+                      <TableHead className="font-semibold">IdNumber</TableHead>
+                      <TableHead className="font-semibold">UaeIdNumber</TableHead>
                       <TableHead className="font-semibold">Status</TableHead>
                       <TableHead className="font-semibold">Matches</TableHead>
                       <TableHead className="font-semibold text-right">Actions</TableHead>
@@ -353,7 +353,7 @@ export default function PropertiesPage() {
                   <TableBody>
                     {filteredProperties.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={15} className="text-center py-12 text-muted-foreground">
+                        <TableCell colSpan={14} className="text-center py-12 text-muted-foreground">
                           No properties found. Add your first property or sync from Google Sheets.
                         </TableCell>
                       </TableRow>
@@ -365,26 +365,29 @@ export default function PropertiesPage() {
                           className="border-b"
                         >
                           <TableRow className="hover:bg-muted/50 border-0">
-                          <TableCell className="font-mono text-xs">
-                            {property.regis || '-'}
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {formatCurrency(property.procedure_value || property.price, property.currency || 'AED')}
-                          </TableCell>
-                          <TableCell>{property.master_project || '-'}</TableCell>
+                          {/* BuildingName */}
                           <TableCell className="font-medium">
                             {property.building_name || property.title}
                           </TableCell>
+                          {/* ProcedureValue */}
+                          <TableCell className="font-medium">
+                            {formatCurrency(property.procedure_value || property.price, property.currency || 'AED')}
+                          </TableCell>
+                          {/* Size */}
                           <TableCell>
                             {property.size} {property.size_unit}
                           </TableCell>
+                          {/* UnitNumber */}
                           <TableCell>{property.unit_number || '-'}</TableCell>
+                          {/* PropertyType */}
                           <TableCell>
                             <Badge variant="secondary" className="capitalize">
                               {property.type}
                             </Badge>
                           </TableCell>
+                          {/* ProcedurePartyTypeName */}
                           <TableCell>{property.party_type || '-'}</TableCell>
+                          {/* Name (Owner) */}
                           <TableCell>
                             {property.owner_name && (
                               <div className="flex items-center gap-1">
@@ -394,6 +397,7 @@ export default function PropertiesPage() {
                             )}
                             {!property.owner_name && '-'}
                           </TableCell>
+                          {/* Mobile */}
                           <TableCell>
                             {property.owner_mobile && (
                               <div className="flex items-center gap-1">
@@ -403,8 +407,13 @@ export default function PropertiesPage() {
                             )}
                             {!property.owner_mobile && '-'}
                           </TableCell>
-                          <TableCell>{property.procedure_name || '-'}</TableCell>
+                          {/* CountryName */}
                           <TableCell>{property.country || 'UAE'}</TableCell>
+                          {/* IdNumber */}
+                          <TableCell className="text-xs">{(property as any).id_number || '-'}</TableCell>
+                          {/* UaeIdNumber */}
+                          <TableCell className="text-xs">{(property as any).uae_id_number || '-'}</TableCell>
+                          {/* Status */}
                           <TableCell>
                             <Select
                               value={property.status}
@@ -422,11 +431,13 @@ export default function PropertiesPage() {
                               </SelectContent>
                             </Select>
                           </TableCell>
+                          {/* Matches (Read-only, AI calculated) */}
                           <TableCell>
                             <Badge variant="outline" className="font-mono">
                               {property.matches || 0}%
                             </Badge>
                           </TableCell>
+                          {/* Actions (UI-only, not synced) */}
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
                               <Button
@@ -446,7 +457,7 @@ export default function PropertiesPage() {
                                   setPropertyToDelete(property.id);
                                   setDeleteDialogOpen(true);
                                 }}
-                                title="Delete Property"
+                                title="Archive Property"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
