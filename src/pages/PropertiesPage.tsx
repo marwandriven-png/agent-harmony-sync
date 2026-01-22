@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { MainLayout, PageHeader, PageContent } from '@/components/layout/MainLayout';
 import { useProperties, useUpdateProperty, useDeleteProperty } from '@/hooks/useProperties';
 import { CreatePropertyDialog } from '@/components/forms/CreatePropertyDialog';
+import { EditPropertyDialog } from '@/components/forms/EditPropertyDialog';
 import { formatCurrency } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -82,6 +83,13 @@ export default function PropertiesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
   const [newListingDialogOpen, setNewListingDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [propertyToEdit, setPropertyToEdit] = useState<Database['public']['Tables']['properties']['Row'] | null>(null);
+
+  const handleEditProperty = (property: Database['public']['Tables']['properties']['Row']) => {
+    setPropertyToEdit(property);
+    setEditDialogOpen(true);
+  };
 
   const filteredProperties = useMemo(() => {
     return properties.filter((property) => {
@@ -414,7 +422,7 @@ export default function PropertiesPage() {
                                   <Eye className="w-4 h-4 mr-2" />
                                   View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEditProperty(property)}>
                                   <Edit className="w-4 h-4 mr-2" />
                                   Edit Property
                                 </DropdownMenuItem>
@@ -460,6 +468,18 @@ export default function PropertiesPage() {
           </TabsContent>
         </Tabs>
       </PageContent>
+
+      {/* Edit Property Dialog */}
+      {propertyToEdit && (
+        <EditPropertyDialog
+          property={propertyToEdit}
+          open={editDialogOpen}
+          onOpenChange={(open) => {
+            setEditDialogOpen(open);
+            if (!open) setPropertyToEdit(null);
+          }}
+        />
+      )}
 
       {/* Archive Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
