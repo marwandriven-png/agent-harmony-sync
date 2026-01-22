@@ -334,17 +334,17 @@ export default function PropertiesPage() {
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="font-semibold">Regis</TableHead>
-                      <TableHead className="font-semibold">Value</TableHead>
+                      <TableHead className="font-semibold">ProcedureValue</TableHead>
                       <TableHead className="font-semibold">Master Project</TableHead>
-                      <TableHead className="font-semibold">Building</TableHead>
+                      <TableHead className="font-semibold">BuildingNameEn</TableHead>
                       <TableHead className="font-semibold">Size</TableHead>
-                      <TableHead className="font-semibold">Unit</TableHead>
-                      <TableHead className="font-semibold">Type</TableHead>
-                      <TableHead className="font-semibold">Party Type</TableHead>
-                      <TableHead className="font-semibold">Owner</TableHead>
+                      <TableHead className="font-semibold">UnitNumber</TableHead>
+                      <TableHead className="font-semibold">PropertyTypeEn</TableHead>
+                      <TableHead className="font-semibold">ProcedurePartyTypeNameEn</TableHead>
+                      <TableHead className="font-semibold">NameEn</TableHead>
                       <TableHead className="font-semibold">Mobile</TableHead>
-                      <TableHead className="font-semibold">Procedure</TableHead>
-                      <TableHead className="font-semibold">Country</TableHead>
+                      <TableHead className="font-semibold">ProcedureNameEn</TableHead>
+                      <TableHead className="font-semibold">CountryNameEn</TableHead>
                       <TableHead className="font-semibold">Status</TableHead>
                       <TableHead className="font-semibold">Matches</TableHead>
                       <TableHead className="font-semibold text-right">Actions</TableHead>
