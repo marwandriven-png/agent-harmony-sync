@@ -7,17 +7,22 @@ const corsHeaders = {
 };
 
 // Google Sheets column mappings for properties (exact 1:1 match with sheet headers)
-// IMPORTANT: Column names must match character-for-character
+// IMPORTANT: Column names must match character-for-character with Google Sheet headers
 const PROPERTY_COLUMN_MAPPINGS: Record<string, string> = {
+  // Primary columns from user's Google Sheet (exact names)
   "BuildingName": "building_name",
   "ProcedureValue": "procedure_value",
   "Size": "size",
   "UnitNumber": "unit_number",
   "PropertyType": "type",
+  "Buyer / Seller": "party_type",  // Exact match with spaces
+  "Owner": "owner_name",           // Column G in sheet
+  "Mobile": "owner_mobile",
+  // Alternative column names (for compatibility)
   "ProcedurePartyTypeName": "party_type",
   "Name": "owner_name",
-  "Mobile": "owner_mobile",
   "CountryName": "country",
+  "Country": "country",
   "IdNumber": "id_number",
   "UaeIdNumber": "uae_id_number",
   "PassportExpiryDate": "passport_expiry_date",
@@ -153,6 +158,10 @@ serve(async (req) => {
             const typeMap: Record<string, string> = {
               "Apartment": "apartment",
               "apartment": "apartment",
+              "Flat": "apartment",
+              "flat": "apartment",
+              "Unit": "apartment",
+              "unit": "apartment",
               "Villa": "villa",
               "villa": "villa",
               "Townhouse": "townhouse",
