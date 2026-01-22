@@ -32,15 +32,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import {
   Building2,
   Plus,
-  MapPin,
-  Bed,
-  Bath,
-  Maximize,
   Search,
   MoreVertical,
   Edit,
@@ -49,6 +53,9 @@ import {
   FileText,
   TrendingUp,
   Home,
+  RefreshCw,
+  Phone,
+  User,
 } from 'lucide-react';
 import { Constants } from '@/integrations/supabase/types';
 import type { Database } from '@/integrations/supabase/types';
@@ -64,7 +71,7 @@ const statusColors: Record<PropertyStatus, string> = {
 };
 
 export default function PropertiesPage() {
-  const { data: properties = [], isLoading } = useProperties();
+  const { data: properties = [], isLoading, refetch } = useProperties();
   const updateProperty = useUpdateProperty();
   const deleteProperty = useDeleteProperty();
   
@@ -78,9 +85,14 @@ export default function PropertiesPage() {
 
   const filteredProperties = useMemo(() => {
     return properties.filter((property) => {
+      const searchLower = searchQuery.toLowerCase();
       const matchesSearch = 
-        property.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        property.location.toLowerCase().includes(searchQuery.toLowerCase());
+        property.title?.toLowerCase().includes(searchLower) ||
+        property.location?.toLowerCase().includes(searchLower) ||
+        property.building_name?.toLowerCase().includes(searchLower) ||
+        property.master_project?.toLowerCase().includes(searchLower) ||
+        property.regis?.toLowerCase().includes(searchLower) ||
+        property.owner_name?.toLowerCase().includes(searchLower);
       
       const matchesType = filterType === 'all' || property.type === filterType;
       const matchesStatus = filterStatus === 'all' || property.status === filterStatus;
@@ -95,7 +107,8 @@ export default function PropertiesPage() {
 
   const handleDelete = async () => {
     if (propertyToDelete) {
-      await deleteProperty.mutateAsync(propertyToDelete);
+      // Soft delete - change status to archived/sold
+      await updateProperty.mutateAsync({ id: propertyToDelete, status: 'sold' });
       setDeleteDialogOpen(false);
       setPropertyToDelete(null);
     }
@@ -113,8 +126,8 @@ export default function PropertiesPage() {
       <MainLayout>
         <PageHeader title="Properties" subtitle="Manage your property listings" />
         <PageContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-80 w-full" />)}
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full" />)}
           </div>
         </PageContent>
       </MainLayout>
@@ -127,14 +140,20 @@ export default function PropertiesPage() {
         title="Properties"
         subtitle="Manage your property listings and inventory"
         actions={
-          <CreatePropertyDialog
-            trigger={
-              <Button className="bg-gradient-primary hover:opacity-90">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Property
-              </Button>
-            }
-          />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => refetch()}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Sync
+            </Button>
+            <CreatePropertyDialog
+              trigger={
+                <Button className="bg-gradient-primary hover:opacity-90">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Property
+                </Button>
+              }
+            />
+          </div>
         }
       />
 
@@ -239,8 +258,8 @@ export default function PropertiesPage() {
                     Add New Property Listing
                   </h3>
                   <p className="text-muted-foreground mb-6">
-                    Create a new property listing to add to your inventory. 
-                    New listings will automatically appear in reports and can be matched with leads.
+                    Create a new property listing synced with Google Sheets. 
+                    All fields match the sheet columns for bidirectional sync.
                   </p>
                   <CreatePropertyDialog
                     open={newListingDialogOpen}
@@ -254,58 +273,17 @@ export default function PropertiesPage() {
                   />
                 </div>
               </motion.div>
-
-              {/* Recent Listings */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="bg-card rounded-xl p-6 shadow-card"
-              >
-                <h3 className="text-lg font-semibold text-foreground mb-4">Recent Listings</h3>
-                <div className="space-y-3">
-                  {properties.slice(0, 5).map((property) => (
-                    <div
-                      key={property.id}
-                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
-                          <Building2 className="w-6 h-6 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">{property.title}</p>
-                          <p className="text-sm text-muted-foreground">{property.location}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-foreground">
-                          {formatCurrency(property.price, property.currency || 'AED')}
-                        </p>
-                        <Badge className={cn("text-xs", statusColors[property.status])}>
-                          {property.status.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                  {properties.length === 0 && (
-                    <p className="text-center text-muted-foreground py-4">
-                      No listings yet. Create your first property listing above.
-                    </p>
-                  )}
-                </div>
-              </motion.div>
             </div>
           </TabsContent>
 
-          {/* Property Data Tab */}
+          {/* Property Data Tab - Table View */}
           <TabsContent value="property-data">
             {/* Filters */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search properties..."
+                  placeholder="Search by Regis, building, owner..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -341,158 +319,156 @@ export default function PropertiesPage() {
               </div>
             </div>
 
-            {/* Property Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProperties.map((property, index) => (
-                <motion.div
-                  key={property.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="bg-card rounded-xl overflow-hidden shadow-card hover:shadow-card-hover transition-all group"
-                >
-                  {/* Image Placeholder */}
-                  <div className="h-48 bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center relative">
-                    <Building2 className="w-16 h-16 text-muted-foreground/30" />
-                    <Badge className={cn("absolute top-3 left-3", statusColors[property.status])}>
-                      {property.status.replace('_', ' ')}
-                    </Badge>
-                    <Badge variant="secondary" className="absolute top-3 right-3 capitalize">
-                      {property.type}
-                    </Badge>
-                    
-                    {/* Actions Menu */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="icon"
-                          variant="secondary"
-                          className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Eye className="w-4 h-4 mr-2" />
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit Property
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-muted-foreground">
-                          Change Status:
-                        </DropdownMenuItem>
-                        {Constants.public.Enums.property_status.map((status) => (
-                          <DropdownMenuItem
-                            key={status}
-                            onClick={() => handleStatusChange(property.id, status)}
-                            disabled={property.status === status}
-                          >
-                            <span className="capitalize ml-4">{status.replace('_', ' ')}</span>
-                          </DropdownMenuItem>
-                        ))}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => {
-                            setPropertyToDelete(property.id);
-                            setDeleteDialogOpen(true);
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                          {property.title}
-                        </h3>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                          <MapPin className="w-3 h-3" />
-                          <span>{property.location}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <p className="text-xl font-bold text-foreground mb-4">
-                      {formatCurrency(property.price, property.currency || 'AED')}
-                    </p>
-
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Bed className="w-4 h-4" />
-                        <span>{property.bedrooms} BR</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Bath className="w-4 h-4" />
-                        <span>{property.bathrooms}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Maximize className="w-4 h-4" />
-                        <span>{property.size} {property.size_unit}</span>
-                      </div>
-                    </div>
-
-                    {property.features && property.features.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-4">
-                        {property.features.slice(0, 3).map((feature) => (
-                          <Badge key={feature} variant="secondary" className="text-xs">
-                            {feature}
-                          </Badge>
-                        ))}
-                        {property.features.length > 3 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{property.features.length - 3}
-                          </Badge>
-                        )}
-                      </div>
+            {/* Property Table - Matches Google Sheets columns */}
+            <div className="bg-card rounded-xl shadow-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold">Regis</TableHead>
+                      <TableHead className="font-semibold">Value</TableHead>
+                      <TableHead className="font-semibold">Master Project</TableHead>
+                      <TableHead className="font-semibold">Building</TableHead>
+                      <TableHead className="font-semibold">Size</TableHead>
+                      <TableHead className="font-semibold">Unit</TableHead>
+                      <TableHead className="font-semibold">Type</TableHead>
+                      <TableHead className="font-semibold">Party Type</TableHead>
+                      <TableHead className="font-semibold">Owner</TableHead>
+                      <TableHead className="font-semibold">Mobile</TableHead>
+                      <TableHead className="font-semibold">Procedure</TableHead>
+                      <TableHead className="font-semibold">Country</TableHead>
+                      <TableHead className="font-semibold">Status</TableHead>
+                      <TableHead className="font-semibold">Matches</TableHead>
+                      <TableHead className="font-semibold text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredProperties.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={15} className="text-center py-12 text-muted-foreground">
+                          No properties found. Add your first property or sync from Google Sheets.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredProperties.map((property) => (
+                        <TableRow key={property.id} className="hover:bg-muted/50">
+                          <TableCell className="font-mono text-xs">
+                            {property.regis || '-'}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {formatCurrency(property.procedure_value || property.price, property.currency || 'AED')}
+                          </TableCell>
+                          <TableCell>{property.master_project || '-'}</TableCell>
+                          <TableCell className="font-medium">
+                            {property.building_name || property.title}
+                          </TableCell>
+                          <TableCell>
+                            {property.size} {property.size_unit}
+                          </TableCell>
+                          <TableCell>{property.unit_number || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="capitalize">
+                              {property.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{property.party_type || '-'}</TableCell>
+                          <TableCell>
+                            {property.owner_name && (
+                              <div className="flex items-center gap-1">
+                                <User className="w-3 h-3 text-muted-foreground" />
+                                <span className="truncate max-w-[100px]">{property.owner_name}</span>
+                              </div>
+                            )}
+                            {!property.owner_name && '-'}
+                          </TableCell>
+                          <TableCell>
+                            {property.owner_mobile && (
+                              <div className="flex items-center gap-1">
+                                <Phone className="w-3 h-3 text-muted-foreground" />
+                                <span className="text-xs">{property.owner_mobile}</span>
+                              </div>
+                            )}
+                            {!property.owner_mobile && '-'}
+                          </TableCell>
+                          <TableCell>{property.procedure_name || '-'}</TableCell>
+                          <TableCell>{property.country || 'UAE'}</TableCell>
+                          <TableCell>
+                            <Badge className={cn("text-xs", statusColors[property.status])}>
+                              {property.status.replace('_', ' ')}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="font-mono">
+                              {property.matches || 0}%
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="icon" variant="ghost">
+                                  <MoreVertical className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Edit Property
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-muted-foreground">
+                                  Change Status:
+                                </DropdownMenuItem>
+                                {Constants.public.Enums.property_status.map((status) => (
+                                  <DropdownMenuItem
+                                    key={status}
+                                    onClick={() => handleStatusChange(property.id, status)}
+                                    disabled={property.status === status}
+                                  >
+                                    <span className="capitalize ml-4">{status.replace('_', ' ')}</span>
+                                  </DropdownMenuItem>
+                                ))}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => {
+                                    setPropertyToDelete(property.id);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Archive
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
                     )}
-                  </div>
-                </motion.div>
-              ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
 
-            {filteredProperties.length === 0 && (
-              <div className="text-center py-12">
-                <Building2 className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
-                <p className="text-lg font-medium text-foreground">No properties found</p>
-                <p className="text-muted-foreground mb-4">
-                  {properties.length === 0
-                    ? 'Add your first property listing'
-                    : 'Try adjusting your search or filters'}
-                </p>
-                {properties.length === 0 && (
-                  <CreatePropertyDialog
-                    trigger={
-                      <Button>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Property
-                      </Button>
-                    }
-                  />
-                )}
-              </div>
-            )}
+            <p className="text-xs text-muted-foreground mt-4 text-center">
+              Showing {filteredProperties.length} of {properties.length} properties • 
+              Columns match Google Sheets for bidirectional sync
+            </p>
           </TabsContent>
         </Tabs>
       </PageContent>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Archive Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Property</AlertDialogTitle>
+            <AlertDialogTitle>Archive Property</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this property? This action cannot be undone.
+              This will archive the property (soft delete). The record will remain in Google Sheets 
+              with Status changed to "Archived". This action can be undone by changing the status.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -501,7 +477,7 @@ export default function PropertiesPage() {
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              Archive
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
