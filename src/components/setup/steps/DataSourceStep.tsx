@@ -60,18 +60,35 @@ export function DataSourceStep() {
         body: JSON.stringify({ sheetId: sheetIdMatch[1] }),
       });
 
+      const data = await response.json();
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch sheet data');
+        // Check for Excel file error
+        if (data.error?.includes('Excel file') || data.error?.includes('not supported for this document')) {
+          toast.error(
+            'This appears to be an Excel file (.xlsx), not a native Google Sheet. Please open the file in Google Drive, click File → Save as Google Sheets, then share the new Google Sheets URL.',
+            { duration: 10000 }
+          );
+          return;
+        }
+        throw new Error(data.error || 'Failed to fetch sheet data');
       }
 
-      const data = await response.json();
       setParsedData({
         headers: data.headers,
         rows: data.rows.slice(0, 10), // Preview first 10 rows
       });
       toast.success('Sheet connected! Map columns below.');
     } catch (error) {
-      toast.error('Failed to connect to Google Sheets. Check the URL and try again.');
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMsg.includes('Excel') || errorMsg.includes('not supported')) {
+        toast.error(
+          'This appears to be an Excel file (.xlsx), not a native Google Sheet. Please open the file in Google Drive, click File → Save as Google Sheets, then share the new Google Sheets URL.',
+          { duration: 10000 }
+        );
+      } else {
+        toast.error('Failed to connect to Google Sheets. Check the URL and try again.');
+      }
     } finally {
       setIsProcessing(false);
     }
