@@ -7,22 +7,18 @@ const corsHeaders = {
 };
 
 // Google Sheets column mappings for properties (exact 1:1 match with sheet headers)
-// IMPORTANT: Column names must match character-for-character with Google Sheet headers
+// IMPORTANT: Column names must match EXACTLY character-for-character with Google Sheet headers
 const PROPERTY_COLUMN_MAPPINGS: Record<string, string> = {
-  // Primary columns from user's Google Sheet (exact names)
-  "BuildingName": "building_name",
-  "ProcedureValue": "procedure_value",
-  "Size": "size",
-  "UnitNumber": "unit_number",
-  "PropertyType": "type",
-  "Buyer / Seller": "party_type",  // Exact match with spaces
-  "Owner": "owner_name",           // Column G in sheet
-  "Mobile": "owner_mobile",
-  // Alternative column names (for compatibility)
-  "ProcedurePartyTypeName": "party_type",
-  "Name": "owner_name",
-  "CountryName": "country",
-  "Country": "country",
+  // Exact column names from user's Google Sheet (as shown in screenshot)
+  "BuildingNameEn": "building_name",      // Column A
+  "ProcedureValue": "procedure_value",    // Column B
+  "Size": "size",                         // Column C
+  "UnitNumber": "unit_number",            // Column D
+  "PropertyTypeEn": "type",               // Column E
+  "ProcedurePartyTypeName": "party_type", // Column F (Buyer/Seller)
+  "NameEn": "owner_name",                 // Column G (Owner name)
+  "Mobile": "owner_mobile",               // Column H
+  "CountryNameEn": "country",             // Country column
   "IdNumber": "id_number",
   "UaeIdNumber": "uae_id_number",
   "PassportExpiryDate": "passport_expiry_date",
@@ -30,6 +26,14 @@ const PROPERTY_COLUMN_MAPPINGS: Record<string, string> = {
   "UnifiedNumber": "unified_number",
   "Status": "status",
   "Matches": "matches",
+  // Alternative names (fallbacks for compatibility)
+  "BuildingName": "building_name",
+  "PropertyType": "type",
+  "Name": "owner_name",
+  "CountryName": "country",
+  "Country": "country",
+  "Buyer / Seller": "party_type",
+  "Owner": "owner_name",
 };
 
 // Reverse mappings for CRM to Sheets (push operations)
