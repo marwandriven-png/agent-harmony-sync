@@ -105,9 +105,17 @@ export function useCreateProperty() {
 
 export function useUpdateProperty() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: PropertyUpdate & { id: string }) => {
+      // First get the current property for activity logging
+      const { data: oldData } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('id', id)
+        .single();
+
       const { data, error } = await supabase
         .from('properties')
         .update(updates)
@@ -116,6 +124,29 @@ export function useUpdateProperty() {
         .single();
 
       if (error) throw error;
+
+      // Log the activity with field-level changes
+      if (oldData) {
+        const changedFields: string[] = [];
+        for (const [key, newValue] of Object.entries(updates)) {
+          if (oldData[key as keyof typeof oldData] !== newValue) {
+            changedFields.push(key);
+          }
+        }
+
+        if (changedFields.length > 0) {
+          await supabase.from('activity_logs').insert({
+            table_name: 'properties',
+            record_id: id,
+            action: 'UPDATE',
+            old_values: oldData,
+            new_values: data,
+            user_id: user?.id,
+            source: 'crm',
+          });
+        }
+      }
+
       return data;
     },
     onSuccess: (data) => {

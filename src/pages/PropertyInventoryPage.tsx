@@ -95,9 +95,14 @@ export default function PropertyInventoryPage() {
 
   const filteredProperties = useMemo(() => {
     return properties.filter((property) => {
+      const searchLower = searchQuery.toLowerCase();
       const matchesSearch =
-        property.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        property.location.toLowerCase().includes(searchQuery.toLowerCase());
+        property.title?.toLowerCase().includes(searchLower) ||
+        property.location?.toLowerCase().includes(searchLower) ||
+        property.building_name?.toLowerCase().includes(searchLower) ||
+        property.master_project?.toLowerCase().includes(searchLower) ||
+        property.regis?.toLowerCase().includes(searchLower) ||
+        property.owner_name?.toLowerCase().includes(searchLower);
 
       const matchesLocation = locationFilter === 'all' || property.location === locationFilter;
       const matchesType = typeFilter === 'all' || property.type === typeFilter;
@@ -358,10 +363,17 @@ export default function PropertyInventoryPage() {
                         </td>
                         <td className="py-4 px-4">
                           <div>
-                            <p className="font-medium text-foreground">{property.title}</p>
-                            <p className="text-xs text-muted-foreground capitalize">
-                              {property.type}
+                            <p className="font-medium text-foreground">
+                              {property.building_name || property.title}
                             </p>
+                            <p className="text-xs text-muted-foreground capitalize">
+                              {property.type} {property.unit_number && `• Unit ${property.unit_number}`}
+                            </p>
+                            {property.regis && (
+                              <p className="text-[10px] font-mono text-muted-foreground">
+                                {property.regis}
+                              </p>
+                            )}
                           </div>
                         </td>
                         <td className="py-4 px-4">
@@ -385,7 +397,7 @@ export default function PropertyInventoryPage() {
                         </td>
                         <td className="py-4 px-4">
                           <span className="font-semibold text-foreground">
-                            {formatCurrency(property.price, property.currency || 'AED')}
+                            {formatCurrency(property.procedure_value || property.price, property.currency || 'AED')}
                           </span>
                         </td>
                         <td className="py-4 px-4">
@@ -399,7 +411,9 @@ export default function PropertyInventoryPage() {
                           </Badge>
                         </td>
                         <td className="py-4 px-4">
-                          <span className="text-sm text-accent font-medium">0 leads</span>
+                          <Badge variant="outline" className="font-mono">
+                            {property.matches || 0}%
+                          </Badge>
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex items-center justify-center gap-2">

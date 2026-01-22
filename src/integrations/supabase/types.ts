@@ -500,58 +500,94 @@ export type Database = {
         Row: {
           bathrooms: number
           bedrooms: number
+          building_name: string | null
+          country: string | null
           created_at: string
           created_by: string | null
           currency: string | null
           description: string | null
           features: string[] | null
+          google_sheet_row_id: string | null
           id: string
           images: string[] | null
           location: string
+          master_project: string | null
+          matches: number | null
+          owner_mobile: string | null
+          owner_name: string | null
+          party_type: string | null
           price: number
+          procedure_name: string | null
+          procedure_value: number | null
+          regis: string | null
           size: number
           size_unit: string | null
           status: Database["public"]["Enums"]["property_status"]
           title: string
           type: Database["public"]["Enums"]["property_type"]
+          unit_number: string | null
           updated_at: string
         }
         Insert: {
           bathrooms: number
           bedrooms: number
+          building_name?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string | null
           description?: string | null
           features?: string[] | null
+          google_sheet_row_id?: string | null
           id?: string
           images?: string[] | null
           location: string
+          master_project?: string | null
+          matches?: number | null
+          owner_mobile?: string | null
+          owner_name?: string | null
+          party_type?: string | null
           price: number
+          procedure_name?: string | null
+          procedure_value?: number | null
+          regis?: string | null
           size: number
           size_unit?: string | null
           status?: Database["public"]["Enums"]["property_status"]
           title: string
           type: Database["public"]["Enums"]["property_type"]
+          unit_number?: string | null
           updated_at?: string
         }
         Update: {
           bathrooms?: number
           bedrooms?: number
+          building_name?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string | null
           description?: string | null
           features?: string[] | null
+          google_sheet_row_id?: string | null
           id?: string
           images?: string[] | null
           location?: string
+          master_project?: string | null
+          matches?: number | null
+          owner_mobile?: string | null
+          owner_name?: string | null
+          party_type?: string | null
           price?: number
+          procedure_name?: string | null
+          procedure_value?: number | null
+          regis?: string | null
           size?: number
           size_unit?: string | null
           status?: Database["public"]["Enums"]["property_status"]
           title?: string
           type?: Database["public"]["Enums"]["property_type"]
+          unit_number?: string | null
           updated_at?: string
         }
         Relationships: [
