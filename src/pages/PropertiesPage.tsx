@@ -712,7 +712,8 @@ export default function PropertiesPage() {
                     )}
                   </AnimatePresence>
                 </div>
-              ))
+              );
+              })
             )}
           </div>
         </div>
