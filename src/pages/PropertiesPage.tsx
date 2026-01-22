@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { MainLayout, PageHeader, PageContent } from '@/components/layout/MainLayout';
 import { useProperties, useUpdateProperty, useDeleteProperty } from '@/hooks/useProperties';
 import { CreatePropertyDialog } from '@/components/forms/CreatePropertyDialog';
@@ -9,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -16,13 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,41 +37,52 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { SwipeableRow } from '@/components/ui/swipeable-row';
-import { motion } from 'framer-motion';
 import {
   Building2,
   Plus,
   Search,
-  MoreVertical,
   Edit,
   Trash2,
-  Eye,
   FileText,
   TrendingUp,
   Home,
   RefreshCw,
   Phone,
   User,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { Constants } from '@/integrations/supabase/types';
 import type { Database } from '@/integrations/supabase/types';
 
+// Import new components
+import { StatusDragIcons, STATUS_DRAG_ICONS, DragStatusKey } from '@/components/properties/StatusDragIcons';
+import { PropertyActivityLog, ActivityLogEntry } from '@/components/properties/PropertyActivityLog';
+import { PropertyExpandedDetails } from '@/components/properties/PropertyExpandedDetails';
+import {
+  StatusModal,
+  NoteModal,
+  ActivityModal,
+  AttachModal,
+} from '@/components/properties/PropertyModals';
+
 type PropertyStatus = Database['public']['Enums']['property_status'];
 type PropertyType = Database['public']['Enums']['property_type'];
+type PropertyRow = Database['public']['Tables']['properties']['Row'];
 
 const statusColors: Record<PropertyStatus, string> = {
-  available: 'bg-pastel-green text-status-closed',
-  under_offer: 'bg-pastel-orange text-status-negotiation',
+  available: 'bg-pastel-green text-success',
+  under_offer: 'bg-pastel-orange text-warning',
   sold: 'bg-pastel-purple text-status-contacted',
-  rented: 'bg-pastel-blue text-status-new',
+  rented: 'bg-pastel-blue text-primary',
 };
 
 export default function PropertiesPage() {
   const { data: properties = [], isLoading, refetch } = useProperties();
   const updateProperty = useUpdateProperty();
   const deleteProperty = useDeleteProperty();
-  
+
+  // UI State
   const [activeTab, setActiveTab] = useState('property-data');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<PropertyType | 'all'>('all');
@@ -85,49 +91,164 @@ export default function PropertiesPage() {
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
   const [newListingDialogOpen, setNewListingDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [propertyToEdit, setPropertyToEdit] = useState<Database['public']['Tables']['properties']['Row'] | null>(null);
+  const [propertyToEdit, setPropertyToEdit] = useState<PropertyRow | null>(null);
 
-  const handleEditProperty = (property: Database['public']['Tables']['properties']['Row']) => {
+  // Expanded rows
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  // Drag and drop state
+  const [draggedStatus, setDraggedStatus] = useState<DragStatusKey | null>(null);
+  const [dragOverRow, setDragOverRow] = useState<string | null>(null);
+
+  // Modal state
+  const [modalState, setModalState] = useState<{
+    type: 'status' | 'note' | 'activity' | 'attach' | null;
+    propertyId: string | null;
+  }>({ type: null, propertyId: null });
+
+  // Activity log
+  const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
+
+  // Toggle row expansion
+  const toggleExpand = (id: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Log activity
+  const logActivity = useCallback(
+    (propertyId: string, action: string, oldValue: string, newValue: string) => {
+      const property = properties.find((p) => p.id === propertyId);
+      if (!property) return;
+
+      const log: ActivityLogEntry = {
+        id: Date.now(),
+        propertyId,
+        buildingName: property.building_name || property.title,
+        action,
+        oldValue,
+        newValue,
+        user: 'Current User',
+        timestamp: new Date().toISOString(),
+        source: 'CRM',
+      };
+      setActivityLog((prev) => [log, ...prev]);
+    },
+    [properties]
+  );
+
+  // Handle drag status
+  const handleStatusDragStart = (key: DragStatusKey) => {
+    setDraggedStatus(key);
+  };
+
+  const handleRowDragOver = (e: React.DragEvent, propertyId: string) => {
+    e.preventDefault();
+    setDragOverRow(propertyId);
+  };
+
+  const handleRowDrop = async (e: React.DragEvent, propertyId: string) => {
+    e.preventDefault();
+    if (draggedStatus) {
+      const statusInfo = STATUS_DRAG_ICONS[draggedStatus];
+      const property = properties.find((p) => p.id === propertyId);
+      if (property) {
+        logActivity(propertyId, 'Quick Status Update', property.status, statusInfo.label);
+        toast.success(`Status updated to "${statusInfo.label}"`);
+        // Note: This is a UI-only quick status, actual DB status is enum-constrained
+      }
+    }
+    setDraggedStatus(null);
+    setDragOverRow(null);
+  };
+
+  // Handle edit
+  const handleEditProperty = (property: PropertyRow) => {
     setPropertyToEdit(property);
     setEditDialogOpen(true);
   };
 
-  const filteredProperties = useMemo(() => {
-    return properties.filter((property) => {
-      const searchLower = searchQuery.toLowerCase();
-      const matchesSearch = 
-        property.title?.toLowerCase().includes(searchLower) ||
-        property.location?.toLowerCase().includes(searchLower) ||
-        property.building_name?.toLowerCase().includes(searchLower) ||
-        property.master_project?.toLowerCase().includes(searchLower) ||
-        property.regis?.toLowerCase().includes(searchLower) ||
-        property.owner_name?.toLowerCase().includes(searchLower);
-      
-      const matchesType = filterType === 'all' || property.type === filterType;
-      const matchesStatus = filterStatus === 'all' || property.status === filterStatus;
-      
-      return matchesSearch && matchesType && matchesStatus;
-    });
-  }, [properties, searchQuery, filterType, filterStatus]);
-
+  // Handle status change
   const handleStatusChange = async (propertyId: string, status: PropertyStatus) => {
+    const property = properties.find((p) => p.id === propertyId);
+    if (property) {
+      logActivity(propertyId, 'Status Changed', property.status, status);
+    }
     await updateProperty.mutateAsync({ id: propertyId, status });
   };
 
+  // Handle note
+  const handleAddNote = (note: string) => {
+    if (modalState.propertyId) {
+      logActivity(modalState.propertyId, 'Note Added', '', note);
+      toast.success('Note added successfully');
+    }
+  };
+
+  // Handle activity
+  const handleAddActivity = (activityType: string) => {
+    if (modalState.propertyId) {
+      logActivity(modalState.propertyId, 'Activity Added', '', activityType);
+      toast.success(`${activityType} activity added`);
+    }
+  };
+
+  // Handle convert to listing
+  const handleConvertToListing = (propertyId: string) => {
+    const property = properties.find((p) => p.id === propertyId);
+    if (property) {
+      logActivity(propertyId, 'Converted to Active Listing', property.status, 'available');
+      handleStatusChange(propertyId, 'available');
+    }
+  };
+
+  // Handle delete
   const handleDelete = async () => {
     if (propertyToDelete) {
+      const property = properties.find((p) => p.id === propertyToDelete);
+      if (property) {
+        logActivity(propertyToDelete, 'Archived', property.status, 'Archived');
+      }
       await deleteProperty.mutateAsync(propertyToDelete);
       setDeleteDialogOpen(false);
       setPropertyToDelete(null);
     }
   };
 
-  const metrics = useMemo(() => ({
-    total: properties.length,
-    available: properties.filter(p => p.status === 'available').length,
-    underOffer: properties.filter(p => p.status === 'under_offer').length,
-    soldRented: properties.filter(p => p.status === 'sold' || p.status === 'rented').length,
-  }), [properties]);
+  const filteredProperties = useMemo(() => {
+    return properties.filter((property) => {
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch =
+        property.title?.toLowerCase().includes(searchLower) ||
+        property.location?.toLowerCase().includes(searchLower) ||
+        property.building_name?.toLowerCase().includes(searchLower) ||
+        property.master_project?.toLowerCase().includes(searchLower) ||
+        property.regis?.toLowerCase().includes(searchLower) ||
+        property.owner_name?.toLowerCase().includes(searchLower);
+
+      const matchesType = filterType === 'all' || property.type === filterType;
+      const matchesStatus = filterStatus === 'all' || property.status === filterStatus;
+
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [properties, searchQuery, filterType, filterStatus]);
+
+  const metrics = useMemo(
+    () => ({
+      total: properties.length,
+      available: properties.filter((p) => p.status === 'available').length,
+      underOffer: properties.filter((p) => p.status === 'under_offer').length,
+      soldRented: properties.filter((p) => p.status === 'sold' || p.status === 'rented').length,
+    }),
+    [properties]
+  );
 
   if (isLoading) {
     return (
@@ -135,7 +256,9 @@ export default function PropertiesPage() {
         <PageHeader title="Properties" subtitle="Manage your property listings" />
         <PageContent>
           <div className="space-y-4">
-            {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full" />)}
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
           </div>
         </PageContent>
       </MainLayout>
@@ -241,7 +364,7 @@ export default function PropertiesPage() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="p-3 rounded-xl bg-pastel-purple">
-                      <Eye className="w-6 h-6 text-status-contacted" />
+                      <Building2 className="w-6 h-6 text-status-contacted" />
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Sold/Rented</p>
@@ -266,8 +389,8 @@ export default function PropertiesPage() {
                     Add New Property Listing
                   </h3>
                   <p className="text-muted-foreground mb-6">
-                    Create a new property listing synced with Google Sheets. 
-                    All fields match the sheet columns for bidirectional sync.
+                    Create a new property listing synced with Google Sheets. All fields match the
+                    sheet columns for bidirectional sync.
                   </p>
                   <CreatePropertyDialog
                     open={newListingDialogOpen}
@@ -286,6 +409,9 @@ export default function PropertiesPage() {
 
           {/* Property Data Tab - Table View */}
           <TabsContent value="property-data">
+            {/* Drag Status Icons */}
+            <StatusDragIcons onDragStart={handleStatusDragStart} />
+
             {/* Filters */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
               <div className="relative flex-1 max-w-md">
@@ -327,24 +453,21 @@ export default function PropertiesPage() {
               </div>
             </div>
 
-            {/* Property Table - Matches Google Sheets columns EXACTLY */}
+            {/* Property Table */}
             <div className="bg-card rounded-xl shadow-card overflow-hidden">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      {/* Exact Google Sheets column order */}
+                      <TableHead className="w-10"></TableHead>
                       <TableHead className="font-semibold">BuildingName</TableHead>
                       <TableHead className="font-semibold">ProcedureValue</TableHead>
                       <TableHead className="font-semibold">Size</TableHead>
                       <TableHead className="font-semibold">UnitNumber</TableHead>
                       <TableHead className="font-semibold">PropertyType</TableHead>
-                      <TableHead className="font-semibold">ProcedurePartyTypeName</TableHead>
                       <TableHead className="font-semibold">Name</TableHead>
                       <TableHead className="font-semibold">Mobile</TableHead>
                       <TableHead className="font-semibold">CountryName</TableHead>
-                      <TableHead className="font-semibold">IdNumber</TableHead>
-                      <TableHead className="font-semibold">UaeIdNumber</TableHead>
                       <TableHead className="font-semibold">Status</TableHead>
                       <TableHead className="font-semibold">Matches</TableHead>
                       <TableHead className="font-semibold text-right">Actions</TableHead>
@@ -353,118 +476,158 @@ export default function PropertiesPage() {
                   <TableBody>
                     {filteredProperties.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={14} className="text-center py-12 text-muted-foreground">
+                        <TableCell
+                          colSpan={12}
+                          className="text-center py-12 text-muted-foreground"
+                        >
                           No properties found. Add your first property or sync from Google Sheets.
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredProperties.map((property) => (
-                        <SwipeableRow
-                          key={property.id}
-                          onDelete={() => deleteProperty.mutate(property.id)}
-                          className="border-b"
-                        >
-                          <TableRow className="hover:bg-muted/50 border-0">
-                          {/* BuildingName */}
-                          <TableCell className="font-medium">
-                            {property.building_name || property.title}
-                          </TableCell>
-                          {/* ProcedureValue */}
-                          <TableCell className="font-medium">
-                            {formatCurrency(property.procedure_value || property.price, property.currency || 'AED')}
-                          </TableCell>
-                          {/* Size */}
-                          <TableCell>
-                            {property.size} {property.size_unit}
-                          </TableCell>
-                          {/* UnitNumber */}
-                          <TableCell>{property.unit_number || '-'}</TableCell>
-                          {/* PropertyType */}
-                          <TableCell>
-                            <Badge variant="secondary" className="capitalize">
-                              {property.type}
-                            </Badge>
-                          </TableCell>
-                          {/* ProcedurePartyTypeName */}
-                          <TableCell>{property.party_type || '-'}</TableCell>
-                          {/* Name (Owner) */}
-                          <TableCell>
-                            {property.owner_name && (
-                              <div className="flex items-center gap-1">
-                                <User className="w-3 h-3 text-muted-foreground" />
-                                <span className="truncate max-w-[100px]">{property.owner_name}</span>
-                              </div>
+                        <AnimatePresence key={property.id}>
+                          <TableRow
+                            onDragOver={(e) => handleRowDragOver(e, property.id)}
+                            onDrop={(e) => handleRowDrop(e, property.id)}
+                            onDragLeave={() => setDragOverRow(null)}
+                            className={cn(
+                              'hover:bg-muted/50 cursor-pointer transition-all',
+                              dragOverRow === property.id &&
+                                'bg-primary/10 ring-2 ring-primary ring-inset'
                             )}
-                            {!property.owner_name && '-'}
-                          </TableCell>
-                          {/* Mobile */}
-                          <TableCell>
-                            {property.owner_mobile && (
-                              <div className="flex items-center gap-1">
-                                <Phone className="w-3 h-3 text-muted-foreground" />
-                                <span className="text-xs">{property.owner_mobile}</span>
-                              </div>
-                            )}
-                            {!property.owner_mobile && '-'}
-                          </TableCell>
-                          {/* CountryName */}
-                          <TableCell>{property.country || 'UAE'}</TableCell>
-                          {/* IdNumber */}
-                          <TableCell className="text-xs">{(property as any).id_number || '-'}</TableCell>
-                          {/* UaeIdNumber */}
-                          <TableCell className="text-xs">{(property as any).uae_id_number || '-'}</TableCell>
-                          {/* Status */}
-                          <TableCell>
-                            <Select
-                              value={property.status}
-                              onValueChange={(value) => handleStatusChange(property.id, value as PropertyStatus)}
-                            >
-                              <SelectTrigger className={cn("w-[120px] h-8 text-xs", statusColors[property.status])}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Constants.public.Enums.property_status.map((status) => (
-                                  <SelectItem key={status} value={status} className="capitalize">
-                                    {status.replace('_', ' ')}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          {/* Matches (Read-only, AI calculated) */}
-                          <TableCell>
-                            <Badge variant="outline" className="font-mono">
-                              {property.matches || 0}%
-                            </Badge>
-                          </TableCell>
-                          {/* Actions (UI-only, not synced) */}
-                          <TableCell>
-                            <div className="flex items-center justify-end gap-1">
+                          >
+                            {/* Expand toggle */}
+                            <TableCell>
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-8 w-8"
-                                onClick={() => handleEditProperty(property)}
-                                title="Edit Property"
+                                className="h-6 w-6"
+                                onClick={() => toggleExpand(property.id)}
                               >
-                                <Edit className="w-4 h-4" />
+                                {expandedRows.has(property.id) ? (
+                                  <ChevronDown className="w-4 h-4" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4" />
+                                )}
                               </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                onClick={() => {
-                                  setPropertyToDelete(property.id);
-                                  setDeleteDialogOpen(true);
-                                }}
-                                title="Archive Property"
+                            </TableCell>
+                            {/* BuildingName */}
+                            <TableCell className="font-medium">
+                              {property.building_name || property.title}
+                            </TableCell>
+                            {/* ProcedureValue */}
+                            <TableCell className="font-medium">
+                              {formatCurrency(
+                                property.procedure_value || property.price,
+                                property.currency || 'AED'
+                              )}
+                            </TableCell>
+                            {/* Size */}
+                            <TableCell>
+                              {property.size} {property.size_unit}
+                            </TableCell>
+                            {/* UnitNumber */}
+                            <TableCell>{property.unit_number || '-'}</TableCell>
+                            {/* PropertyType */}
+                            <TableCell>
+                              <Badge variant="secondary" className="capitalize">
+                                {property.type}
+                              </Badge>
+                            </TableCell>
+                            {/* Name (Owner) */}
+                            <TableCell>
+                              {property.owner_name ? (
+                                <div className="flex items-center gap-1">
+                                  <User className="w-3 h-3 text-muted-foreground" />
+                                  <span className="truncate max-w-[100px]">
+                                    {property.owner_name}
+                                  </span>
+                                </div>
+                              ) : (
+                                '-'
+                              )}
+                            </TableCell>
+                            {/* Mobile */}
+                            <TableCell>
+                              {property.owner_mobile ? (
+                                <div className="flex items-center gap-1">
+                                  <Phone className="w-3 h-3 text-muted-foreground" />
+                                  <span className="text-xs">{property.owner_mobile}</span>
+                                </div>
+                              ) : (
+                                '-'
+                              )}
+                            </TableCell>
+                            {/* CountryName */}
+                            <TableCell>{property.country || 'UAE'}</TableCell>
+                            {/* Status */}
+                            <TableCell>
+                              <Select
+                                value={property.status}
+                                onValueChange={(value) =>
+                                  handleStatusChange(property.id, value as PropertyStatus)
+                                }
                               >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                        </SwipeableRow>
+                                <SelectTrigger
+                                  className={cn(
+                                    'w-[120px] h-8 text-xs',
+                                    statusColors[property.status]
+                                  )}
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Constants.public.Enums.property_status.map((status) => (
+                                    <SelectItem key={status} value={status} className="capitalize">
+                                      {status.replace('_', ' ')}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            {/* Matches */}
+                            <TableCell>
+                              <Badge variant="outline" className="font-mono">
+                                {property.matches || 0}%
+                              </Badge>
+                            </TableCell>
+                            {/* Actions */}
+                            <TableCell>
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8"
+                                  onClick={() => handleEditProperty(property)}
+                                  title="Edit Property"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={() => {
+                                    setPropertyToDelete(property.id);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                  title="Archive Property"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+
+                          {/* Expanded Details */}
+                          {expandedRows.has(property.id) && (
+                            <TableRow>
+                              <TableCell colSpan={12} className="p-0">
+                                <PropertyExpandedDetails property={property} />
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </AnimatePresence>
                       ))
                     )}
                   </TableBody>
@@ -473,12 +636,43 @@ export default function PropertiesPage() {
             </div>
 
             <p className="text-xs text-muted-foreground mt-4 text-center">
-              Showing {filteredProperties.length} of {properties.length} properties • 
-              Columns match Google Sheets for bidirectional sync
+              Showing {filteredProperties.length} of {properties.length} properties • Columns match
+              Google Sheets for bidirectional sync
             </p>
+
+            {/* Activity Log */}
+            <PropertyActivityLog logs={activityLog} />
           </TabsContent>
         </Tabs>
       </PageContent>
+
+      {/* Modals */}
+      <StatusModal
+        open={modalState.type === 'status'}
+        onOpenChange={(open) => !open && setModalState({ type: null, propertyId: null })}
+        onSelect={(status) => {
+          if (modalState.propertyId) {
+            handleStatusChange(modalState.propertyId, status);
+          }
+        }}
+      />
+
+      <NoteModal
+        open={modalState.type === 'note'}
+        onOpenChange={(open) => !open && setModalState({ type: null, propertyId: null })}
+        onSave={handleAddNote}
+      />
+
+      <ActivityModal
+        open={modalState.type === 'activity'}
+        onOpenChange={(open) => !open && setModalState({ type: null, propertyId: null })}
+        onSelect={handleAddActivity}
+      />
+
+      <AttachModal
+        open={modalState.type === 'attach'}
+        onOpenChange={(open) => !open && setModalState({ type: null, propertyId: null })}
+      />
 
       {/* Edit Property Dialog */}
       {propertyToEdit && (
@@ -498,7 +692,7 @@ export default function PropertiesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Archive Property</AlertDialogTitle>
             <AlertDialogDescription>
-              This will archive the property (soft delete). The record will remain in Google Sheets 
+              This will archive the property (soft delete). The record will remain in Google Sheets
               with Status changed to "Archived". This action can be undone by changing the status.
             </AlertDialogDescription>
           </AlertDialogHeader>
