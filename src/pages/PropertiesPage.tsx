@@ -1,7 +1,15 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MainLayout, PageHeader, PageContent } from '@/components/layout/MainLayout';
-import { useProperties, useUpdateProperty, useDeleteProperty } from '@/hooks/useProperties';
+import { useProperties } from '@/hooks/useProperties';
+import { 
+  usePropertyStatusUpdate, 
+  usePropertyNote, 
+  usePropertyActivity, 
+  useConvertToListing, 
+  useArchiveProperty,
+  useDragStatusAction 
+} from '@/hooks/usePropertyActions';
 import { CreatePropertyDialog } from '@/components/forms/CreatePropertyDialog';
 import { EditPropertyDialog } from '@/components/forms/EditPropertyDialog';
 import { formatCurrency } from '@/lib/formatters';
@@ -44,6 +52,7 @@ import {
   Paperclip,
   Calendar,
   Save,
+  Loader2,
 } from 'lucide-react';
 import { Constants } from '@/integrations/supabase/types';
 import type { Database } from '@/integrations/supabase/types';
@@ -85,8 +94,14 @@ interface ActivityLogEntry {
 
 export default function PropertiesPage() {
   const { data: properties = [], isLoading, refetch } = useProperties();
-  const updateProperty = useUpdateProperty();
-  const deleteProperty = useDeleteProperty();
+  
+  // NEW: Backend-connected action hooks
+  const statusUpdate = usePropertyStatusUpdate();
+  const addNote = usePropertyNote();
+  const addActivity = usePropertyActivity();
+  const convertToListing = useConvertToListing();
+  const archiveProperty = useArchiveProperty();
+  const dragStatusAction = useDragStatusAction();
 
   // UI State
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,39 +128,36 @@ export default function PropertiesPage() {
   });
   const [noteText, setNoteText] = useState('');
 
-  // Activity log
+  // Local activity log for UI display (complemented by DB logs)
   const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
 
   // Touch refs
   const touchStartX = useRef(0);
   const touchCurrentX = useRef(0);
 
-  // Log activity
-  const logActivity = useCallback(
-    (propertyId: string, action: string, oldValue: string, newValue: string) => {
-      const property = properties.find((p) => p.id === propertyId);
-      if (!property) return;
+  // Helper to add to local activity log for immediate UI feedback
+  const addLocalActivity = (propertyId: string, action: string, oldValue: string, newValue: string) => {
+    const property = properties.find((p) => p.id === propertyId);
+    if (!property) return;
 
-      const log: ActivityLogEntry = {
-        id: Date.now(),
-        propertyId,
-        buildingName: property.building_name || 
-          (property.title?.startsWith('Property 1K') ? property.location || 'Property' : property.title) || 
-          'Unknown',
-        action,
-        oldValue,
-        newValue,
-        user: 'Current User',
-        timestamp: new Date().toISOString(),
-        source: 'Slide Action',
-      };
-      setActivityLog((prev) => [log, ...prev]);
-    },
-    [properties]
-  );
+    const log: ActivityLogEntry = {
+      id: Date.now(),
+      propertyId,
+      buildingName: property.building_name || 
+        (property.title?.startsWith('Property 1K') ? property.location || 'Property' : property.title) || 
+        'Unknown',
+      action,
+      oldValue,
+      newValue,
+      user: 'Current User',
+      timestamp: new Date().toISOString(),
+      source: 'UI Action',
+    };
+    setActivityLog((prev) => [log, ...prev]);
+  };
 
   // Touch handlers
-  const handleTouchStart = (e: React.TouchEvent, propertyId: string) => {
+  const handleTouchStart = (e: React.TouchEvent, _propertyId: string) => {
     touchStartX.current = e.touches[0].clientX;
   };
 
@@ -186,64 +198,109 @@ export default function PropertiesPage() {
     setDragOverRow(propertyId);
   };
 
-  const handleRowDrop = (e: React.DragEvent, propertyId: string) => {
+  // REAL BACKEND: Handle drag-drop status icon action
+  const handleRowDrop = async (e: React.DragEvent, propertyId: string) => {
     e.preventDefault();
     if (draggedStatus) {
       const statusInfo = STATUS_DRAG_ICONS[draggedStatus];
       const property = properties.find((p) => p.id === propertyId);
+      
       if (property) {
-        logActivity(propertyId, 'Status Changed', property.status, statusInfo.label);
-        toast.success(`Status updated to "${statusInfo.label}"`);
+        // Add local activity for immediate UI feedback
+        addLocalActivity(propertyId, 'Status Flag Applied', property.status, statusInfo.label);
+        
+        // REAL BACKEND CALL: Persist to database
+        await dragStatusAction.mutateAsync({
+          property_id: propertyId,
+          status_key: draggedStatus,
+          status_label: statusInfo.label,
+        });
       }
     }
     setDraggedStatus(null);
     setDragOverRow(null);
   };
 
-  // Actions
+  // REAL BACKEND: Handle status change with DB persistence
   const handleStatusChange = async (propertyId: string, status: PropertyStatus) => {
     const property = properties.find((p) => p.id === propertyId);
     if (property) {
-      logActivity(propertyId, 'Status Changed', property.status, status);
+      // Add local activity for immediate UI feedback
+      addLocalActivity(propertyId, 'Status Changed', property.status, status);
+      
+      // REAL BACKEND CALL: Persist to database + trigger Google Sheets sync
+      await statusUpdate.mutateAsync({ 
+        propertyId, 
+        newStatus: status, 
+        oldStatus: property.status 
+      });
     }
-    await updateProperty.mutateAsync({ id: propertyId, status });
     setSwipedRow(null);
     setShowModal({ type: null, propertyId: null });
   };
 
-  const handleAddNote = (propertyId: string) => {
-    if (!noteText.trim()) return;
-    logActivity(propertyId, 'Note Added', '', noteText);
-    toast.success('Note added successfully');
+  // REAL BACKEND: Handle note addition with DB persistence
+  const handleAddNote = async (propertyId: string) => {
+    if (!noteText.trim()) {
+      toast.error('Please enter a note');
+      return;
+    }
+    
+    // Add local activity for immediate UI feedback
+    addLocalActivity(propertyId, 'Note Added', '', noteText);
+    
+    // REAL BACKEND CALL: Persist note to database
+    await addNote.mutateAsync({
+      property_id: propertyId,
+      note: noteText,
+    });
+    
     setNoteText('');
     setShowModal({ type: null, propertyId: null });
     setSwipedRow(null);
   };
 
+  // REAL BACKEND: Handle conversion to listing with DB persistence
   const handleConvertToListing = async (propertyId: string) => {
     const property = properties.find((p) => p.id === propertyId);
     if (property) {
-      logActivity(propertyId, 'Converted to Listing', property.status, 'available');
-      await updateProperty.mutateAsync({ id: propertyId, status: 'available' });
-      toast.success('Converted to active listing');
+      // Add local activity for immediate UI feedback
+      addLocalActivity(propertyId, 'Converted to Listing', property.status, 'available');
+      
+      // REAL BACKEND CALL: Persist status change to database
+      await convertToListing.mutateAsync(propertyId);
     }
     setSwipedRow(null);
   };
 
-  const handleAddActivity = (propertyId: string, activityType: string) => {
-    logActivity(propertyId, 'Activity Added', '', activityType);
-    toast.success(`${activityType} activity added`);
+  // REAL BACKEND: Handle activity addition with DB persistence
+  const handleAddActivity = async (propertyId: string, activityType: string) => {
+    // Add local activity for immediate UI feedback
+    addLocalActivity(propertyId, 'Activity Added', '', activityType);
+    
+    // REAL BACKEND CALL: Persist activity to database
+    await addActivity.mutateAsync({
+      property_id: propertyId,
+      activity_type: activityType.toLowerCase().replace('-', '_') as 'call' | 'meeting' | 'viewing' | 'follow_up',
+      description: `${activityType} scheduled`,
+    });
+    
     setShowModal({ type: null, propertyId: null });
     setSwipedRow(null);
   };
 
+  // REAL BACKEND: Handle archive/delete with DB persistence
   const handleDelete = async () => {
     if (propertyToDelete) {
       const property = properties.find((p) => p.id === propertyToDelete);
       if (property) {
-        logActivity(propertyToDelete, 'Archived', property.status, 'Archived');
+        // Add local activity for immediate UI feedback
+        addLocalActivity(propertyToDelete, 'Archived', property.status, 'Archived');
       }
-      await deleteProperty.mutateAsync(propertyToDelete);
+      
+      // REAL BACKEND CALL: Archive property (soft delete) or delete
+      await archiveProperty.mutateAsync(propertyToDelete);
+      
       setDeleteDialogOpen(false);
       setPropertyToDelete(null);
       setSwipedRow(null);
@@ -254,6 +311,15 @@ export default function PropertiesPage() {
     setPropertyToEdit(property);
     setEditDialogOpen(true);
   };
+
+  // Check if any action is pending
+  const isActionPending = 
+    statusUpdate.isPending || 
+    addNote.isPending || 
+    addActivity.isPending || 
+    convertToListing.isPending || 
+    archiveProperty.isPending ||
+    dragStatusAction.isPending;
 
   // Filtered properties
   const filteredProperties = useMemo(() => {
@@ -423,35 +489,44 @@ export default function PropertiesPage() {
                         <div className="absolute inset-0 bg-muted flex items-center gap-2 px-4 z-0">
                           <button
                             onClick={() => setShowModal({ type: 'status', propertyId: property.id })}
-                            className="bg-primary text-primary-foreground p-2 rounded-lg hover:opacity-90 transition"
+                            disabled={isActionPending}
+                            className="bg-primary text-primary-foreground p-2 rounded-lg hover:opacity-90 transition disabled:opacity-50"
                             title="Change Status"
                           >
                             <Edit3 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setShowModal({ type: 'note', propertyId: property.id })}
-                            className="bg-secondary text-secondary-foreground p-2 rounded-lg hover:opacity-90 transition"
+                            disabled={isActionPending}
+                            className="bg-secondary text-secondary-foreground p-2 rounded-lg hover:opacity-90 transition disabled:opacity-50"
                             title="Add Note"
                           >
                             <MessageSquare className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleConvertToListing(property.id)}
-                            className="bg-success text-success-foreground p-2 rounded-lg hover:opacity-90 transition"
+                            disabled={isActionPending}
+                            className="bg-success text-success-foreground p-2 rounded-lg hover:opacity-90 transition disabled:opacity-50"
                             title="Convert to Listing"
                           >
-                            <Home className="w-4 h-4" />
+                            {convertToListing.isPending ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Home className="w-4 h-4" />
+                            )}
                           </button>
                           <button
                             onClick={() => setShowModal({ type: 'attach', propertyId: property.id })}
-                            className="bg-accent text-accent-foreground p-2 rounded-lg hover:opacity-90 transition"
+                            disabled={isActionPending}
+                            className="bg-accent text-accent-foreground p-2 rounded-lg hover:opacity-90 transition disabled:opacity-50"
                             title="Attach Documents"
                           >
                             <Paperclip className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setShowModal({ type: 'activity', propertyId: property.id })}
-                            className="bg-warning text-warning-foreground p-2 rounded-lg hover:opacity-90 transition"
+                            disabled={isActionPending}
+                            className="bg-warning text-warning-foreground p-2 rounded-lg hover:opacity-90 transition disabled:opacity-50"
                             title="Add Activity"
                           >
                             <Calendar className="w-4 h-4" />
@@ -461,7 +536,8 @@ export default function PropertiesPage() {
                               setPropertyToDelete(property.id);
                               setDeleteDialogOpen(true);
                             }}
-                            className="bg-destructive text-destructive-foreground p-2 rounded-lg hover:opacity-90 transition"
+                            disabled={isActionPending}
+                            className="bg-destructive text-destructive-foreground p-2 rounded-lg hover:opacity-90 transition disabled:opacity-50"
                             title="Archive Property"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -758,14 +834,22 @@ export default function PropertiesPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-xl p-6 max-w-md w-full shadow-2xl border border-border">
             <h3 className="text-xl font-bold mb-4 text-foreground">Change Status</h3>
+            {statusUpdate.isPending && (
+              <div className="flex items-center justify-center gap-2 mb-4 text-primary">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Updating status & syncing...</span>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2">
               {STATUS_OPTIONS.map((status) => (
                 <button
                   key={status.value}
                   onClick={() => handleStatusChange(showModal.propertyId!, status.value as PropertyStatus)}
+                  disabled={statusUpdate.isPending}
                   className={cn(
                     status.color,
-                    'text-white px-4 py-2 rounded-lg hover:opacity-90 transition flex items-center justify-center gap-2'
+                    'text-white px-4 py-2 rounded-lg hover:opacity-90 transition flex items-center justify-center gap-2',
+                    'disabled:opacity-50 disabled:cursor-not-allowed'
                   )}
                 >
                   <span>{status.icon}</span>
@@ -775,7 +859,8 @@ export default function PropertiesPage() {
             </div>
             <button
               onClick={() => setShowModal({ type: null, propertyId: null })}
-              className="mt-4 w-full bg-muted text-muted-foreground px-4 py-2 rounded-lg hover:bg-muted/80"
+              disabled={statusUpdate.isPending}
+              className="mt-4 w-full bg-muted text-muted-foreground px-4 py-2 rounded-lg hover:bg-muted/80 disabled:opacity-50"
             >
               Cancel
             </button>
@@ -791,20 +876,27 @@ export default function PropertiesPage() {
             <textarea
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
-              className="w-full border border-border bg-background text-foreground rounded-lg p-3 h-32 focus:ring-2 focus:ring-primary focus:border-transparent"
+              disabled={addNote.isPending}
+              className="w-full border border-border bg-background text-foreground rounded-lg p-3 h-32 focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
               placeholder="Enter your note..."
             />
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => handleAddNote(showModal.propertyId!)}
-                className="flex-1 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:opacity-90 flex items-center justify-center gap-2"
+                disabled={addNote.isPending || !noteText.trim()}
+                className="flex-1 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save className="w-4 h-4" />
-                Save Note
+                {addNote.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {addNote.isPending ? 'Saving...' : 'Save Note'}
               </button>
               <button
                 onClick={() => setShowModal({ type: null, propertyId: null })}
-                className="flex-1 bg-muted text-muted-foreground px-4 py-2 rounded-lg hover:bg-muted/80"
+                disabled={addNote.isPending}
+                className="flex-1 bg-muted text-muted-foreground px-4 py-2 rounded-lg hover:bg-muted/80 disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -818,12 +910,19 @@ export default function PropertiesPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-xl p-6 max-w-md w-full shadow-2xl border border-border">
             <h3 className="text-xl font-bold mb-4 text-foreground">Add Activity</h3>
+            {addActivity.isPending && (
+              <div className="flex items-center justify-center gap-2 mb-4 text-primary">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Adding activity...</span>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2">
               {['Call', 'Meeting', 'Viewing', 'Follow-up'].map((activity) => (
                 <button
                   key={activity}
                   onClick={() => handleAddActivity(showModal.propertyId!, activity)}
-                  className="bg-warning text-warning-foreground px-4 py-3 rounded-lg hover:opacity-90 transition font-medium"
+                  disabled={addActivity.isPending}
+                  className="bg-warning text-warning-foreground px-4 py-3 rounded-lg hover:opacity-90 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {activity}
                 </button>
@@ -831,7 +930,8 @@ export default function PropertiesPage() {
             </div>
             <button
               onClick={() => setShowModal({ type: null, propertyId: null })}
-              className="mt-4 w-full bg-muted text-muted-foreground px-4 py-2 rounded-lg hover:bg-muted/80"
+              disabled={addActivity.isPending}
+              className="mt-4 w-full bg-muted text-muted-foreground px-4 py-2 rounded-lg hover:bg-muted/80 disabled:opacity-50"
             >
               Cancel
             </button>
@@ -839,15 +939,22 @@ export default function PropertiesPage() {
         </div>
       )}
 
-      {/* Attach Modal */}
+      {/* Attach Modal - Coming Soon placeholder */}
       {showModal.type === 'attach' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-xl p-6 max-w-md w-full shadow-2xl border border-border">
             <h3 className="text-xl font-bold mb-4 text-foreground">Attach Documents</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Document attachments will be stored and linked to this property.
+            </p>
             <div className="space-y-2">
               {['Emirates ID', 'Passport', 'Title Deed', 'SPA', 'Other'].map((doc) => (
                 <button
                   key={doc}
+                  onClick={() => {
+                    toast.info(`${doc} upload coming soon. Activity logged.`);
+                    addLocalActivity(showModal.propertyId!, 'Document Request', '', doc);
+                  }}
                   className="w-full bg-accent text-accent-foreground px-4 py-2 rounded-lg hover:opacity-90 transition flex items-center gap-2"
                 >
                   <Paperclip className="w-4 h-4" />
@@ -888,12 +995,20 @@ export default function PropertiesPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={archiveProperty.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={archiveProperty.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
             >
-              Archive
+              {archiveProperty.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Archiving...
+                </>
+              ) : (
+                'Archive'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
