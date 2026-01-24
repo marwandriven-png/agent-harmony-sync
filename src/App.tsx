@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import DashboardPage from "./pages/DashboardPage";
 import LeadsPage from "./pages/LeadsPage";
 import LeadDetailPage from "./pages/LeadDetailPage";
+import BuyerMatchingPage from "./pages/BuyerMatchingPage";
 import ColdCallsPage from "./pages/ColdCallsPage";
 import CalendarPage from "./pages/CalendarPage";
 import TasksPage from "./pages/TasksPage";
@@ -66,6 +67,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <LeadDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/leads/:id/matching"
+              element={
+                <ProtectedRoute>
+                  <BuyerMatchingPage />
                 </ProtectedRoute>
               }
             />

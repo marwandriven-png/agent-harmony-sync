@@ -34,6 +34,7 @@ import {
   Plus,
   FileText,
   ArrowRightLeft,
+  Sparkles,
 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -446,6 +447,13 @@ export default function LeadDetailPage() {
                 >
                   <Send className="w-4 h-4 mr-2" />
                   Send Properties
+                </Button>
+                <Button 
+                  className="w-full justify-start bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:from-primary/90 hover:to-primary/70" 
+                  onClick={() => navigate(`/leads/${lead.id}/matching`)}
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Find Matching Properties
                 </Button>
                 <SendTemplateDialog lead={lead} />
               </div>
