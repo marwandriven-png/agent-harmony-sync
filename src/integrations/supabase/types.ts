@@ -394,6 +394,7 @@ export type Database = {
           status: Database["public"]["Enums"]["lead_status"]
           tags: string[] | null
           updated_at: string
+          urgency_level: string | null
         }
         Insert: {
           area_name?: string | null
@@ -421,6 +422,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
           updated_at?: string
+          urgency_level?: string | null
         }
         Update: {
           area_name?: string | null
@@ -448,6 +450,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
           updated_at?: string
+          urgency_level?: string | null
         }
         Relationships: [
           {
@@ -611,6 +614,75 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_matches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          external_data: Json | null
+          external_listing_id: string | null
+          id: string
+          is_flagged: boolean
+          lead_id: string
+          match_reasons: string[] | null
+          match_score: number
+          match_type: string
+          notes: string | null
+          property_id: string | null
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          external_data?: Json | null
+          external_listing_id?: string | null
+          id?: string
+          is_flagged?: boolean
+          lead_id: string
+          match_reasons?: string[] | null
+          match_score?: number
+          match_type?: string
+          notes?: string | null
+          property_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          external_data?: Json | null
+          external_listing_id?: string | null
+          id?: string
+          is_flagged?: boolean
+          lead_id?: string
+          match_reasons?: string[] | null
+          match_score?: number
+          match_type?: string
+          notes?: string | null
+          property_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_matches_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_matches_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
