@@ -13,6 +13,7 @@ import ColdCallsPage from "./pages/ColdCallsPage";
 import CalendarPage from "./pages/CalendarPage";
 import TasksPage from "./pages/TasksPage";
 import PropertiesPage from "./pages/PropertiesPage";
+import PlotsPage from "./pages/PlotsPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -107,6 +108,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <PropertiesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/plots"
+              element={
+                <ProtectedRoute>
+                  <PlotsPage />
                 </ProtectedRoute>
               }
             />

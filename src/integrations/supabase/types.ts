@@ -469,6 +469,309 @@ export type Database = {
           },
         ]
       }
+      plot_activity_logs: {
+        Row: {
+          action: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          plot_id: string
+          source: string | null
+          timestamp: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          plot_id: string
+          source?: string | null
+          timestamp?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          plot_id?: string
+          source?: string | null
+          timestamp?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plot_activity_logs_plot_id_fkey"
+            columns: ["plot_id"]
+            isOneToOne: false
+            referencedRelation: "plots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plot_activity_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plot_feasibility: {
+        Row: {
+          ai_raw_response: Json | null
+          build_potential: string | null
+          created_at: string
+          estimated_units: number | null
+          id: string
+          market_comparison: Json | null
+          plot_id: string
+          recommendation: string | null
+          risk_notes: string[] | null
+          roi_range: string | null
+        }
+        Insert: {
+          ai_raw_response?: Json | null
+          build_potential?: string | null
+          created_at?: string
+          estimated_units?: number | null
+          id?: string
+          market_comparison?: Json | null
+          plot_id: string
+          recommendation?: string | null
+          risk_notes?: string[] | null
+          roi_range?: string | null
+        }
+        Update: {
+          ai_raw_response?: Json | null
+          build_potential?: string | null
+          created_at?: string
+          estimated_units?: number | null
+          id?: string
+          market_comparison?: Json | null
+          plot_id?: string
+          recommendation?: string | null
+          risk_notes?: string[] | null
+          roi_range?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plot_feasibility_plot_id_fkey"
+            columns: ["plot_id"]
+            isOneToOne: false
+            referencedRelation: "plots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plot_interested_buyers: {
+        Row: {
+          buyer_name: string
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          lead_id: string | null
+          mobile: string | null
+          notes: string | null
+          plot_id: string
+          source: string | null
+          viewed_at: string | null
+        }
+        Insert: {
+          buyer_name: string
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          mobile?: string | null
+          notes?: string | null
+          plot_id: string
+          source?: string | null
+          viewed_at?: string | null
+        }
+        Update: {
+          buyer_name?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          mobile?: string | null
+          notes?: string | null
+          plot_id?: string
+          source?: string | null
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plot_interested_buyers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plot_interested_buyers_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plot_interested_buyers_plot_id_fkey"
+            columns: ["plot_id"]
+            isOneToOne: false
+            referencedRelation: "plots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plot_offers: {
+        Row: {
+          buyer_name: string
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          lead_id: string | null
+          mobile: string | null
+          notes: string | null
+          offer_amount: number
+          offer_status: string
+          plot_id: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_name: string
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          mobile?: string | null
+          notes?: string | null
+          offer_amount: number
+          offer_status?: string
+          plot_id: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_name?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          mobile?: string | null
+          notes?: string | null
+          offer_amount?: number
+          offer_status?: string
+          plot_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plot_offers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plot_offers_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plot_offers_plot_id_fkey"
+            columns: ["plot_id"]
+            isOneToOne: false
+            referencedRelation: "plots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plots: {
+        Row: {
+          area_name: string
+          created_at: string
+          created_by: string | null
+          floors_allowed: number | null
+          gfa: number | null
+          google_sheet_row_id: string | null
+          id: string
+          location_coordinates: Json | null
+          master_plan: string | null
+          notes: string | null
+          owner_mobile: string | null
+          owner_name: string | null
+          pdf_source_link: string | null
+          plot_number: string
+          plot_size: number
+          price: number | null
+          price_per_sqft: number | null
+          status: string
+          updated_at: string
+          zoning: string | null
+        }
+        Insert: {
+          area_name: string
+          created_at?: string
+          created_by?: string | null
+          floors_allowed?: number | null
+          gfa?: number | null
+          google_sheet_row_id?: string | null
+          id?: string
+          location_coordinates?: Json | null
+          master_plan?: string | null
+          notes?: string | null
+          owner_mobile?: string | null
+          owner_name?: string | null
+          pdf_source_link?: string | null
+          plot_number: string
+          plot_size: number
+          price?: number | null
+          price_per_sqft?: number | null
+          status?: string
+          updated_at?: string
+          zoning?: string | null
+        }
+        Update: {
+          area_name?: string
+          created_at?: string
+          created_by?: string | null
+          floors_allowed?: number | null
+          gfa?: number | null
+          google_sheet_row_id?: string | null
+          id?: string
+          location_coordinates?: Json | null
+          master_plan?: string | null
+          notes?: string | null
+          owner_mobile?: string | null
+          owner_name?: string | null
+          pdf_source_link?: string | null
+          plot_number?: string
+          plot_size?: number
+          price?: number | null
+          price_per_sqft?: number | null
+          status?: string
+          updated_at?: string
+          zoning?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plots_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
