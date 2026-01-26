@@ -2,11 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Real Estate CRM Design System - Bitrix24 Inspired */
+/* Real Estate CRM Design System - Premium Dark Executive Theme */
 
 @layer base {
   :root {
-    /* Core Background & Foreground */
+    /* Core Background & Foreground - Light Mode */
     --background: 210 20% 98%;
     --foreground: 222 47% 11%;
 
@@ -30,9 +30,9 @@
     --muted: 210 40% 96%;
     --muted-foreground: 215 16% 47%;
 
-    /* Accent - Warm Coral */
-    --accent: 15 90% 55%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent - Vibrant Lime Green (matching reference) */
+    --accent: 82 84% 50%;
+    --accent-foreground: 222 47% 11%;
 
     /* Destructive */
     --destructive: 0 84% 60%;
@@ -91,7 +91,7 @@
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(217 91% 50%) 0%, hsl(217 91% 60%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(15 90% 55%) 0%, hsl(38 92% 50%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(82 84% 50%) 0%, hsl(82 84% 40%) 100%);
     --gradient-success: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(174 84% 40%) 100%);
     --gradient-hero: linear-gradient(135deg, hsl(217 91% 50%) 0%, hsl(262 83% 58%) 100%);
 
@@ -104,52 +104,86 @@
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    /* Premium Dark Theme - Executive Dashboard */
+    --background: 220 20% 8%;
+    --foreground: 0 0% 98%;
 
-    --card: 222 47% 9%;
-    --card-foreground: 210 40% 98%;
+    /* Card Surfaces - Glassmorphism Effect */
+    --card: 220 20% 12%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 222 47% 9%;
-    --popover-foreground: 210 40% 98%;
+    /* Popover/Dropdown */
+    --popover: 220 20% 10%;
+    --popover-foreground: 0 0% 98%;
 
+    /* Primary Brand */
     --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
+    /* Secondary */
+    --secondary: 220 20% 18%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    /* Muted Surfaces */
+    --muted: 220 20% 16%;
+    --muted-foreground: 220 10% 60%;
 
-    --accent: 15 90% 55%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent - Vibrant Lime Green */
+    --accent: 82 84% 50%;
+    --accent-foreground: 220 20% 8%;
 
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive */
+    --destructive: 0 63% 45%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
+    /* Success */
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 98%;
+
+    /* Warning */
+    --warning: 38 92% 50%;
+    --warning-foreground: 220 20% 8%;
+
+    /* Border & Input */
+    --border: 220 20% 20%;
+    --input: 220 20% 18%;
     --ring: 217 91% 60%;
 
-    --sidebar-background: 222 47% 6%;
-    --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 47% 12%;
-    --sidebar-accent-foreground: 210 40% 96%;
-    --sidebar-border: 222 47% 15%;
-    --sidebar-ring: 217 91% 60%;
+    /* Sidebar - Ultra Dark */
+    --sidebar-background: 220 25% 6%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 82 84% 50%;
+    --sidebar-primary-foreground: 220 20% 8%;
+    --sidebar-accent: 220 20% 14%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 220 20% 16%;
+    --sidebar-ring: 82 84% 50%;
 
-    --kanban-bg: 222 47% 8%;
-    --kanban-header: 210 40% 98%;
+    /* Kanban */
+    --kanban-bg: 220 20% 10%;
+    --kanban-header: 0 0% 98%;
 
+    /* Pastel (Darker variants for dark mode) */
     --pastel-blue: 217 50% 20%;
     --pastel-purple: 262 40% 20%;
     --pastel-orange: 38 50% 20%;
-    --pastel-green: 142 40% 15%;
+    --pastel-green: 142 40% 18%;
     --pastel-red: 0 50% 20%;
-    --pastel-cyan: 174 40% 15%;
+    --pastel-cyan: 174 40% 18%;
+
+    /* Dark mode shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.3);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.4), 0 2px 4px -2px hsl(0 0% 0% / 0.3);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.5), 0 4px 6px -4px hsl(0 0% 0% / 0.4);
+    --shadow-card: 0 2px 8px 0 hsl(0 0% 0% / 0.3);
+    --shadow-card-hover: 0 12px 30px -5px hsl(0 0% 0% / 0.5);
+
+    /* Premium Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(220 20% 14%) 0%, hsl(220 20% 18%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(82 84% 50%) 0%, hsl(82 70% 45%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(142 70% 45%) 0%, hsl(160 60% 40%) 100%);
+    --gradient-hero: linear-gradient(145deg, hsl(220 20% 10%) 0%, hsl(220 20% 15%) 50%, hsl(220 20% 12%) 100%);
+    --gradient-glass: linear-gradient(145deg, hsl(220 20% 14% / 0.6) 0%, hsl(220 20% 10% / 0.4) 100%);
   }
 }
 
@@ -179,6 +213,38 @@
 }
 
 @layer components {
+  /* Premium Glass Card */
+  .glass-card {
+    @apply bg-card rounded-2xl border border-border/50 relative overflow-hidden;
+    box-shadow: var(--shadow-card);
+    backdrop-filter: blur(12px);
+  }
+
+  .glass-card-dark {
+    background: linear-gradient(145deg, hsl(220 20% 14% / 0.8) 0%, hsl(220 20% 10% / 0.6) 100%);
+    border: 1px solid hsl(220 20% 22% / 0.5);
+    backdrop-filter: blur(20px);
+  }
+
+  .glass-card:hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* Premium Metric Card */
+  .premium-metric-card {
+    @apply bg-card rounded-2xl p-5 relative overflow-hidden border border-border/30;
+    background: var(--gradient-glass);
+    box-shadow: var(--shadow-card);
+  }
+
+  .premium-metric-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, hsl(0 0% 100% / 0.03) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
   /* Kanban Card */
   .kanban-card {
     @apply bg-card rounded-lg p-4 cursor-grab active:cursor-grabbing transition-all duration-200;
@@ -228,6 +294,27 @@
     @apply bg-pastel-red text-status-lost;
   }
 
+  /* Premium Status Badges */
+  .premium-badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold;
+  }
+
+  .premium-badge-success {
+    @apply bg-success/20 text-success border border-success/30;
+  }
+
+  .premium-badge-warning {
+    @apply bg-warning/20 text-warning border border-warning/30;
+  }
+
+  .premium-badge-accent {
+    @apply bg-accent/20 text-accent border border-accent/30;
+  }
+
+  .premium-badge-muted {
+    @apply bg-muted text-muted-foreground border border-border;
+  }
+
   /* Priority Indicators */
   .priority-hot {
     @apply text-priority-hot;
@@ -267,6 +354,25 @@
   /* Glass Effect */
   .glass {
     @apply bg-card/80 backdrop-blur-sm;
+  }
+
+  /* Premium Table Row */
+  .premium-table-row {
+    @apply transition-all duration-200 cursor-pointer;
+  }
+
+  .premium-table-row:hover {
+    @apply bg-muted/50;
+  }
+
+  .premium-table-row.selected {
+    @apply bg-accent/10 border-l-2 border-l-accent;
+  }
+
+  /* Smooth Number Display */
+  .number-display {
+    @apply font-bold tracking-tight;
+    font-variant-numeric: tabular-nums;
   }
 
   /* Animation Classes */
@@ -310,6 +416,21 @@
     to {
       opacity: 1;
       transform: scale(1);
+    }
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
   }
 }

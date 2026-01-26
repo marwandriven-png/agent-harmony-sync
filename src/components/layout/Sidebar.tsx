@@ -55,13 +55,13 @@ export function Sidebar() {
     <motion.aside
       initial={false}
       animate={{ width: collapsed ? 72 : 260 }}
-      className="h-screen bg-sidebar flex flex-col border-r border-sidebar-border relative"
+      className="h-screen bg-sidebar flex flex-col border-r border-sidebar-border relative shadow-xl"
     >
       {/* Logo */}
       <div className="h-16 flex items-center px-4 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-hero flex items-center justify-center">
-            <Building2 className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center">
+            <Building2 className="w-5 h-5 text-accent-foreground" />
           </div>
           <AnimatePresence>
             {!collapsed && (
@@ -81,7 +81,7 @@ export function Sidebar() {
       {/* Collapse Button */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-20 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-primary-foreground shadow-md hover:scale-110 transition-transform z-50"
+        className="absolute -right-3 top-20 w-6 h-6 bg-accent rounded-full flex items-center justify-center text-accent-foreground shadow-lg hover:scale-110 transition-transform z-50"
       >
         {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
       </button>
@@ -98,22 +98,22 @@ export function Sidebar() {
                 <NavLink
                   to={item.to}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
                     "hover:bg-sidebar-accent group relative",
                     isActive 
-                      ? "bg-sidebar-accent text-sidebar-primary" 
+                      ? "bg-accent/10 text-accent" 
                       : "text-sidebar-foreground/70 hover:text-sidebar-foreground"
                   )}
                 >
                   {isActive && (
                     <motion.div
                       layoutId="activeIndicator"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-sidebar-primary rounded-r-full"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-accent rounded-r-full"
                     />
                   )}
                   <item.icon className={cn(
                     "w-5 h-5 flex-shrink-0",
-                    isActive && "text-sidebar-primary"
+                    isActive && "text-accent"
                   )} />
                   <AnimatePresence>
                     {!collapsed && (
@@ -168,8 +168,8 @@ export function Sidebar() {
       {/* User Profile */}
       <div className="border-t border-sidebar-border p-4">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-sidebar-accent flex items-center justify-center flex-shrink-0">
-            <span className="text-sm font-semibold text-sidebar-foreground">
+          <div className="w-9 h-9 rounded-xl bg-accent/20 flex items-center justify-center flex-shrink-0">
+            <span className="text-sm font-semibold text-accent">
               {initials}
             </span>
           </div>
@@ -193,7 +193,7 @@ export function Sidebar() {
           {!collapsed && (
             <button 
               onClick={handleSignOut}
-              className="p-1.5 hover:bg-sidebar-accent rounded-lg transition-colors text-sidebar-foreground/60 hover:text-sidebar-foreground"
+              className="p-1.5 hover:bg-sidebar-accent rounded-lg transition-colors text-sidebar-foreground/60 hover:text-destructive"
               title="Sign out"
             >
               <LogOut className="w-4 h-4" />
