@@ -2,44 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Real Estate CRM Design System - Premium Dark Executive Theme */
+/* Real Estate CRM Design System - Premium White Executive Theme */
 
 @layer base {
   :root {
-    /* Core Background & Foreground - Light Mode */
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
+    /* Core Background & Foreground - Clean White */
+    --background: 0 0% 98%;
+    --foreground: 220 20% 10%;
 
-    /* Card Surfaces */
+    /* Card Surfaces - Pure White with Subtle Depth */
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 220 20% 10%;
 
     /* Popover/Dropdown */
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 220 20% 10%;
 
     /* Primary Brand - Deep Slate Blue */
-    --primary: 217 91% 50%;
+    --primary: 220 70% 50%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Soft Gray Blue */
-    --secondary: 214 32% 91%;
-    --secondary-foreground: 222 47% 11%;
+    /* Secondary - Light Gray */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 20% 20%;
 
     /* Muted Surfaces */
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 10% 45%;
 
     /* Accent - Vibrant Lime Green (matching reference) */
-    --accent: 82 84% 50%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 82 84% 45%;
+    --accent-foreground: 0 0% 100%;
 
     /* Destructive */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     /* Success */
-    --success: 142 76% 36%;
+    --success: 142 70% 40%;
     --success-foreground: 0 0% 100%;
 
     /* Warning */
@@ -47,60 +47,61 @@
     --warning-foreground: 0 0% 100%;
 
     /* Border & Input */
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 217 91% 50%;
+    --border: 220 14% 90%;
+    --input: 220 14% 92%;
+    --ring: 220 70% 50%;
 
     --radius: 0.75rem;
 
     /* Status Colors - Pipeline Stages */
-    --status-new: 217 91% 50%;
-    --status-contacted: 262 83% 58%;
+    --status-new: 220 70% 50%;
+    --status-contacted: 262 70% 55%;
     --status-viewing: 38 92% 50%;
-    --status-viewed: 174 84% 40%;
-    --status-negotiation: 15 90% 55%;
-    --status-closed: 142 76% 36%;
-    --status-lost: 0 84% 60%;
+    --status-viewed: 174 70% 40%;
+    --status-negotiation: 15 85% 55%;
+    --status-closed: 142 70% 40%;
+    --status-lost: 0 70% 55%;
 
     /* Priority Colors */
-    --priority-hot: 0 84% 60%;
+    --priority-hot: 0 84% 55%;
     --priority-warm: 38 92% 50%;
-    --priority-cold: 199 89% 48%;
+    --priority-cold: 199 85% 45%;
 
-    /* Pastel Backgrounds */
-    --pastel-blue: 217 91% 95%;
-    --pastel-purple: 262 83% 95%;
-    --pastel-orange: 38 92% 95%;
-    --pastel-green: 142 76% 95%;
-    --pastel-red: 0 84% 95%;
-    --pastel-cyan: 174 84% 95%;
+    /* Pastel Backgrounds - Softer for light theme */
+    --pastel-blue: 220 70% 95%;
+    --pastel-purple: 262 60% 95%;
+    --pastel-orange: 38 80% 95%;
+    --pastel-green: 142 60% 94%;
+    --pastel-red: 0 70% 95%;
+    --pastel-cyan: 174 60% 94%;
 
-    /* Sidebar */
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 47% 18%;
-    --sidebar-accent-foreground: 210 40% 96%;
-    --sidebar-border: 222 47% 20%;
-    --sidebar-ring: 217 91% 50%;
+    /* Sidebar - Dark contrast sidebar */
+    --sidebar-background: 220 25% 12%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 82 84% 50%;
+    --sidebar-primary-foreground: 220 20% 10%;
+    --sidebar-accent: 220 25% 18%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 220 20% 20%;
+    --sidebar-ring: 82 84% 50%;
 
     /* Kanban Column */
-    --kanban-bg: 210 20% 96%;
-    --kanban-header: 222 47% 11%;
+    --kanban-bg: 0 0% 97%;
+    --kanban-header: 220 20% 15%;
 
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(217 91% 50%) 0%, hsl(217 91% 60%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(82 84% 50%) 0%, hsl(82 84% 40%) 100%);
-    --gradient-success: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(174 84% 40%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(217 91% 50%) 0%, hsl(262 83% 58%) 100%);
+    /* Gradients - Light mode optimized */
+    --gradient-primary: linear-gradient(135deg, hsl(220 70% 50%) 0%, hsl(220 70% 60%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(82 84% 45%) 0%, hsl(82 75% 40%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(142 70% 40%) 0%, hsl(160 60% 40%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(220 70% 50%) 0%, hsl(262 60% 55%) 100%);
+    --gradient-glass: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(220 14% 98%) 100%);
 
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(222 47% 11% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(222 47% 11% / 0.1), 0 2px 4px -2px hsl(222 47% 11% / 0.1);
-    --shadow-lg: 0 10px 15px -3px hsl(222 47% 11% / 0.1), 0 4px 6px -4px hsl(222 47% 11% / 0.1);
-    --shadow-card: 0 1px 3px 0 hsl(222 47% 11% / 0.06), 0 1px 2px -1px hsl(222 47% 11% / 0.06);
-    --shadow-card-hover: 0 10px 25px -5px hsl(222 47% 11% / 0.1), 0 8px 10px -6px hsl(222 47% 11% / 0.1);
+    /* Shadows - Refined for white theme */
+    --shadow-sm: 0 1px 2px 0 hsl(220 20% 10% / 0.04);
+    --shadow-md: 0 4px 8px -1px hsl(220 20% 10% / 0.06), 0 2px 4px -2px hsl(220 20% 10% / 0.04);
+    --shadow-lg: 0 12px 24px -4px hsl(220 20% 10% / 0.08), 0 4px 8px -4px hsl(220 20% 10% / 0.04);
+    --shadow-card: 0 1px 3px 0 hsl(220 20% 10% / 0.05), 0 1px 2px -1px hsl(220 20% 10% / 0.03);
+    --shadow-card-hover: 0 12px 28px -6px hsl(220 20% 10% / 0.12), 0 6px 12px -4px hsl(220 20% 10% / 0.06);
   }
 
   .dark {
@@ -213,28 +214,25 @@
 }
 
 @layer components {
-  /* Premium Glass Card */
+  /* Premium Glass Card - White Theme */
   .glass-card {
-    @apply bg-card rounded-2xl border border-border/50 relative overflow-hidden;
+    @apply bg-card rounded-2xl border border-border/60 relative overflow-hidden;
     box-shadow: var(--shadow-card);
-    backdrop-filter: blur(12px);
-  }
-
-  .glass-card-dark {
-    background: linear-gradient(145deg, hsl(220 20% 14% / 0.8) 0%, hsl(220 20% 10% / 0.6) 100%);
-    border: 1px solid hsl(220 20% 22% / 0.5);
-    backdrop-filter: blur(20px);
   }
 
   .glass-card:hover {
     box-shadow: var(--shadow-card-hover);
+    border-color: hsl(var(--border));
   }
 
-  /* Premium Metric Card */
+  /* Premium Metric Card - White Theme */
   .premium-metric-card {
-    @apply bg-card rounded-2xl p-5 relative overflow-hidden border border-border/30;
-    background: var(--gradient-glass);
+    @apply bg-card rounded-2xl p-5 relative overflow-hidden border border-border/50;
     box-shadow: var(--shadow-card);
+  }
+
+  .premium-metric-card:hover {
+    box-shadow: var(--shadow-card-hover);
   }
 
   .premium-metric-card::after {

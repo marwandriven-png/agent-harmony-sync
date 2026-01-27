@@ -174,11 +174,11 @@ export function PropertyDetailPanel({ property, onClose }: PropertyDetailPanelPr
       <ScrollArea className="flex-1">
         <div className="p-5 space-y-6">
           {/* Price Card */}
-          <div className="p-4 rounded-xl bg-accent/10 border border-accent/20">
+          <div className="p-4 rounded-xl bg-accent/5 border border-accent/20">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Price</p>
-                <p className="text-2xl font-bold text-accent number-display mt-1">
+                <p className="text-2xl font-bold text-foreground number-display mt-1">
                   {formatCurrency(property.price, property.currency || 'AED')}
                 </p>
                 {property.procedure_value && property.procedure_value !== property.price && (
@@ -187,8 +187,8 @@ export function PropertyDetailPanel({ property, onClose }: PropertyDetailPanelPr
                   </p>
                 )}
               </div>
-              <div className="p-3 bg-accent/20 rounded-xl">
-                <TrendingUp className="w-5 h-5 text-accent" />
+              <div className="p-3 bg-accent rounded-xl">
+                <TrendingUp className="w-5 h-5 text-white" />
               </div>
             </div>
           </div>

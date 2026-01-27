@@ -79,7 +79,7 @@ export function PropertyListPanel({
               className={cn(
                 "p-4 cursor-pointer transition-all duration-200",
                 "hover:bg-muted/50",
-                isSelected && "bg-accent/10 border-l-2 border-l-accent"
+                isSelected && "bg-accent/5 border-l-2 border-l-accent"
               )}
             >
               <div className="flex items-start gap-3">
