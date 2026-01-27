@@ -81,7 +81,7 @@ export function PropertyDashboard() {
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden">
       {/* Header */}
-      <header className="px-6 py-5 border-b border-border bg-card/50 backdrop-blur-sm">
+      <header className="px-6 py-5 border-b border-border bg-card">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="p-2.5 bg-accent/10 rounded-xl">
@@ -106,7 +106,7 @@ export function PropertyDashboard() {
             </Button>
             <CreatePropertyDialog
               trigger={
-                <Button size="sm" className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
+                <Button size="sm" className="gap-2 bg-accent text-white hover:bg-accent/90">
                   <Plus className="w-4 h-4" />
                   Add Property
                 </Button>

@@ -57,13 +57,13 @@ export function PropertyFilters({
             placeholder="Search properties, owners, locations..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10 bg-muted/50 border-border/50 focus:bg-background transition-colors"
+            className="pl-10 bg-card border-border focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
           />
         </div>
 
         <div className="flex items-center gap-2">
           <Select value={filterType} onValueChange={(v) => onTypeChange(v as any)}>
-            <SelectTrigger className="w-[140px] bg-muted/50 border-border/50">
+            <SelectTrigger className="w-[140px] bg-card border-border">
               <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
               <SelectValue placeholder="Type" />
             </SelectTrigger>
@@ -77,14 +77,14 @@ export function PropertyFilters({
             </SelectContent>
           </Select>
 
-          <Button variant="outline" size="icon" className="bg-muted/50 border-border/50">
+          <Button variant="outline" size="icon" className="bg-card border-border hover:bg-muted">
             <Filter className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-muted/30 rounded-xl w-fit">
+      <div className="flex items-center gap-1 p-1.5 bg-muted/50 rounded-xl w-fit border border-border/50">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -92,24 +92,24 @@ export function PropertyFilters({
             className={cn(
               "relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200",
               activeTab === tab.key
-                ? "text-accent-foreground"
+                ? "text-white"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
             {activeTab === tab.key && (
               <motion.div
                 layoutId="activePropertyTab"
-                className="absolute inset-0 bg-accent rounded-lg"
+                className="absolute inset-0 bg-foreground rounded-lg"
                 transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
               />
             )}
             <span className="relative z-10 flex items-center gap-2">
               {tab.label}
               <span className={cn(
-                "text-xs px-1.5 py-0.5 rounded-md",
+                "text-xs px-1.5 py-0.5 rounded-md font-semibold",
                 activeTab === tab.key 
-                  ? "bg-accent-foreground/20" 
-                  : "bg-muted"
+                  ? "bg-white/20 text-white" 
+                  : "bg-muted text-muted-foreground"
               )}>
                 {tab.count}
               </span>
