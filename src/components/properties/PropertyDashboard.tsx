@@ -1,15 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useProperties, usePropertyMetrics } from '@/hooks/useProperties';
-import { PropertyListPanel } from './PropertyListPanel';
-import { PropertyDetailPanel } from './PropertyDetailPanel';
-import { PropertyMetricsRow } from './PropertyMetricsRow';
-import { PropertyFilters } from './PropertyFilters';
+import { PropertyTable } from './PropertyTable';
+import { PropertyTableFilters } from './PropertyTableFilters';
 import { CreatePropertyDialog } from '@/components/forms/CreatePropertyDialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, RefreshCw, Building2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Database } from '@/integrations/supabase/types';
 
 type PropertyRow = Database['public']['Tables']['properties']['Row'];
@@ -20,12 +17,10 @@ export function PropertyDashboard() {
   const { data: properties = [], isLoading, refetch } = useProperties();
   const metrics = usePropertyMetrics();
   
-  // Selection & filters
-  const [selectedProperty, setSelectedProperty] = useState<PropertyRow | null>(null);
+  // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<PropertyStatus | 'all'>('all');
   const [filterType, setFilterType] = useState<PropertyType | 'all'>('all');
-  const [activeTab, setActiveTab] = useState<'all' | 'available' | 'under_offer' | 'sold'>('all');
 
   // Filtered properties
   const filteredProperties = useMemo(() => {
@@ -40,19 +35,10 @@ export function PropertyDashboard() {
 
       const matchesStatus = filterStatus === 'all' || property.status === filterStatus;
       const matchesType = filterType === 'all' || property.type === filterType;
-      const matchesTab = activeTab === 'all' || property.status === activeTab;
 
-      return matchesSearch && matchesStatus && matchesType && matchesTab;
+      return matchesSearch && matchesStatus && matchesType;
     });
-  }, [properties, searchQuery, filterStatus, filterType, activeTab]);
-
-  // Tab counts
-  const tabCounts = useMemo(() => ({
-    all: properties.length,
-    available: properties.filter(p => p.status === 'available').length,
-    under_offer: properties.filter(p => p.status === 'under_offer').length,
-    sold: properties.filter(p => p.status === 'sold' || p.status === 'rented').length,
-  }), [properties]);
+  }, [properties, searchQuery, filterStatus, filterType]);
 
   if (isLoading) {
     return (
@@ -64,16 +50,8 @@ export function PropertyDashboard() {
           </div>
           <Skeleton className="h-10 w-32" />
         </div>
-        <div className="grid grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-28 rounded-2xl" />
-          ))}
-        </div>
         <Skeleton className="h-12 w-full" />
-        <div className="flex-1 grid grid-cols-3 gap-6">
-          <Skeleton className="col-span-1 rounded-2xl" />
-          <Skeleton className="col-span-2 rounded-2xl" />
-        </div>
+        <Skeleton className="flex-1 rounded-2xl" />
       </div>
     );
   }
@@ -117,68 +95,22 @@ export function PropertyDashboard() {
       </header>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden flex flex-col p-6 space-y-5">
-        {/* Metrics Row */}
-        <PropertyMetricsRow metrics={metrics} />
+      <ScrollArea className="flex-1">
+        <div className="p-6">
+          {/* Filters */}
+          <PropertyTableFilters
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            filterStatus={filterStatus}
+            onStatusChange={setFilterStatus}
+            filterType={filterType}
+            onTypeChange={setFilterType}
+          />
 
-        {/* Filters & Tabs */}
-        <PropertyFilters
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          filterStatus={filterStatus}
-          onStatusChange={setFilterStatus}
-          filterType={filterType}
-          onTypeChange={setFilterType}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          tabCounts={tabCounts}
-        />
-
-        {/* Main Content - List + Detail */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-5 min-h-0 overflow-hidden">
-          {/* Property List Panel */}
-          <div className={cn(
-            "lg:col-span-2 overflow-hidden rounded-2xl border border-border bg-card",
-            selectedProperty && "hidden lg:block"
-          )}>
-            <PropertyListPanel
-              properties={filteredProperties}
-              selectedProperty={selectedProperty}
-              onSelectProperty={setSelectedProperty}
-            />
-          </div>
-
-          {/* Property Detail Panel */}
-          <div className={cn(
-            "lg:col-span-3 overflow-hidden rounded-2xl border border-border bg-card",
-            !selectedProperty && "hidden lg:flex lg:items-center lg:justify-center"
-          )}>
-            <AnimatePresence mode="wait">
-              {selectedProperty ? (
-                <PropertyDetailPanel
-                  key={selectedProperty.id}
-                  property={selectedProperty}
-                  onClose={() => setSelectedProperty(null)}
-                />
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center p-12"
-                >
-                  <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
-                    <Building2 className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <p className="text-muted-foreground font-medium">Select a property to view details</p>
-                  <p className="text-muted-foreground/60 text-sm mt-1">
-                    Click on any property from the list
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          {/* Table */}
+          <PropertyTable properties={filteredProperties} />
         </div>
-      </div>
+      </ScrollArea>
     </div>
   );
 }
