@@ -804,6 +804,7 @@ export type Database = {
       }
       properties: {
         Row: {
+          assigned_agent_id: string | null
           bathrooms: number
           bedrooms: number
           birth_date: string | null
@@ -812,12 +813,16 @@ export type Database = {
           created_at: string
           created_by: string | null
           currency: string | null
+          database_status: string | null
           description: string | null
           features: string[] | null
           google_sheet_row_id: string | null
           id: string
           id_number: string | null
           images: string[] | null
+          last_activity_at: string | null
+          listing_state: string | null
+          listing_type: string | null
           location: string
           master_project: string | null
           matches: number | null
@@ -829,6 +834,7 @@ export type Database = {
           procedure_name: string | null
           procedure_value: number | null
           regis: string | null
+          section: string
           size: number
           size_unit: string | null
           status: Database["public"]["Enums"]["property_status"]
@@ -840,6 +846,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_agent_id?: string | null
           bathrooms: number
           bedrooms: number
           birth_date?: string | null
@@ -848,12 +855,16 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string | null
+          database_status?: string | null
           description?: string | null
           features?: string[] | null
           google_sheet_row_id?: string | null
           id?: string
           id_number?: string | null
           images?: string[] | null
+          last_activity_at?: string | null
+          listing_state?: string | null
+          listing_type?: string | null
           location: string
           master_project?: string | null
           matches?: number | null
@@ -865,6 +876,7 @@ export type Database = {
           procedure_name?: string | null
           procedure_value?: number | null
           regis?: string | null
+          section?: string
           size: number
           size_unit?: string | null
           status?: Database["public"]["Enums"]["property_status"]
@@ -876,6 +888,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_agent_id?: string | null
           bathrooms?: number
           bedrooms?: number
           birth_date?: string | null
@@ -884,12 +897,16 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string | null
+          database_status?: string | null
           description?: string | null
           features?: string[] | null
           google_sheet_row_id?: string | null
           id?: string
           id_number?: string | null
           images?: string[] | null
+          last_activity_at?: string | null
+          listing_state?: string | null
+          listing_type?: string | null
           location?: string
           master_project?: string | null
           matches?: number | null
@@ -901,6 +918,7 @@ export type Database = {
           procedure_name?: string | null
           procedure_value?: number | null
           regis?: string | null
+          section?: string
           size?: number
           size_unit?: string | null
           status?: Database["public"]["Enums"]["property_status"]
@@ -912,6 +930,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "properties_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "properties_created_by_fkey"
             columns: ["created_by"]
@@ -983,6 +1008,48 @@ export type Database = {
           },
           {
             foreignKeyName: "property_matches_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_notes: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_notes_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
