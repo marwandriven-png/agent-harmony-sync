@@ -1,44 +1,94 @@
 import React, { useState, useMemo } from 'react';
-import { useProperties, usePropertyMetrics } from '@/hooks/useProperties';
-import { PropertyTable } from './PropertyTable';
-import { PropertyTableFilters } from './PropertyTableFilters';
+import { useProperties, usePropertyMetrics, useDeleteProperty } from '@/hooks/useProperties';
+import { PropertySectionTabs, type PropertySection } from './PropertySectionTabs';
+import { PropertySectionList } from './PropertySectionList';
+import { PropertySectionFilters } from './PropertySectionFilters';
+import { ConvertPropertyDialog } from './ConvertPropertyDialog';
 import { CreatePropertyDialog } from '@/components/forms/CreatePropertyDialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, RefreshCw, Building2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type { Database } from '@/integrations/supabase/types';
 
 type PropertyRow = Database['public']['Tables']['properties']['Row'];
 type PropertyStatus = Database['public']['Enums']['property_status'];
-type PropertyType = Database['public']['Enums']['property_type'];
 
 export function PropertyDashboard() {
   const { data: properties = [], isLoading, refetch } = useProperties();
-  const metrics = usePropertyMetrics();
+  const deleteProperty = useDeleteProperty();
   
-  // Filters
+  // Section & filter state
+  const [activeSection, setActiveSection] = useState<PropertySection>('pocket');
+  const [listingTypeFilter, setListingTypeFilter] = useState<'all' | 'sale' | 'rent'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<PropertyStatus | 'all'>('all');
-  const [filterType, setFilterType] = useState<PropertyType | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<PropertyStatus | 'all'>('all');
 
-  // Filtered properties
-  const filteredProperties = useMemo(() => {
-    return properties.filter((property) => {
+  // Dialog state
+  const [convertProperty, setConvertProperty] = useState<PropertyRow | null>(null);
+  const [deleteConfirmProperty, setDeleteConfirmProperty] = useState<PropertyRow | null>(null);
+
+  // Filter properties by section
+  const sectionedProperties = useMemo(() => {
+    const pocket = properties.filter(p => p.section === 'pocket');
+    const active = properties.filter(p => p.section === 'active');
+    const database = properties.filter(p => p.section === 'database' || !p.section);
+    
+    return { pocket, active, database };
+  }, [properties]);
+
+  // Apply search and status filters
+  const filteredSectionProperties = useMemo(() => {
+    const sectionProps = sectionedProperties[activeSection];
+    
+    return sectionProps.filter((property) => {
+      // Search filter
       const searchLower = searchQuery.toLowerCase();
-      const matchesSearch =
+      const matchesSearch = !searchQuery || 
         property.title?.toLowerCase().includes(searchLower) ||
         property.building_name?.toLowerCase().includes(searchLower) ||
         property.owner_name?.toLowerCase().includes(searchLower) ||
         property.location?.toLowerCase().includes(searchLower) ||
         property.regis?.toLowerCase().includes(searchLower);
 
-      const matchesStatus = filterStatus === 'all' || property.status === filterStatus;
-      const matchesType = filterType === 'all' || property.type === filterType;
+      // Status filter
+      const matchesStatus = statusFilter === 'all' || property.status === statusFilter;
 
-      return matchesSearch && matchesStatus && matchesType;
+      return matchesSearch && matchesStatus;
     });
-  }, [properties, searchQuery, filterStatus, filterType]);
+  }, [sectionedProperties, activeSection, searchQuery, statusFilter]);
+
+  // Section counts
+  const sectionCounts = {
+    pocket: sectionedProperties.pocket.length,
+    active: sectionedProperties.active.length,
+    database: sectionedProperties.database.length,
+  };
+
+  const handleConvert = (property: PropertyRow) => {
+    setConvertProperty(property);
+  };
+
+  const handleDelete = (property: PropertyRow) => {
+    setDeleteConfirmProperty(property);
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirmProperty) {
+      deleteProperty.mutate(deleteConfirmProperty.id);
+      setDeleteConfirmProperty(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -50,7 +100,7 @@ export function PropertyDashboard() {
           </div>
           <Skeleton className="h-10 w-32" />
         </div>
-        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-14 w-full rounded-xl" />
         <Skeleton className="flex-1 rounded-2xl" />
       </div>
     );
@@ -68,7 +118,7 @@ export function PropertyDashboard() {
             <div>
               <h1 className="text-2xl font-bold text-foreground tracking-tight">Properties</h1>
               <p className="text-muted-foreground text-sm mt-0.5">
-                Manage {metrics.totalProperties} property listings
+                {properties.length} total properties
               </p>
             </div>
           </div>
@@ -84,7 +134,7 @@ export function PropertyDashboard() {
             </Button>
             <CreatePropertyDialog
               trigger={
-                <Button size="sm" className="gap-2 bg-accent text-white hover:bg-accent/90">
+                <Button size="sm" className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
                   <Plus className="w-4 h-4" />
                   Add Property
                 </Button>
@@ -94,23 +144,65 @@ export function PropertyDashboard() {
         </div>
       </header>
 
+      {/* Section Tabs */}
+      <div className="px-6 py-4 border-b border-border bg-card/50">
+        <PropertySectionTabs
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
+          counts={sectionCounts}
+        />
+      </div>
+
       {/* Content */}
       <ScrollArea className="flex-1">
         <div className="p-6">
           {/* Filters */}
-          <PropertyTableFilters
+          <PropertySectionFilters
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
-            filterStatus={filterStatus}
-            onStatusChange={setFilterStatus}
-            filterType={filterType}
-            onTypeChange={setFilterType}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            section={activeSection}
           />
 
-          {/* Table */}
-          <PropertyTable properties={filteredProperties} />
+          {/* Properties List */}
+          <PropertySectionList
+            section={activeSection}
+            properties={filteredSectionProperties}
+            isLoading={isLoading}
+            listingTypeFilter={listingTypeFilter}
+            onListingTypeChange={setListingTypeFilter}
+            onConvert={handleConvert}
+            onDelete={handleDelete}
+          />
         </div>
       </ScrollArea>
+
+      {/* Convert Dialog */}
+      <ConvertPropertyDialog
+        property={convertProperty}
+        open={!!convertProperty}
+        onOpenChange={(open) => !open && setConvertProperty(null)}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteConfirmProperty} onOpenChange={(open) => !open && setDeleteConfirmProperty(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Property</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteConfirmProperty?.building_name || deleteConfirmProperty?.title || 'this property'}"? 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
