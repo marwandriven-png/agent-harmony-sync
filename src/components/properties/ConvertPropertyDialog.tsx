@@ -64,9 +64,10 @@ export function ConvertPropertyDialog({ property, open, onOpenChange }: ConvertP
         .update(updates)
         .eq('id', property.id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Property not found or you do not have permission to update it');
 
       // Log activity
       await supabase.from('activity_logs').insert({
