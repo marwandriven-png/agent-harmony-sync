@@ -121,9 +121,10 @@ export function useUpdateProperty() {
         .update(updates)
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Property not found or you do not have permission to update it');
 
       // Log the activity with field-level changes
       if (oldData) {
