@@ -3,21 +3,21 @@ import { motion } from 'framer-motion';
 import { Briefcase, Globe, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type PropertySection = 'pocket' | 'active' | 'database';
+export type PropertySection = 'pocket_listing' | 'active_listing' | 'database';
 
 interface PropertySectionTabsProps {
   activeSection: PropertySection;
   onSectionChange: (section: PropertySection) => void;
   counts: {
-    pocket: number;
-    active: number;
+    pocket_listing: number;
+    active_listing: number;
     database: number;
   };
 }
 
 const sections = [
-  { id: 'pocket' as const, label: 'Pocket Listings', icon: Briefcase, description: 'Off-market properties' },
-  { id: 'active' as const, label: 'Active Listings', icon: Globe, description: 'Published listings' },
+  { id: 'pocket_listing' as const, label: 'Pocket Listings', icon: Briefcase, description: 'Off-market properties' },
+  { id: 'active_listing' as const, label: 'Active Listings', icon: Globe, description: 'Published listings' },
   { id: 'database' as const, label: 'Database', icon: Database, description: 'Sourcing & qualification' },
 ];
 

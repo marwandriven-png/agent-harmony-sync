@@ -73,10 +73,10 @@ export function PropertyListingCard({ property, section, onConvert, onDelete }: 
   };
 
   const getListingType = () => {
-    return property.listing_type || 'sale';
+    return property.listing_type || 'for_sale';
   };
 
-  const isSale = getListingType().toLowerCase() === 'sale';
+  const isSale = getListingType().toLowerCase() === 'for_sale';
 
   const getStatus = () => {
     if (section === 'database') {
@@ -185,7 +185,7 @@ export function PropertyListingCard({ property, section, onConvert, onDelete }: 
                 </Badge>
 
                 {/* Listing State (for Active section) */}
-                {section === 'active' && (
+                {section === 'active_listing' && (
                   <Badge variant="outline" className={cn(
                     "text-xs font-medium",
                     property.listing_state === 'paused' 
