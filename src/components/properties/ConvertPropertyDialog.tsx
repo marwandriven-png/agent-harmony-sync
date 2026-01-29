@@ -27,23 +27,23 @@ interface ConvertPropertyDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type TargetSection = 'pocket' | 'active';
-type ListingType = 'sale' | 'rent';
+type TargetSection = 'pocket_listing' | 'active_listing';
+type ListingType = 'for_sale' | 'for_rent';
 
 export function ConvertPropertyDialog({ property, open, onOpenChange }: ConvertPropertyDialogProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   
-  const [targetSection, setTargetSection] = useState<TargetSection>('pocket');
-  const [listingType, setListingType] = useState<ListingType>('sale');
+  const [targetSection, setTargetSection] = useState<TargetSection>('pocket_listing');
+  const [listingType, setListingType] = useState<ListingType>('for_sale');
   const [price, setPrice] = useState(property?.price?.toString() || '');
 
   // Reset form when dialog opens with new property
   React.useEffect(() => {
     if (property && open) {
       setPrice(property.price?.toString() || '');
-      setTargetSection('pocket');
-      setListingType('sale');
+      setTargetSection('pocket_listing');
+      setListingType('for_sale');
     }
   }, [property, open]);
 
@@ -84,7 +84,7 @@ export function ConvertPropertyDialog({ property, open, onOpenChange }: ConvertP
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['properties'] });
-      toast.success(`Property converted to ${targetSection === 'pocket' ? 'Pocket' : 'Active'} Listing`);
+      toast.success(`Property converted to ${targetSection === 'pocket_listing' ? 'Pocket' : 'Active'} Listing`);
       onOpenChange(false);
     },
     onError: (error) => {
@@ -119,15 +119,15 @@ export function ConvertPropertyDialog({ property, open, onOpenChange }: ConvertP
               className="grid grid-cols-2 gap-3"
             >
               <Label
-                htmlFor="pocket"
+                htmlFor="pocket_listing"
                 className={cn(
                   "flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all",
-                  targetSection === 'pocket'
+                  targetSection === 'pocket_listing'
                     ? "border-accent bg-accent/10"
                     : "border-border hover:border-accent/50"
                 )}
               >
-                <RadioGroupItem value="pocket" id="pocket" className="sr-only" />
+                <RadioGroupItem value="pocket_listing" id="pocket_listing" className="sr-only" />
                 <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
                   <Home className="w-5 h-5 text-accent" />
                 </div>
@@ -136,15 +136,15 @@ export function ConvertPropertyDialog({ property, open, onOpenChange }: ConvertP
               </Label>
 
               <Label
-                htmlFor="active"
+                htmlFor="active_listing"
                 className={cn(
                   "flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all",
-                  targetSection === 'active'
+                  targetSection === 'active_listing'
                     ? "border-primary bg-primary/10"
                     : "border-border hover:border-primary/50"
                 )}
               >
-                <RadioGroupItem value="active" id="active" className="sr-only" />
+                <RadioGroupItem value="active_listing" id="active_listing" className="sr-only" />
                 <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
                   <Home className="w-5 h-5 text-primary" />
                 </div>
@@ -163,29 +163,29 @@ export function ConvertPropertyDialog({ property, open, onOpenChange }: ConvertP
               className="grid grid-cols-2 gap-3"
             >
               <Label
-                htmlFor="sale"
+                htmlFor="for_sale"
                 className={cn(
                   "flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all",
-                  listingType === 'sale'
+                  listingType === 'for_sale'
                     ? "border-accent bg-accent/10 text-accent"
                     : "border-border hover:border-accent/50"
                 )}
               >
-                <RadioGroupItem value="sale" id="sale" className="sr-only" />
+                <RadioGroupItem value="for_sale" id="for_sale" className="sr-only" />
                 <Home className="w-4 h-4" />
                 <span className="font-medium">For Sale</span>
               </Label>
 
               <Label
-                htmlFor="rent"
+                htmlFor="for_rent"
                 className={cn(
                   "flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all",
-                  listingType === 'rent'
+                  listingType === 'for_rent'
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border hover:border-primary/50"
                 )}
               >
-                <RadioGroupItem value="rent" id="rent" className="sr-only" />
+                <RadioGroupItem value="for_rent" id="for_rent" className="sr-only" />
                 <Key className="w-4 h-4" />
                 <span className="font-medium">For Rent</span>
               </Label>
@@ -195,7 +195,7 @@ export function ConvertPropertyDialog({ property, open, onOpenChange }: ConvertP
           {/* Price */}
           <div className="space-y-2">
             <Label htmlFor="price" className="text-sm font-medium">
-              {listingType === 'sale' ? 'Sale Price' : 'Annual Rent'}
+              {listingType === 'for_sale' ? 'Sale Price' : 'Annual Rent'}
             </Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">

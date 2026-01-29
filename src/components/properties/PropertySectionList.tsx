@@ -14,8 +14,8 @@ interface PropertySectionListProps {
   section: PropertySection;
   properties: PropertyRow[];
   isLoading: boolean;
-  listingTypeFilter: 'all' | 'sale' | 'rent';
-  onListingTypeChange: (type: 'all' | 'sale' | 'rent') => void;
+  listingTypeFilter: 'all' | 'for_sale' | 'for_rent';
+  onListingTypeChange: (type: 'all' | 'for_sale' | 'for_rent') => void;
   onConvert?: (property: PropertyRow) => void;
   onDelete?: (property: PropertyRow) => void;
 }
@@ -33,13 +33,13 @@ export function PropertySectionList({
   const filteredProperties = properties.filter(p => {
     if (section === 'database') return true; // No sub-filter for database
     if (listingTypeFilter === 'all') return true;
-    const pType = (p.listing_type || 'sale').toLowerCase();
+    const pType = (p.listing_type || 'for_sale').toLowerCase();
     return pType === listingTypeFilter;
   });
 
   const getSectionConfig = () => {
     switch (section) {
-      case 'pocket':
+      case 'pocket_listing':
         return {
           title: 'Pocket Listings',
           description: 'Off-market, exclusive properties',
@@ -47,7 +47,7 @@ export function PropertySectionList({
           emptyText: 'No pocket listings yet',
           emptySubtext: 'Convert interested database properties to pocket listings',
         };
-      case 'active':
+      case 'active_listing':
         return {
           title: 'Active Listings',
           description: 'Published and live on portals',
@@ -70,8 +70,8 @@ export function PropertySectionList({
   const showTypeFilter = section !== 'database';
 
   // Count by type
-  const saleCount = properties.filter(p => (p.listing_type || 'sale').toLowerCase() === 'sale').length;
-  const rentCount = properties.filter(p => (p.listing_type || 'sale').toLowerCase() === 'rent').length;
+  const saleCount = properties.filter(p => (p.listing_type || 'for_sale').toLowerCase() === 'for_sale').length;
+  const rentCount = properties.filter(p => (p.listing_type || 'for_sale').toLowerCase() === 'for_rent').length;
 
   return (
     <div className="space-y-4">
@@ -83,11 +83,11 @@ export function PropertySectionList({
               <TabsTrigger value="all" className="text-xs px-3 data-[state=active]:bg-card">
                 All ({properties.length})
               </TabsTrigger>
-              <TabsTrigger value="sale" className="text-xs px-3 data-[state=active]:bg-card">
+              <TabsTrigger value="for_sale" className="text-xs px-3 data-[state=active]:bg-card">
                 <Home className="w-3.5 h-3.5 mr-1.5 text-accent" />
                 For Sale ({saleCount})
               </TabsTrigger>
-              <TabsTrigger value="rent" className="text-xs px-3 data-[state=active]:bg-card">
+              <TabsTrigger value="for_rent" className="text-xs px-3 data-[state=active]:bg-card">
                 <Key className="w-3.5 h-3.5 mr-1.5 text-primary" />
                 For Rent ({rentCount})
               </TabsTrigger>

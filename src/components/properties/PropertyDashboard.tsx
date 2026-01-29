@@ -29,8 +29,8 @@ export function PropertyDashboard() {
   const deleteProperty = useDeleteProperty();
   
   // Section & filter state
-  const [activeSection, setActiveSection] = useState<PropertySection>('pocket');
-  const [listingTypeFilter, setListingTypeFilter] = useState<'all' | 'sale' | 'rent'>('all');
+  const [activeSection, setActiveSection] = useState<PropertySection>('pocket_listing');
+  const [listingTypeFilter, setListingTypeFilter] = useState<'all' | 'for_sale' | 'for_rent'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<PropertyStatus | 'all'>('all');
 
@@ -40,11 +40,11 @@ export function PropertyDashboard() {
 
   // Filter properties by section
   const sectionedProperties = useMemo(() => {
-    const pocket = properties.filter(p => p.section === 'pocket');
-    const active = properties.filter(p => p.section === 'active');
+    const pocket_listing = properties.filter(p => p.section === 'pocket_listing');
+    const active_listing = properties.filter(p => p.section === 'active_listing');
     const database = properties.filter(p => p.section === 'database' || !p.section);
     
-    return { pocket, active, database };
+    return { pocket_listing, active_listing, database };
   }, [properties]);
 
   // Apply search and status filters
@@ -70,8 +70,8 @@ export function PropertyDashboard() {
 
   // Section counts
   const sectionCounts = {
-    pocket: sectionedProperties.pocket.length,
-    active: sectionedProperties.active.length,
+    pocket_listing: sectionedProperties.pocket_listing.length,
+    active_listing: sectionedProperties.active_listing.length,
     database: sectionedProperties.database.length,
   };
 
