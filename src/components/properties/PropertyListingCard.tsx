@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { 
   Building2, User, Phone, MapPin, Bed, Bath, Maximize, 
   MoreHorizontal, Edit3, MessageSquare, ArrowRight, Trash2,
-  Home, Key
+  Home, Key, Clock
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,22 @@ import { EditPropertyDialog } from '@/components/forms/EditPropertyDialog';
 import { PropertyNotesPanel } from './PropertyNotesPanel';
 import type { Database } from '@/integrations/supabase/types';
 import type { PropertySection } from './PropertySectionTabs';
+
+// Helper to format relative time
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 
 type PropertyRow = Database['public']['Tables']['properties']['Row'];
 type PropertyStatus = Database['public']['Enums']['property_status'];
@@ -162,17 +178,45 @@ export function PropertyListingCard({ property, section, onConvert, onDelete }: 
 
             {/* Bottom Row */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 {/* Status Badge */}
                 <Badge variant="outline" className={cn("text-xs font-medium", status.className)}>
                   {status.label}
                 </Badge>
 
+                {/* Listing State (for Active section) */}
+                {section === 'active' && (
+                  <Badge variant="outline" className={cn(
+                    "text-xs font-medium",
+                    property.listing_state === 'paused' 
+                      ? "bg-muted text-muted-foreground border-border" 
+                      : "bg-primary/10 text-primary border-primary/30"
+                  )}>
+                    {property.listing_state === 'paused' ? 'Paused' : 'Live'}
+                  </Badge>
+                )}
+
+                {/* Assigned Agent */}
+                {property.assigned_agent_id && (
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <User className="w-3 h-3" />
+                    Agent
+                  </span>
+                )}
+
                 {/* Owner Info */}
-                {property.owner_name && (
+                {property.owner_name && !property.assigned_agent_id && (
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <User className="w-3 h-3" />
                     {property.owner_name}
+                  </span>
+                )}
+
+                {/* Last Activity Indicator */}
+                {property.last_activity_at && (
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="w-3 h-3" />
+                    {formatRelativeTime(property.last_activity_at)}
                   </span>
                 )}
               </div>
