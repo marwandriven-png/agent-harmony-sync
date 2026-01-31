@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Building2, Home, Key } from 'lucide-react';
-import { PropertyListingCard } from './PropertyListingCard';
+import { PropertyTableRow } from './PropertyTableRow';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
@@ -29,6 +29,8 @@ export function PropertySectionList({
   onConvert,
   onDelete,
 }: PropertySectionListProps) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   // Filter by listing type (for pocket & active)
   const filteredProperties = properties.filter(p => {
     if (section === 'database') return true; // No sub-filter for database
@@ -36,6 +38,10 @@ export function PropertySectionList({
     const pType = (p.listing_type || 'for_sale').toLowerCase();
     return pType === listingTypeFilter;
   });
+
+  const toggleExpand = (propertyId: string) => {
+    setExpandedId(expandedId === propertyId ? null : propertyId);
+  };
 
   const getSectionConfig = () => {
     switch (section) {
@@ -111,14 +117,18 @@ export function PropertySectionList({
         </div>
       )}
 
-      {/* List */}
-      <div className="space-y-3">
+      {/* Table */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-card rounded-xl shadow-card overflow-hidden"
+      >
         {isLoading ? (
-          <>
-            <Skeleton className="h-32 w-full rounded-2xl" />
-            <Skeleton className="h-32 w-full rounded-2xl" />
-            <Skeleton className="h-32 w-full rounded-2xl" />
-          </>
+          <div className="p-6 space-y-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
         ) : filteredProperties.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
@@ -128,19 +138,37 @@ export function PropertySectionList({
             <p className="text-sm text-muted-foreground mt-1">{config.emptySubtext}</p>
           </div>
         ) : (
-          <AnimatePresence mode="popLayout">
-            {filteredProperties.map((property) => (
-              <PropertyListingCard
-                key={property.id}
-                property={property}
-                section={section}
-                onConvert={onConvert}
-                onDelete={onDelete}
-              />
-            ))}
-          </AnimatePresence>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Property</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm hidden md:table-cell">Location</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm hidden lg:table-cell">Specs</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground text-sm">Price</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Status</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground text-sm">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <AnimatePresence mode="popLayout">
+                  {filteredProperties.map((property) => (
+                    <PropertyTableRow
+                      key={property.id}
+                      property={property}
+                      section={section}
+                      isExpanded={expandedId === property.id}
+                      onToggleExpand={() => toggleExpand(property.id)}
+                      onConvert={onConvert}
+                      onDelete={onDelete}
+                    />
+                  ))}
+                </AnimatePresence>
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }
