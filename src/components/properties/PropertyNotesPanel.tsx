@@ -12,6 +12,7 @@ import { formatDistanceToNow } from 'date-fns';
 
 interface PropertyNotesPanelProps {
   propertyId: string;
+  compact?: boolean;
 }
 
 interface PropertyNote {
@@ -24,7 +25,7 @@ interface PropertyNote {
   };
 }
 
-export function PropertyNotesPanel({ propertyId }: PropertyNotesPanelProps) {
+export function PropertyNotesPanel({ propertyId, compact = false }: PropertyNotesPanelProps) {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
   const [newNote, setNewNote] = useState('');
@@ -102,6 +103,48 @@ export function PropertyNotesPanel({ propertyId }: PropertyNotesPanelProps) {
       addNoteMutation.mutate(newNote.trim());
     }
   };
+
+  if (compact) {
+    // Compact view for expanded table rows
+    return (
+      <div className="space-y-2">
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <Textarea
+            value={newNote}
+            onChange={(e) => setNewNote(e.target.value)}
+            placeholder="Add a note..."
+            className="min-h-[40px] text-xs resize-none bg-background border-border/50"
+          />
+          <Button 
+            type="submit" 
+            size="icon"
+            variant="ghost"
+            disabled={!newNote.trim() || addNoteMutation.isPending}
+            className="shrink-0 h-10 w-10"
+          >
+            <Send className="w-3.5 h-3.5" />
+          </Button>
+        </form>
+        
+        <div className="max-h-[100px] overflow-y-auto space-y-1.5">
+          {isLoading ? (
+            <Skeleton className="h-8 w-full" />
+          ) : notes.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No notes added</p>
+          ) : (
+            notes.slice(0, 3).map((note) => (
+              <div key={note.id} className="text-xs">
+                <p className="text-foreground line-clamp-2">{note.content}</p>
+                <span className="text-muted-foreground">
+                  {formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
