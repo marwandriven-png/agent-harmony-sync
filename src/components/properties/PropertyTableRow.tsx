@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronDown, ChevronUp, MapPin, Building, Phone, User,
   Bed, Bath, Maximize, Home, Key, Edit3, Trash2, ArrowRight,
-  MessageSquare, Clock, CheckCircle, XCircle, AlertCircle
+  MessageSquare, Clock, CheckCircle, XCircle, AlertCircle, Users
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import {
 import { cn } from '@/lib/utils';
 import { EditPropertyDialog } from '@/components/forms/EditPropertyDialog';
 import { PropertyNotesPanel } from './PropertyNotesPanel';
+import { PropertyMatchedLeadsDialog } from './PropertyMatchedLeadsDialog';
 import { useUpdateProperty } from '@/hooks/useProperties';
 import type { Database } from '@/integrations/supabase/types';
 import type { PropertySection } from './PropertySectionTabs';
@@ -56,6 +57,7 @@ export function PropertyTableRow({
   onDelete,
 }: PropertyTableRowProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [matchedLeadsOpen, setMatchedLeadsOpen] = useState(false);
   const updateProperty = useUpdateProperty();
 
   const getDisplayName = () => {
@@ -173,6 +175,18 @@ export function PropertyTableRow({
           </div>
         </td>
 
+        {/* Matches */}
+        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => setMatchedLeadsOpen(true)}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-[hsl(82,84%,50%)]/10 transition-colors group"
+            title="View matched leads"
+          >
+            <Users className="w-4 h-4 text-[hsl(82,84%,50%)] group-hover:scale-110 transition-transform" />
+            <span className="font-semibold text-foreground">{property.matches || 0}</span>
+          </button>
+        </td>
+
         {/* Price */}
         <td className="py-3 px-4">
           <div className="text-right">
@@ -271,7 +285,7 @@ export function PropertyTableRow({
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <td colSpan={6} className="bg-muted/20 px-4 py-4">
+            <td colSpan={7} className="bg-muted/20 px-4 py-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Property Details */}
                 <div className="space-y-3">
@@ -352,6 +366,13 @@ export function PropertyTableRow({
         property={property}
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
+      />
+
+      {/* Matched Leads Dialog */}
+      <PropertyMatchedLeadsDialog
+        property={property}
+        open={matchedLeadsOpen}
+        onOpenChange={setMatchedLeadsOpen}
       />
     </>
   );
