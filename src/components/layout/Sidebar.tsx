@@ -101,19 +101,19 @@ export function Sidebar() {
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
                     "hover:bg-sidebar-accent group relative",
                     isActive 
-                      ? "bg-accent/10 text-accent" 
+                      ? "bg-[hsl(82,84%,50%)]/15 text-[hsl(82,84%,50%)]" 
                       : "text-sidebar-foreground/70 hover:text-sidebar-foreground"
                   )}
                 >
                   {isActive && (
                     <motion.div
                       layoutId="activeIndicator"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-accent rounded-r-full"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[hsl(82,84%,50%)] rounded-r-full"
                     />
                   )}
                   <item.icon className={cn(
                     "w-5 h-5 flex-shrink-0",
-                    isActive && "text-accent"
+                    isActive && "text-[hsl(82,84%,50%)]"
                   )} />
                   <AnimatePresence>
                     {!collapsed && (

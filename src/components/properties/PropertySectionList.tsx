@@ -145,6 +145,7 @@ export function PropertySectionList({
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Property</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm hidden md:table-cell">Location</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm hidden lg:table-cell">Specs</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Matches</th>
                   <th className="text-right py-3 px-4 font-medium text-muted-foreground text-sm">Price</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Status</th>
                   <th className="text-right py-3 px-4 font-medium text-muted-foreground text-sm">Actions</th>
