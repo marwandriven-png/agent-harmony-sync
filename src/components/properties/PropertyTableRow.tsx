@@ -122,14 +122,11 @@ export function PropertyTableRow({
             ) : (
               <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             )}
-            <div className={cn(
-              "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
-              isSale ? "bg-accent/10" : "bg-primary/10"
-            )}>
+            <div className="w-8 h-8 rounded-full bg-foreground flex items-center justify-center flex-shrink-0">
               {isSale ? (
-                <Home className="w-4 h-4 text-accent" />
+                <Home className="w-4 h-4 text-background" />
               ) : (
-                <Key className="w-4 h-4 text-primary" />
+                <Key className="w-4 h-4 text-background" />
               )}
             </div>
             <div className="min-w-0">
