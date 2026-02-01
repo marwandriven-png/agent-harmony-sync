@@ -78,10 +78,10 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Collapse Button - Black background with white icon */}
+      {/* Collapse Button - Lime green background */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-20 w-6 h-6 bg-foreground rounded-full flex items-center justify-center text-background shadow-lg hover:scale-110 transition-transform z-50"
+        className="absolute -right-3 top-20 w-6 h-6 bg-[hsl(82,84%,50%)] rounded-full flex items-center justify-center text-sidebar shadow-lg hover:scale-110 transition-transform z-50"
       >
         {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
       </button>
@@ -101,24 +101,20 @@ export function Sidebar() {
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
                     "hover:bg-sidebar-accent group relative",
                     isActive 
-                      ? "bg-background text-foreground" 
+                      ? "bg-[hsl(82,84%,50%)]/15 text-[hsl(82,84%,50%)]" 
                       : "text-sidebar-foreground/70 hover:text-sidebar-foreground"
                   )}
                 >
                   {isActive && (
                     <motion.div
                       layoutId="activeIndicator"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-foreground rounded-r-full"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[hsl(82,84%,50%)] rounded-r-full"
                     />
                   )}
-                  <div className={cn(
-                    "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
-                    isActive 
-                      ? "bg-background text-foreground shadow-sm border border-border" 
-                      : "group-hover:bg-background/50"
-                  )}>
-                    <item.icon className="w-4 h-4" />
-                  </div>
+                  <item.icon className={cn(
+                    "w-5 h-5 flex-shrink-0",
+                    isActive && "text-[hsl(82,84%,50%)]"
+                  )} />
                   <AnimatePresence>
                     {!collapsed && (
                       <motion.span
