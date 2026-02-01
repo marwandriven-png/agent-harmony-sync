@@ -78,10 +78,10 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Collapse Button - Lime green background */}
+      {/* Collapse Button - Black background with white icon */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-20 w-6 h-6 bg-[hsl(82,84%,50%)] rounded-full flex items-center justify-center text-sidebar shadow-lg hover:scale-110 transition-transform z-50"
+        className="absolute -right-3 top-20 w-6 h-6 bg-foreground rounded-full flex items-center justify-center text-background shadow-lg hover:scale-110 transition-transform z-50"
       >
         {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
       </button>
