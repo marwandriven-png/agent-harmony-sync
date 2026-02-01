@@ -78,7 +78,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Collapse Button */}
+      {/* Collapse Button - Black background with white icon */}
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="absolute -right-3 top-20 w-6 h-6 bg-foreground rounded-full flex items-center justify-center text-background shadow-lg hover:scale-110 transition-transform z-50"
