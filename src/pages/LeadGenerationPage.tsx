@@ -456,6 +456,7 @@ export default function LeadGenerationPage() {
         phone: p.phone || '',
         location: p.location,
         linkedin: !!p.linkedin,
+        linkedinUrl: p.linkedinUrl,
       })),
       hasContact: true,
     };

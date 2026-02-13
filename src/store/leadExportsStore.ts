@@ -11,6 +11,7 @@ export interface ExportedLead {
   phone: string;
   location: string;
   linkedin: boolean;
+  linkedinUrl?: string;
 }
 
 export interface LeadExport {
