@@ -101,13 +101,17 @@ export function useStartCampaign() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (campaignId: string) => {
-      // First check if campaign has leads, if not add all available leads
+      // First check if campaign has leads
       const { data: checkData } = await supabase.functions.invoke('campaign-engine', {
         body: { action: 'get', campaign_id: campaignId },
       });
       
-      if (!checkData?.leads || checkData.leads.length === 0) {
-        // Fetch all leads and add them to the campaign
+      const campaignLeads = checkData?.leads || [];
+      const hasPending = campaignLeads.some((l: any) => l.status === 'pending');
+      const hasFailed = campaignLeads.some((l: any) => l.status === 'failed');
+
+      if (campaignLeads.length === 0) {
+        // No leads at all — fetch all and add them
         const { data: allLeads, error: leadsError } = await supabase
           .from('leads')
           .select('id')
@@ -123,6 +127,12 @@ export function useStartCampaign() {
           body: { action: 'add_leads', campaign_id: campaignId, data: { lead_ids: leadIds } },
         });
         if (addError) throw addError;
+      } else if (!hasPending && hasFailed) {
+        // All leads failed — retry them by resetting to pending
+        const { error: retryError } = await supabase.functions.invoke('campaign-engine', {
+          body: { action: 'retry_failed', campaign_id: campaignId },
+        });
+        if (retryError) throw retryError;
       }
 
       const { data, error } = await supabase.functions.invoke('campaign-engine', {
