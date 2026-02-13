@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,8 @@ import {
   Globe,
 } from 'lucide-react';
 import xEstateLogo from '@/assets/x-estate-logo.svg';
+import { useLeadExportsStore } from '@/store/leadExportsStore';
+import { toast } from 'sonner';
 
 // --- DUMMY DATA ---
 const dummyPeople = [
@@ -348,10 +351,13 @@ function CompanyCard({ company, selected, onToggle }: { company: typeof dummyCom
 
 // --- MAIN PAGE ---
 export default function LeadGenerationPage() {
+  const navigate = useNavigate();
+  const addExport = useLeadExportsStore((s) => s.addExport);
   const [activeTab, setActiveTab] = useState<'people' | 'companies'>('people');
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [fileName, setFileName] = useState('leads_export');
 
   // People filters
   const [peopleFilters, setPeopleFilters] = useState<any>({ name: '', selectedLocations: [], jobTitle: '', company: '' });
@@ -423,31 +429,37 @@ export default function LeadGenerationPage() {
     setHasSearched(true);
   };
 
-  const handleExportCSV = () => {
-    const items = activeTab === 'people'
+  const handleGetContactInfo = () => {
+    const selectedItems = activeTab === 'people'
       ? dummyPeople.filter(p => selectedPeople.includes(p.id))
-      : dummyCompanies.filter(c => selectedCompanies.includes(c.id));
+      : [];
 
-    let csv = '';
-    if (activeTab === 'people') {
-      csv = 'Name,Title,Company,Email,Phone,Location,LinkedIn\n';
-      (items as typeof dummyPeople).forEach(p => {
-        csv += `"${p.name}","${p.title}","${p.company}","${p.email}","${p.phone}","${p.location}","${p.linkedin ? 'Yes' : 'No'}"\n`;
-      });
-    } else {
-      csv = 'Company Name,Location\n';
-      (items as typeof dummyCompanies).forEach(c => {
-        csv += `"${c.name}","${c.location}"\n`;
-      });
+    if (selectedItems.length === 0) {
+      toast.error('Please select at least one lead');
+      return;
     }
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'leads_export.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    const exportEntry = {
+      id: Date.now().toString(),
+      name: fileName || `leads_export_${Date.now()}`,
+      date: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }),
+      leads: selectedItems.map(p => ({
+        id: p.id,
+        name: p.name,
+        email: p.email || '',
+        jobTitle: p.title,
+        company: p.company,
+        phone: p.phone || '',
+        location: p.location,
+        linkedin: !!p.linkedin,
+      })),
+      hasContact: true,
+    };
+
+    addExport(exportEntry);
+    toast.success(`${selectedItems.length} leads exported to Leads Exports`);
+    setSelectedPeople([]);
+    navigate('/all-leads');
   };
 
   return (
@@ -653,8 +665,8 @@ export default function LeadGenerationPage() {
                 </span>
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-muted-foreground">File name:</span>
-                  <Input defaultValue="leads_export" className="w-40 text-sm" />
-                  <Button onClick={handleExportCSV} className="bg-primary hover:bg-primary/90 rounded-full px-6">
+                  <Input value={fileName} onChange={e => setFileName(e.target.value)} className="w-40 text-sm" />
+                  <Button onClick={handleGetContactInfo} className="bg-primary hover:bg-primary/90 rounded-full px-6">
                     <UserSearch className="w-4 h-4 mr-2" /> Get Contact Info
                   </Button>
                 </div>

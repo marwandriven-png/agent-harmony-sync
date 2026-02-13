@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import {
   Phone, FileText, CheckCircle, Download, XCircle, Filter, Lock, ExternalLink, AlertCircle, Upload, Link2, Sheet, UserPlus,
 } from 'lucide-react';
+import { useLeadExportsStore, type LeadExport, type ExportedLead } from '@/store/leadExportsStore';
 
 type TabId = 'review' | 'contacted' | 'replied' | 'self-generated';
 
@@ -26,12 +27,12 @@ const tabs: { id: TabId; label: string; locked?: boolean }[] = [
   { id: 'self-generated', label: 'Self-Generated' },
 ];
 
-// Dummy completed exports
-const dummyExports = [
-  { id: '1', name: 'leads_export_17709601762...', date: 'Feb 12, 2026 at 9:22 PM', leads: 50, hasContact: true },
-  { id: '2', name: 'leads_export_17709600220...', date: 'Feb 12, 2026 at 9:20 PM', leads: 0, hasContact: false },
-  { id: '3', name: 'search_565565', date: 'Feb 12, 2026 at 1:44 PM', leads: 0, hasContact: false },
-  { id: '4', name: 'search_565565', date: 'Feb 12, 2026 at 1:43 PM', leads: 0, hasContact: false },
+// Dummy completed exports (fallback when store is empty)
+const defaultExports = [
+  { id: '1', name: 'leads_export_17709601762...', date: 'Feb 12, 2026 at 9:22 PM', leads: [] as ExportedLead[], hasContact: true },
+  { id: '2', name: 'leads_export_17709600220...', date: 'Feb 12, 2026 at 9:20 PM', leads: [] as ExportedLead[], hasContact: false },
+  { id: '3', name: 'search_565565', date: 'Feb 12, 2026 at 1:44 PM', leads: [] as ExportedLead[], hasContact: false },
+  { id: '4', name: 'search_565565', date: 'Feb 12, 2026 at 1:43 PM', leads: [] as ExportedLead[], hasContact: false },
 ];
 
 // Dummy review leads (from CSV)
@@ -66,12 +67,14 @@ const dummyCampaigns = [
 ];
 
 export default function AllLeadsPage() {
+  const storeExports = useLeadExportsStore((s) => s.exports);
+  const allExports = useMemo(() => [...storeExports, ...defaultExports], [storeExports]);
   const [activeTab, setActiveTab] = useState<TabId>('review');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
   const [recentFilter, setRecentFilter] = useState<'all' | 'accepted' | 'rejected'>('all');
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
-  const [reviewExportId, setReviewExportId] = useState<string | null>(null);
+  const [reviewExport, setReviewExport] = useState<LeadExport | null>(null);
   const [sheetUrl, setSheetUrl] = useState('');
   const [uploadSource, setUploadSource] = useState<'google-sheet' | 'apollo'>('google-sheet');
 
@@ -79,13 +82,16 @@ export default function AllLeadsPage() {
     setSelectedIds((prev) => prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]);
   };
 
+  const reviewLeads = reviewExport?.leads || dummyReviewLeads;
+
   const toggleAll = () => {
-    if (selectedIds.length === dummyReviewLeads.length) setSelectedIds([]);
-    else setSelectedIds(dummyReviewLeads.map((l) => l.id));
+    if (selectedIds.length === reviewLeads.length) setSelectedIds([]);
+    else setSelectedIds(reviewLeads.map((l) => l.id));
   };
 
   const openReviewModal = (exportId: string) => {
-    setReviewExportId(exportId);
+    const exp = allExports.find(e => e.id === exportId);
+    setReviewExport(exp || null);
     setSelectedIds([]);
     setReviewModalOpen(true);
   };
@@ -205,7 +211,7 @@ export default function AllLeadsPage() {
                 <p className="text-sm text-muted-foreground mb-5">Recent completed exports from lead searches</p>
 
                 <div className="space-y-0 divide-y divide-border">
-                  {dummyExports.map((exp) => (
+                  {allExports.map((exp) => (
                     <div key={exp.id} className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
@@ -220,7 +226,7 @@ export default function AllLeadsPage() {
                             </Badge>
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {exp.date}{exp.leads > 0 && ` · ${exp.leads} leads`}
+                            {exp.date}{exp.leads.length > 0 && ` · ${exp.leads.length} leads`}
                           </p>
                         </div>
                       </div>
@@ -368,7 +374,7 @@ export default function AllLeadsPage() {
             <div className="flex items-center justify-between mb-1">
               <div>
                 <DialogTitle className="text-xl font-bold">Review Leads from CSV</DialogTitle>
-                <p className="text-sm text-muted-foreground mt-1">{dummyReviewLeads.length} leads · {selectedIds.length} selected</p>
+                <p className="text-sm text-muted-foreground mt-1">{reviewLeads.length} leads · {selectedIds.length} selected</p>
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5 text-primary">
@@ -378,7 +384,7 @@ export default function AllLeadsPage() {
                 <Select defaultValue="all">
                   <SelectTrigger className="w-[180px]"><SelectValue placeholder="All Job Titles" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Job Titles ({dummyReviewLeads.length})</SelectItem>
+                    <SelectItem value="all">All Job Titles ({reviewLeads.length})</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
@@ -421,7 +427,7 @@ export default function AllLeadsPage() {
                 <TableRow className="bg-muted/30">
                   <TableHead className="w-10 pl-6">
                     <Checkbox
-                      checked={selectedIds.length === dummyReviewLeads.length && dummyReviewLeads.length > 0}
+                      checked={selectedIds.length === reviewLeads.length && reviewLeads.length > 0}
                       onCheckedChange={toggleAll}
                     />
                   </TableHead>
@@ -434,7 +440,7 @@ export default function AllLeadsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dummyReviewLeads.map((lead) => (
+                {reviewLeads.map((lead) => (
                   <TableRow key={lead.id} className={cn('hover:bg-muted/20', selectedIds.includes(lead.id) && 'bg-primary/5')}>
                     <TableCell className="pl-6">
                       <Checkbox
