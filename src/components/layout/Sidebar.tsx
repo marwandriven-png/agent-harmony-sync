@@ -66,20 +66,8 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="h-16 flex items-center px-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center">
           <img src={xEstateLogo} alt="X-Estate" className="w-9 h-9" />
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.span
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: 'auto' }}
-                exit={{ opacity: 0, width: 0 }}
-                className="font-bold text-sidebar-foreground text-lg whitespace-nowrap overflow-hidden"
-              >
-                X-Estate
-              </motion.span>
-            )}
-          </AnimatePresence>
         </div>
       </div>
 
