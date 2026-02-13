@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -335,193 +336,220 @@ export default function OutreachCenterPage() {
               </div>
             </div>
 
-            {/* Channel Toggles */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="flex items-center justify-between p-4 rounded-xl border border-border">
-                <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-primary" /><span className="text-sm font-medium">Email Settings</span></div>
-                <Switch checked={form.emailEnabled} onCheckedChange={(v) => updateForm({ emailEnabled: v })} />
-              </div>
-              <div className="flex items-center justify-between p-4 rounded-xl border border-border">
-                <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-primary" /><span className="text-sm font-medium">AI Caller Settings</span></div>
-                <Switch checked={form.aiCallerEnabled} onCheckedChange={(v) => updateForm({ aiCallerEnabled: v })} />
-              </div>
-              <div className="flex items-center justify-between p-4 rounded-xl border border-border">
-                <div className="flex items-center gap-2"><MessageSquare className="w-4 h-4 text-green-600" /><span className="text-sm font-medium">WhatsApp</span></div>
-                <Switch checked={form.whatsappEnabled} onCheckedChange={(v) => updateForm({ whatsappEnabled: v })} />
+            {/* Channel Switcher Tabs */}
+            <div className="space-y-2">
+              <Label className="font-semibold text-sm">Channels</Label>
+              <div className="grid grid-cols-3 gap-3 mb-2">
+                <div className={cn("flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all",
+                  form.emailEnabled ? "border-primary bg-primary/5" : "border-border")}
+                  onClick={() => updateForm({ emailEnabled: !form.emailEnabled })}>
+                  <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-primary" /><span className="text-sm font-medium">Email</span></div>
+                  <Switch checked={form.emailEnabled} onCheckedChange={(v) => updateForm({ emailEnabled: v })} />
+                </div>
+                <div className={cn("flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all",
+                  form.aiCallerEnabled ? "border-primary bg-primary/5" : "border-border")}
+                  onClick={() => updateForm({ aiCallerEnabled: !form.aiCallerEnabled })}>
+                  <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-primary" /><span className="text-sm font-medium">AI Caller</span></div>
+                  <Switch checked={form.aiCallerEnabled} onCheckedChange={(v) => updateForm({ aiCallerEnabled: v })} />
+                </div>
+                <div className={cn("flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all",
+                  form.whatsappEnabled ? "border-success bg-success/5" : "border-border")}
+                  onClick={() => updateForm({ whatsappEnabled: !form.whatsappEnabled })}>
+                  <div className="flex items-center gap-2"><MessageSquare className="w-4 h-4 text-success" /><span className="text-sm font-medium">WhatsApp</span></div>
+                  <Switch checked={form.whatsappEnabled} onCheckedChange={(v) => updateForm({ whatsappEnabled: v })} />
+                </div>
               </div>
             </div>
 
-            {/* AI Caller Configuration */}
-            {form.aiCallerEnabled && (
-              <Card className="border-primary/20">
-                <CardContent className="p-5 space-y-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-semibold text-foreground">Call Script Configuration</h4>
-                      <p className="text-xs text-muted-foreground">Configure your AI caller's behavior, goals, and responses</p>
-                    </div>
-                    <Button variant="outline" size="sm" className="gap-1.5"><Sparkles className="w-3.5 h-3.5" /> Generate Script</Button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Caller Voice</Label>
-                    <p className="text-xs text-muted-foreground">Select the voice and region for your AI caller</p>
-                    <Select value={form.callerVoice} onValueChange={(v) => updateForm({ callerVoice: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {voiceOptions.map((v) => <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1.5">
-                      <Label className="text-sm font-medium">Opening Script</Label>
-                      <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
-                    </div>
-                    <div className="flex justify-end"><span className="text-xs text-muted-foreground">{form.openingScript.length}/300 characters</span></div>
-                    <Textarea value={form.openingScript} onChange={(e) => { if (e.target.value.length <= 300) updateForm({ openingScript: e.target.value }); }} placeholder="Enter your opening script..." rows={4} />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-sm font-medium">Disclose AI?</Label>
-                      <p className="text-xs text-muted-foreground">Should the caller mention it's AI?</p>
-                    </div>
-                    <Switch checked={form.discloseAI} onCheckedChange={(v) => updateForm({ discloseAI: v })} />
-                  </div>
-
-                  {/* Qualification Questions */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-semibold">Qualification Questions</Label>
-                      <div className="flex items-center gap-2">
-                        <Input value={newQuestion} onChange={(e) => setNewQuestion(e.target.value)} placeholder="Enter question..." className="w-60 h-8 text-xs" onKeyDown={(e) => e.key === 'Enter' && addQuestion()} />
-                        <Button variant="outline" size="sm" onClick={addQuestion} className="h-8 text-xs"><Plus className="w-3 h-3 mr-1" /> Add Question</Button>
-                      </div>
-                    </div>
-                    {form.qualificationQuestions.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-3">No questions added yet</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {form.qualificationQuestions.map((q, i) => (
-                          <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
-                            <span className="text-sm">{i + 1}. {q}</span>
-                            <button onClick={() => removeQuestion(i)} className="text-destructive hover:text-destructive/80"><X className="w-3.5 h-3.5" /></button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* WhatsApp Configuration */}
-            {form.whatsappEnabled && (
-              <Card className="border-green-200">
-                <CardContent className="p-5 space-y-4">
-                  <h4 className="font-semibold text-foreground flex items-center gap-2"><MessageSquare className="w-4 h-4 text-green-600" /> WhatsApp Configuration</h4>
-                  <div className="space-y-2">
-                    <Label className="text-sm">Message Template</Label>
-                    <Textarea value={form.whatsappTemplate} onChange={(e) => updateForm({ whatsappTemplate: e.target.value })} placeholder="Hi {{name}}, I'd like to discuss..." rows={4} />
-                    <p className="text-xs text-muted-foreground">Use {'{{name}}'}, {'{{company}}'} as variables</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Email Sequence */}
-            {form.emailEnabled && (
-              <Card className="border-primary/20">
-                <CardContent className="p-5 space-y-5">
-                  <div>
-                    <h4 className="font-semibold text-foreground">Email Sequence</h4>
-                    <p className="text-xs text-muted-foreground">Configure up to 5 email steps in your sequence</p>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-sm font-medium">Send Initial Email Immediately</Label>
-                      <p className="text-xs text-muted-foreground">Send the first email as soon as the lead is due</p>
-                    </div>
-                    <Switch checked={form.sendInitialImmediately} onCheckedChange={(v) => updateForm({ sendInitialImmediately: v })} />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-semibold">Email Steps</Label>
-                    <Button variant="outline" size="sm" onClick={addEmailStep} disabled={form.emailSteps.length >= 5} className="gap-1.5">
-                      <Plus className="w-3 h-3" /> Add Step ({form.emailSteps.length}/5)
-                    </Button>
-                  </div>
-
-                  {form.emailSteps.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-6">No email steps configured. Click "Add Step" to create your first email sequence step.</p>
-                  ) : (
-                    <div className="space-y-4">
-                      {form.emailSteps.map((step, idx) => (
-                        <Card key={step.id} className="border-primary/10">
-                          <CardContent className="p-4 space-y-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium">Step {idx + 1}</span>
-                                {!step.subjectLine && <Badge variant="destructive" className="text-xs">Incomplete</Badge>}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Switch checked={step.enabled} onCheckedChange={(v) => updateEmailStep(step.id, { enabled: v })} />
-                                <button onClick={() => removeEmailStep(step.id)} className="text-destructive hover:text-destructive/80"><Trash2 className="w-4 h-4" /></button>
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-1.5">
-                                <Label className="text-sm">Subject Line</Label>
-                                <HelpCircle className="w-3 h-3 text-muted-foreground" />
-                              </div>
-                              <Input value={step.subjectLine} onChange={(e) => updateEmailStep(step.id, { subjectLine: e.target.value })} placeholder="Quick question about {company_name}" />
-                            </div>
-
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-1.5">
-                                <Label className="text-sm">Email Body</Label>
-                                <HelpCircle className="w-3 h-3 text-muted-foreground" />
-                              </div>
-                              <Textarea value={step.emailBody} onChange={(e) => updateEmailStep(step.id, { emailBody: e.target.value })} placeholder="Write your email content..." rows={5} />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label className="text-sm">Attachments</Label>
-                              <div className="flex items-center justify-between p-3 border border-dashed border-border rounded-lg">
-                                <p className="text-xs text-muted-foreground">No attachments. Upload PDF, images, or Office documents (max 10MB each).</p>
-                                <Button variant="outline" size="sm" className="text-xs shrink-0 gap-1.5"><Upload className="w-3 h-3" /> Upload File</Button>
-                              </div>
-                            </div>
-
-                            <div className="space-y-3">
-                              <Label className="text-sm font-medium">When to Send</Label>
-                              <RadioGroup value={step.whenToSend} onValueChange={(v) => updateEmailStep(step.id, { whenToSend: v as 'exact' | 'delay' })}>
-                                <div className="flex items-center gap-2"><RadioGroupItem value="exact" id={`exact-${step.id}`} /><Label htmlFor={`exact-${step.id}`} className="text-sm">At exact date/time</Label></div>
-                                <div className="flex items-center gap-2"><RadioGroupItem value="delay" id={`delay-${step.id}`} /><Label htmlFor={`delay-${step.id}`} className="text-sm">After delay</Label></div>
-                              </RadioGroup>
-                              {step.whenToSend === 'delay' && (
-                                <div className="space-y-2">
-                                  <Label className="text-sm">Delay (minutes)</Label>
-                                  <div className="flex items-center gap-2">
-                                    <Input type="number" min={10} value={step.delayMinutes} onChange={(e) => updateEmailStep(step.id, { delayMinutes: parseInt(e.target.value) || 10 })} placeholder="Minimum 10 minutes" className="flex-1" />
-                                    <Button variant="outline" size="sm" onClick={() => updateEmailStep(step.id, { delayMinutes: 1440 })}>1 Day</Button>
-                                    <Button variant="outline" size="sm" onClick={() => updateEmailStep(step.id, { delayMinutes: 2880 })}>2 Days</Button>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground">Minimum 10 minutes. 1 day = 1440 minutes</p>
-                                </div>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
+            {/* Dynamic Channel Configuration Tabs */}
+            {(form.emailEnabled || form.aiCallerEnabled || form.whatsappEnabled) && (
+              <Tabs defaultValue={form.emailEnabled ? 'email' : form.aiCallerEnabled ? 'ai-caller' : 'whatsapp'} className="mt-2">
+                <TabsList className="w-full">
+                  {form.emailEnabled && (
+                    <TabsTrigger value="email" className="flex-1 gap-1.5">
+                      <Mail className="w-3.5 h-3.5" /> Email Settings
+                    </TabsTrigger>
                   )}
-                </CardContent>
-              </Card>
+                  {form.aiCallerEnabled && (
+                    <TabsTrigger value="ai-caller" className="flex-1 gap-1.5">
+                      <Phone className="w-3.5 h-3.5" /> AI Caller
+                    </TabsTrigger>
+                  )}
+                  {form.whatsappEnabled && (
+                    <TabsTrigger value="whatsapp" className="flex-1 gap-1.5">
+                      <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
+                    </TabsTrigger>
+                  )}
+                </TabsList>
+
+                {/* Email Tab Content */}
+                {form.emailEnabled && (
+                  <TabsContent value="email">
+                    <Card className="border-primary/20">
+                      <CardContent className="p-5 space-y-5">
+                        <div>
+                          <h4 className="font-semibold text-foreground">Email Sequence</h4>
+                          <p className="text-xs text-muted-foreground">Configure up to 5 email steps in your sequence</p>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label className="text-sm font-medium">Send Initial Email Immediately</Label>
+                            <p className="text-xs text-muted-foreground">Send the first email as soon as the lead is due</p>
+                          </div>
+                          <Switch checked={form.sendInitialImmediately} onCheckedChange={(v) => updateForm({ sendInitialImmediately: v })} />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-semibold">Email Steps</Label>
+                          <Button variant="outline" size="sm" onClick={addEmailStep} disabled={form.emailSteps.length >= 5} className="gap-1.5">
+                            <Plus className="w-3 h-3" /> Add Step ({form.emailSteps.length}/5)
+                          </Button>
+                        </div>
+
+                        {form.emailSteps.length === 0 ? (
+                          <p className="text-sm text-muted-foreground text-center py-6">No email steps configured. Click "Add Step" to create your first email sequence step.</p>
+                        ) : (
+                          <div className="space-y-4">
+                            {form.emailSteps.map((step, idx) => (
+                              <Card key={step.id} className="border-primary/10">
+                                <CardContent className="p-4 space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium">Step {idx + 1}</span>
+                                      {!step.subjectLine && <Badge variant="destructive" className="text-xs">Incomplete</Badge>}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Switch checked={step.enabled} onCheckedChange={(v) => updateEmailStep(step.id, { enabled: v })} />
+                                      <button onClick={() => removeEmailStep(step.id)} className="text-destructive hover:text-destructive/80"><Trash2 className="w-4 h-4" /></button>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-1.5"><Label className="text-sm">Subject Line</Label><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>
+                                    <Input value={step.subjectLine} onChange={(e) => updateEmailStep(step.id, { subjectLine: e.target.value })} placeholder="Quick question about {company_name}" />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-1.5"><Label className="text-sm">Email Body</Label><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>
+                                    <Textarea value={step.emailBody} onChange={(e) => updateEmailStep(step.id, { emailBody: e.target.value })} placeholder="Write your email content..." rows={5} />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label className="text-sm">Attachments</Label>
+                                    <div className="flex items-center justify-between p-3 border border-dashed border-border rounded-lg">
+                                      <p className="text-xs text-muted-foreground">No attachments. Upload PDF, images, or Office documents (max 10MB each).</p>
+                                      <Button variant="outline" size="sm" className="text-xs shrink-0 gap-1.5"><Upload className="w-3 h-3" /> Upload File</Button>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-3">
+                                    <Label className="text-sm font-medium">When to Send</Label>
+                                    <RadioGroup value={step.whenToSend} onValueChange={(v) => updateEmailStep(step.id, { whenToSend: v as 'exact' | 'delay' })}>
+                                      <div className="flex items-center gap-2"><RadioGroupItem value="exact" id={`exact-${step.id}`} /><Label htmlFor={`exact-${step.id}`} className="text-sm">At exact date/time</Label></div>
+                                      <div className="flex items-center gap-2"><RadioGroupItem value="delay" id={`delay-${step.id}`} /><Label htmlFor={`delay-${step.id}`} className="text-sm">After delay</Label></div>
+                                    </RadioGroup>
+                                    {step.whenToSend === 'delay' && (
+                                      <div className="space-y-2">
+                                        <Label className="text-sm">Delay (minutes)</Label>
+                                        <div className="flex items-center gap-2">
+                                          <Input type="number" min={10} value={step.delayMinutes} onChange={(e) => updateEmailStep(step.id, { delayMinutes: parseInt(e.target.value) || 10 })} placeholder="Minimum 10 minutes" className="flex-1" />
+                                          <Button variant="outline" size="sm" onClick={() => updateEmailStep(step.id, { delayMinutes: 1440 })}>1 Day</Button>
+                                          <Button variant="outline" size="sm" onClick={() => updateEmailStep(step.id, { delayMinutes: 2880 })}>2 Days</Button>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">Minimum 10 minutes. 1 day = 1440 minutes</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                )}
+
+                {/* AI Caller Tab Content */}
+                {form.aiCallerEnabled && (
+                  <TabsContent value="ai-caller">
+                    <Card className="border-primary/20">
+                      <CardContent className="p-5 space-y-5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-semibold text-foreground">Call Script Configuration</h4>
+                            <p className="text-xs text-muted-foreground">Configure your AI caller's behavior, goals, and responses</p>
+                          </div>
+                          <Button variant="outline" size="sm" className="gap-1.5"><Sparkles className="w-3.5 h-3.5" /> Generate Script</Button>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Caller Voice</Label>
+                          <p className="text-xs text-muted-foreground">Select the voice and region for your AI caller</p>
+                          <Select value={form.callerVoice} onValueChange={(v) => updateForm({ callerVoice: v })}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {voiceOptions.map((v) => <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-1.5">
+                            <Label className="text-sm font-medium">Opening Script</Label>
+                            <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
+                          </div>
+                          <div className="flex justify-end"><span className="text-xs text-muted-foreground">{form.openingScript.length}/300 characters</span></div>
+                          <Textarea value={form.openingScript} onChange={(e) => { if (e.target.value.length <= 300) updateForm({ openingScript: e.target.value }); }} placeholder="Enter your opening script..." rows={4} />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label className="text-sm font-medium">Disclose AI?</Label>
+                            <p className="text-xs text-muted-foreground">Should the caller mention it's AI?</p>
+                          </div>
+                          <Switch checked={form.discloseAI} onCheckedChange={(v) => updateForm({ discloseAI: v })} />
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm font-semibold">Qualification Questions</Label>
+                            <div className="flex items-center gap-2">
+                              <Input value={newQuestion} onChange={(e) => setNewQuestion(e.target.value)} placeholder="Enter question..." className="w-60 h-8 text-xs" onKeyDown={(e) => e.key === 'Enter' && addQuestion()} />
+                              <Button variant="outline" size="sm" onClick={addQuestion} className="h-8 text-xs"><Plus className="w-3 h-3 mr-1" /> Add Question</Button>
+                            </div>
+                          </div>
+                          {form.qualificationQuestions.length === 0 ? (
+                            <p className="text-xs text-muted-foreground text-center py-3">No questions added yet</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {form.qualificationQuestions.map((q, i) => (
+                                <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+                                  <span className="text-sm">{i + 1}. {q}</span>
+                                  <button onClick={() => removeQuestion(i)} className="text-destructive hover:text-destructive/80"><X className="w-3.5 h-3.5" /></button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                )}
+
+                {/* WhatsApp Tab Content */}
+                {form.whatsappEnabled && (
+                  <TabsContent value="whatsapp">
+                    <Card className="border-success/20">
+                      <CardContent className="p-5 space-y-4">
+                        <h4 className="font-semibold text-foreground flex items-center gap-2"><MessageSquare className="w-4 h-4 text-success" /> WhatsApp Configuration</h4>
+                        <div className="space-y-2">
+                          <Label className="text-sm">Message Template</Label>
+                          <Textarea value={form.whatsappTemplate} onChange={(e) => updateForm({ whatsappTemplate: e.target.value })} placeholder="Hi {{name}}, I'd like to discuss..." rows={4} />
+                          <p className="text-xs text-muted-foreground">Use {'{{name}}'}, {'{{company}}'} as variables</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                )}
+              </Tabs>
             )}
           </div>
           <DialogFooter>
