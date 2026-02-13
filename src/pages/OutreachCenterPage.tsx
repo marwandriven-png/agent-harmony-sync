@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MainLayout, PageHeader, PageContent } from '@/components/layout/MainLayout';
+import { MainLayout } from '@/components/layout/MainLayout';
 import { useCampaigns, useCreateCampaign, useStartCampaign, Campaign } from '@/hooks/useCampaigns';
 import { useLeads } from '@/hooks/useLeads';
 import { Button } from '@/components/ui/button';
@@ -22,11 +22,9 @@ import {
   Send,
   Mail,
   MessageSquare,
-  BarChart3,
   Users,
   CheckCircle,
   Clock,
-  AlertCircle,
   Play,
   Pause,
   Eye,
@@ -62,16 +60,10 @@ export default function OutreachCenterPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [createOpen, setCreateOpen] = useState(false);
 
-  // Create campaign form state
   const [newCampaign, setNewCampaign] = useState({
-    name: '',
-    description: '',
-    campaign_type: 'outreach',
-    whatsapp_enabled: false,
-    email_enabled: false,
-    whatsapp_template: '',
-    email_subject: '',
-    email_body: '',
+    name: '', description: '', campaign_type: 'outreach',
+    whatsapp_enabled: false, email_enabled: false,
+    whatsapp_template: '', email_subject: '', email_body: '',
   });
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
 
@@ -81,7 +73,6 @@ export default function OutreachCenterPage() {
     return matchesSearch && matchesStatus;
   });
 
-  // Aggregate metrics
   const totalSent = campaigns.reduce((s, c) => s + c.sent_count, 0);
   const totalDelivered = campaigns.reduce((s, c) => s + c.delivered_count, 0);
   const totalRead = campaigns.reduce((s, c) => s + c.read_count, 0);
@@ -89,44 +80,43 @@ export default function OutreachCenterPage() {
   const activeCampaigns = campaigns.filter((c) => c.status === 'active').length;
 
   const handleCreate = async () => {
-    if (!newCampaign.name) {
-      toast.error('Campaign name is required');
-      return;
-    }
+    if (!newCampaign.name) { toast.error('Campaign name is required'); return; }
     try {
       await createCampaign.mutateAsync(newCampaign as any);
       setCreateOpen(false);
-      setNewCampaign({
-        name: '', description: '', campaign_type: 'outreach',
-        whatsapp_enabled: false, email_enabled: false,
-        whatsapp_template: '', email_subject: '', email_body: '',
-      });
+      setNewCampaign({ name: '', description: '', campaign_type: 'outreach', whatsapp_enabled: false, email_enabled: false, whatsapp_template: '', email_subject: '', email_body: '' });
       setSelectedLeadIds([]);
     } catch {}
   };
 
   const handleStart = async (id: string) => {
-    try {
-      await startCampaign.mutateAsync(id);
-    } catch {}
+    try { await startCampaign.mutateAsync(id); } catch {}
   };
 
   const metrics = [
-    { label: 'Active Campaigns', value: activeCampaigns, icon: Megaphone, color: 'primary' },
-    { label: 'Messages Sent', value: totalSent, icon: Send, color: 'accent' },
-    { label: 'Delivered', value: totalDelivered, icon: CheckCircle, color: 'success' },
-    { label: 'Replies', value: totalReplied, icon: MessageSquare, color: 'primary' },
+    { label: 'Total Leads', value: leads.length, icon: Users, subtitle: 'From all completed exports' },
+    { label: 'Contacted Leads', value: totalSent, icon: Send, subtitle: totalSent ? `${Math.round((totalDelivered / totalSent) * 100)}% contact rate` : '0% contact rate' },
+    { label: 'Active Campaigns', value: activeCampaigns, icon: Megaphone, subtitle: 'Currently running' },
+    { label: 'Replies', value: totalReplied, icon: MessageSquare, subtitle: totalSent ? `${Math.round((totalReplied / totalSent) * 100)}% reply rate` : '0% reply rate' },
   ];
 
   return (
     <MainLayout>
-      <PageHeader
-        title="Outreach Center"
-        subtitle="Manage campaigns, WhatsApp & email outreach"
-        actions={
+      {/* Header */}
+      <div className="px-6 py-4 bg-primary/5 border-b border-primary/10 sticky top-0 z-10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
+              <Megaphone className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-primary">Outreach Center</h1>
+              <p className="text-sm text-muted-foreground">Manage campaigns, WhatsApp & email outreach</p>
+            </div>
+          </div>
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-primary hover:opacity-90">
+              <Button className="bg-primary hover:bg-primary/90">
                 <Plus className="w-4 h-4 mr-2" />
                 New Campaign
               </Button>
@@ -138,27 +128,15 @@ export default function OutreachCenterPage() {
               <div className="space-y-4 py-2">
                 <div className="space-y-2">
                   <Label>Campaign Name</Label>
-                  <Input
-                    value={newCampaign.name}
-                    onChange={(e) => setNewCampaign((p) => ({ ...p, name: e.target.value }))}
-                    placeholder="e.g. Q1 Follow-up Blast"
-                  />
+                  <Input value={newCampaign.name} onChange={(e) => setNewCampaign((p) => ({ ...p, name: e.target.value }))} placeholder="e.g. Q1 Follow-up Blast" />
                 </div>
                 <div className="space-y-2">
                   <Label>Description</Label>
-                  <Textarea
-                    value={newCampaign.description}
-                    onChange={(e) => setNewCampaign((p) => ({ ...p, description: e.target.value }))}
-                    placeholder="Describe the campaign goal..."
-                    rows={2}
-                  />
+                  <Textarea value={newCampaign.description} onChange={(e) => setNewCampaign((p) => ({ ...p, description: e.target.value }))} placeholder="Describe the campaign goal..." rows={2} />
                 </div>
                 <div className="space-y-2">
                   <Label>Type</Label>
-                  <Select
-                    value={newCampaign.campaign_type}
-                    onValueChange={(v) => setNewCampaign((p) => ({ ...p, campaign_type: v }))}
-                  >
+                  <Select value={newCampaign.campaign_type} onValueChange={(v) => setNewCampaign((p) => ({ ...p, campaign_type: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="outreach">Outreach</SelectItem>
@@ -167,8 +145,6 @@ export default function OutreachCenterPage() {
                     </SelectContent>
                   </Select>
                 </div>
-
-                {/* Channels */}
                 <div className="space-y-3">
                   <Label className="text-sm font-semibold">Channels</Label>
                   <div className="flex items-center justify-between p-3 rounded-lg border border-border">
@@ -176,47 +152,25 @@ export default function OutreachCenterPage() {
                       <MessageSquare className="w-4 h-4 text-success" />
                       <span className="text-sm">WhatsApp</span>
                     </div>
-                    <Switch
-                      checked={newCampaign.whatsapp_enabled}
-                      onCheckedChange={(v) => setNewCampaign((p) => ({ ...p, whatsapp_enabled: v }))}
-                    />
+                    <Switch checked={newCampaign.whatsapp_enabled} onCheckedChange={(v) => setNewCampaign((p) => ({ ...p, whatsapp_enabled: v }))} />
                   </div>
                   {newCampaign.whatsapp_enabled && (
-                    <Textarea
-                      value={newCampaign.whatsapp_template}
-                      onChange={(e) => setNewCampaign((p) => ({ ...p, whatsapp_template: e.target.value }))}
-                      placeholder="WhatsApp message template... Use {first_name}, {property} etc."
-                      rows={3}
-                    />
+                    <Textarea value={newCampaign.whatsapp_template} onChange={(e) => setNewCampaign((p) => ({ ...p, whatsapp_template: e.target.value }))} placeholder="WhatsApp message template..." rows={3} />
                   )}
                   <div className="flex items-center justify-between p-3 rounded-lg border border-border">
                     <div className="flex items-center gap-2">
                       <Mail className="w-4 h-4 text-primary" />
                       <span className="text-sm">Email</span>
                     </div>
-                    <Switch
-                      checked={newCampaign.email_enabled}
-                      onCheckedChange={(v) => setNewCampaign((p) => ({ ...p, email_enabled: v }))}
-                    />
+                    <Switch checked={newCampaign.email_enabled} onCheckedChange={(v) => setNewCampaign((p) => ({ ...p, email_enabled: v }))} />
                   </div>
                   {newCampaign.email_enabled && (
                     <div className="space-y-2">
-                      <Input
-                        value={newCampaign.email_subject}
-                        onChange={(e) => setNewCampaign((p) => ({ ...p, email_subject: e.target.value }))}
-                        placeholder="Email subject line"
-                      />
-                      <Textarea
-                        value={newCampaign.email_body}
-                        onChange={(e) => setNewCampaign((p) => ({ ...p, email_body: e.target.value }))}
-                        placeholder="Email body content..."
-                        rows={4}
-                      />
+                      <Input value={newCampaign.email_subject} onChange={(e) => setNewCampaign((p) => ({ ...p, email_subject: e.target.value }))} placeholder="Email subject line" />
+                      <Textarea value={newCampaign.email_body} onChange={(e) => setNewCampaign((p) => ({ ...p, email_body: e.target.value }))} placeholder="Email body content..." rows={4} />
                     </div>
                   )}
                 </div>
-
-                {/* Lead selection */}
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold">Select Leads ({selectedLeadIds.length})</Label>
                   <div className="max-h-40 overflow-y-auto rounded-lg border border-border p-2 space-y-1">
@@ -225,18 +179,14 @@ export default function OutreachCenterPage() {
                         <Checkbox
                           checked={selectedLeadIds.includes(lead.id)}
                           onCheckedChange={(checked) => {
-                            setSelectedLeadIds((prev) =>
-                              checked ? [...prev, lead.id] : prev.filter((id) => id !== lead.id)
-                            );
+                            setSelectedLeadIds((prev) => checked ? [...prev, lead.id] : prev.filter((id) => id !== lead.id));
                           }}
                         />
                         <span className="text-sm">{lead.name}</span>
                         <span className="text-xs text-muted-foreground ml-auto">{lead.phone}</span>
                       </label>
                     ))}
-                    {leads.length === 0 && (
-                      <p className="text-xs text-muted-foreground text-center py-2">No leads available</p>
-                    )}
+                    {leads.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">No leads available</p>}
                   </div>
                 </div>
               </div>
@@ -248,81 +198,107 @@ export default function OutreachCenterPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        }
-      />
+        </div>
+      </div>
 
-      <PageContent>
+      <div className="p-6">
         <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
-          {/* Metric Cards */}
+          {/* Metric Cards - LeadM8 style */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {metrics.map((m) => (
               <motion.div key={m.label} variants={itemVariants}>
-                <div className={cn('metric-card', `metric-card-${m.color}`)}>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground font-medium">{m.label}</p>
-                      <p className="text-3xl font-bold text-foreground mt-2">{m.value}</p>
+                <Card className="border border-border">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground font-medium">{m.label}</p>
+                        <p className="text-3xl font-bold text-foreground mt-2">{m.value}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{m.subtitle}</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-primary/10">
+                        <m.icon className="w-6 h-6 text-primary" />
+                      </div>
                     </div>
-                    <div className={cn(
-                      'p-3 rounded-xl',
-                      m.color === 'primary' && 'bg-pastel-blue',
-                      m.color === 'accent' && 'bg-pastel-green',
-                      m.color === 'success' && 'bg-pastel-green',
-                    )}>
-                      <m.icon className={cn(
-                        'w-6 h-6',
-                        m.color === 'primary' && 'text-primary',
-                        m.color === 'accent' && 'text-accent',
-                        m.color === 'success' && 'text-success',
-                      )} />
-                    </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               </motion.div>
             ))}
           </div>
 
-          {/* Delivery Funnel */}
-          <motion.div variants={itemVariants}>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <TrendingUp className="w-5 h-5 text-primary" />
-                  Delivery Funnel
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-4 gap-4">
-                  {[
-                    { label: 'Sent', value: totalSent, pct: 100 },
-                    { label: 'Delivered', value: totalDelivered, pct: totalSent ? Math.round((totalDelivered / totalSent) * 100) : 0 },
-                    { label: 'Read', value: totalRead, pct: totalSent ? Math.round((totalRead / totalSent) * 100) : 0 },
-                    { label: 'Replied', value: totalReplied, pct: totalSent ? Math.round((totalReplied / totalSent) * 100) : 0 },
-                  ].map((step) => (
-                    <div key={step.label} className="text-center">
-                      <p className="text-2xl font-bold text-foreground">{step.value}</p>
-                      <p className="text-sm text-muted-foreground">{step.label}</p>
-                      <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${step.pct}%` }} />
+          {/* Two-column layout: Recent Activity + Notifications */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Recent Activity / Delivery Funnel */}
+            <motion.div variants={itemVariants}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <TrendingUp className="w-5 h-5 text-primary" />
+                    Delivery Funnel
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-4 gap-4">
+                    {[
+                      { label: 'Sent', value: totalSent, pct: 100 },
+                      { label: 'Delivered', value: totalDelivered, pct: totalSent ? Math.round((totalDelivered / totalSent) * 100) : 0 },
+                      { label: 'Read', value: totalRead, pct: totalSent ? Math.round((totalRead / totalSent) * 100) : 0 },
+                      { label: 'Replied', value: totalReplied, pct: totalSent ? Math.round((totalReplied / totalSent) * 100) : 0 },
+                    ].map((step) => (
+                      <div key={step.label} className="text-center">
+                        <p className="text-2xl font-bold text-foreground">{step.value}</p>
+                        <p className="text-sm text-muted-foreground">{step.label}</p>
+                        <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${step.pct}%` }} />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">{step.pct}%</p>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">{step.pct}%</p>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Notifications Panel */}
+            <motion.div variants={itemVariants}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Latest Notifications</CardTitle>
+                  <p className="text-sm text-muted-foreground">Recent updates and alerts from your campaigns</p>
+                </CardHeader>
+                <CardContent>
+                  {campaigns.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <Megaphone className="w-10 h-10 text-muted-foreground/30 mb-3" />
+                      <p className="text-sm text-muted-foreground">No notifications yet</p>
+                      <p className="text-xs text-muted-foreground mt-1">Notifications will appear here when leads interact</p>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+                  ) : (
+                    <div className="space-y-3">
+                      {campaigns.slice(0, 5).map((c) => (
+                        <div key={c.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                          <div className={cn(
+                            'w-2 h-2 rounded-full shrink-0',
+                            c.status === 'active' ? 'bg-success' : c.status === 'completed' ? 'bg-primary' : 'bg-muted-foreground'
+                          )} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{c.name}</p>
+                            <p className="text-xs text-muted-foreground">{c.sent_count} sent · {c.replied_count} replies</p>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{format(new Date(c.created_at), 'MMM d')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
 
           {/* Filters */}
           <motion.div variants={itemVariants} className="flex items-center gap-4">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search campaigns..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
+              <Input placeholder="Search campaigns..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
             </div>
             <div className="flex items-center gap-2">
               {['all', 'draft', 'active', 'paused', 'completed'].map((s) => (
@@ -331,9 +307,7 @@ export default function OutreachCenterPage() {
                   onClick={() => setFilterStatus(s)}
                   className={cn(
                     'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                    filterStatus === s
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    filterStatus === s ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'
                   )}
                 >
                   {s.charAt(0).toUpperCase() + s.slice(1)}
@@ -345,9 +319,7 @@ export default function OutreachCenterPage() {
           {/* Campaign List */}
           <motion.div variants={itemVariants} className="space-y-3">
             {isLoading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-24 w-full rounded-xl" />
-              ))
+              Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)
             ) : filteredCampaigns.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
@@ -363,7 +335,7 @@ export default function OutreachCenterPage() {
             )}
           </motion.div>
         </motion.div>
-      </PageContent>
+      </div>
     </MainLayout>
   );
 }
@@ -388,32 +360,13 @@ function CampaignRow({ campaign, onStart }: { campaign: Campaign; onStart: (id: 
               <p className="text-sm text-muted-foreground line-clamp-1 mb-2">{campaign.description}</p>
             )}
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Users className="w-3 h-3" />
-                {campaign.total_leads} leads
-              </span>
-              <span className="flex items-center gap-1">
-                <Send className="w-3 h-3" />
-                {campaign.sent_count} sent
-              </span>
-              <span className="flex items-center gap-1">
-                <CheckCircle className="w-3 h-3" />
-                {campaign.delivered_count} delivered
-              </span>
-              <span className="flex items-center gap-1">
-                <Eye className="w-3 h-3" />
-                {campaign.read_count} read
-              </span>
-              <span className="flex items-center gap-1">
-                <MessageSquare className="w-3 h-3" />
-                {campaign.replied_count} replies
-              </span>
-              {campaign.whatsapp_enabled && (
-                <Badge variant="outline" className="text-[10px]">WhatsApp</Badge>
-              )}
-              {campaign.email_enabled && (
-                <Badge variant="outline" className="text-[10px]">Email</Badge>
-              )}
+              <span className="flex items-center gap-1"><Users className="w-3 h-3" />{campaign.total_leads} leads</span>
+              <span className="flex items-center gap-1"><Send className="w-3 h-3" />{campaign.sent_count} sent</span>
+              <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3" />{campaign.delivered_count} delivered</span>
+              <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{campaign.read_count} read</span>
+              <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{campaign.replied_count} replies</span>
+              {campaign.whatsapp_enabled && <Badge variant="outline" className="text-[10px]">WhatsApp</Badge>}
+              {campaign.email_enabled && <Badge variant="outline" className="text-[10px]">Email</Badge>}
             </div>
           </div>
           <div className="flex items-center gap-2 ml-4">
@@ -423,9 +376,7 @@ function CampaignRow({ campaign, onStart }: { campaign: Campaign; onStart: (id: 
                 Start
               </Button>
             )}
-            <span className="text-xs text-muted-foreground">
-              {format(new Date(campaign.created_at), 'MMM d, yyyy')}
-            </span>
+            <span className="text-xs text-muted-foreground">{format(new Date(campaign.created_at), 'MMM d, yyyy')}</span>
           </div>
         </div>
       </CardContent>

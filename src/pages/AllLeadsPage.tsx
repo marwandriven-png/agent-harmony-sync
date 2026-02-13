@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
-import { MainLayout, PageHeader, PageContent } from '@/components/layout/MainLayout';
+import { MainLayout } from '@/components/layout/MainLayout';
 import { useLeads, LeadWithProfile } from '@/hooks/useLeads';
 import { formatCurrency, formatRelativeTime } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreateLeadDialog } from '@/components/forms/CreateLeadDialog';
 import {
@@ -29,12 +30,14 @@ import {
   Snowflake,
   ArrowUpDown,
   Users,
+  List,
+  Download,
+  Filter,
 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
 type LeadStatus = Database['public']['Enums']['lead_status'];
 type LeadPriority = Database['public']['Enums']['lead_priority'];
-type LeadSource = Database['public']['Enums']['lead_source'];
 
 const statusBadgeClass: Record<string, string> = {
   new: 'status-badge-new',
@@ -64,6 +67,7 @@ export default function AllLeadsPage() {
   const [filterSource, setFilterSource] = useState<string>('all');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortAsc, setSortAsc] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const filtered = useMemo(() => {
     let result = leads.filter((l) => {
@@ -93,117 +97,149 @@ export default function AllLeadsPage() {
   }, [leads, search, filterStatus, filterPriority, filterSource, sortKey, sortAsc]);
 
   const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortKey(key);
-      setSortAsc(false);
-    }
+    if (sortKey === key) setSortAsc(!sortAsc);
+    else { setSortKey(key); setSortAsc(false); }
   };
 
   const uniqueSources = useMemo(() => {
-    const sources = new Set(leads.map((l) => l.source));
-    return Array.from(sources);
+    return Array.from(new Set(leads.map((l) => l.source)));
   }, [leads]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]);
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.length === filtered.length) setSelectedIds([]);
+    else setSelectedIds(filtered.map((l) => l.id));
+  };
 
   return (
     <MainLayout>
-      <PageHeader
-        title="All Leads"
-        subtitle={`${filtered.length} of ${leads.length} leads`}
-        actions={
-          <CreateLeadDialog
-            trigger={
-              <Button className="bg-gradient-primary hover:opacity-90">
-                <UserPlus className="w-4 h-4 mr-2" />
-                Add Lead
-              </Button>
-            }
-          />
-        }
-      />
-
-      <PageContent>
-        <div className="space-y-4">
-          {/* Filters Row */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[200px] max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name, phone, email..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
+      {/* Header */}
+      <div className="px-6 py-4 bg-primary/5 border-b border-primary/10 sticky top-0 z-10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
+              <List className="w-5 h-5 text-primary-foreground" />
             </div>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                {['new', 'contacted', 'viewing', 'viewed', 'negotiation', 'closed', 'lost'].map((s) => (
-                  <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterPriority} onValueChange={setFilterPriority}>
-              <SelectTrigger className="w-[130px]"><SelectValue placeholder="Priority" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Priority</SelectItem>
-                <SelectItem value="hot">Hot</SelectItem>
-                <SelectItem value="warm">Warm</SelectItem>
-                <SelectItem value="cold">Cold</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterSource} onValueChange={setFilterSource}>
-              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Source" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sources</SelectItem>
-                {uniqueSources.map((s) => (
-                  <SelectItem key={s} value={s} className="capitalize">{s.replace(/_/g, ' ')}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div>
+              <h1 className="text-xl font-bold text-primary">All Leads</h1>
+              <p className="text-sm text-muted-foreground">
+                {filtered.length} of {leads.length} leads
+                {selectedIds.length > 0 && ` · ${selectedIds.length} selected`}
+              </p>
+            </div>
           </div>
-
-          {/* Table */}
-          {isLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-14 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <Users className="w-12 h-12 text-muted-foreground mb-3" />
-              <p className="text-muted-foreground font-medium">No leads found</p>
-              <p className="text-sm text-muted-foreground">Try adjusting your filters</p>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <SortableHead label="Name" sortKey="name" currentKey={sortKey} asc={sortAsc} onSort={handleSort} />
-                    <TableHead>Contact</TableHead>
-                    <SortableHead label="Status" sortKey="status" currentKey={sortKey} asc={sortAsc} onSort={handleSort} />
-                    <SortableHead label="Priority" sortKey="priority" currentKey={sortKey} asc={sortAsc} onSort={handleSort} />
-                    <TableHead>Source</TableHead>
-                    <SortableHead label="Budget" sortKey="budget_max" currentKey={sortKey} asc={sortAsc} onSort={handleSort} />
-                    <TableHead>Agent</TableHead>
-                    <TableHead>Location</TableHead>
-                    <SortableHead label="Created" sortKey="created_at" currentKey={sortKey} asc={sortAsc} onSort={handleSort} />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((lead) => (
-                    <LeadTableRow key={lead.id} lead={lead} onClick={() => navigate(`/leads/${lead.id}`)} />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {selectedIds.length > 0 && (
+              <Button variant="outline" size="sm" onClick={() => navigate('/outreach')}>
+                Add to Campaign ({selectedIds.length})
+              </Button>
+            )}
+            <CreateLeadDialog
+              trigger={
+                <Button className="bg-primary hover:bg-primary/90">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Add Lead
+                </Button>
+              }
+            />
+          </div>
         </div>
-      </PageContent>
+      </div>
+
+      <div className="p-6 space-y-4 animate-fade-in">
+        {/* Filters Row */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, phone, email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              {['new', 'contacted', 'viewing', 'viewed', 'negotiation', 'closed', 'lost'].map((s) => (
+                <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterPriority} onValueChange={setFilterPriority}>
+            <SelectTrigger className="w-[130px]"><SelectValue placeholder="Priority" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Priority</SelectItem>
+              <SelectItem value="hot">Hot</SelectItem>
+              <SelectItem value="warm">Warm</SelectItem>
+              <SelectItem value="cold">Cold</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterSource} onValueChange={setFilterSource}>
+            <SelectTrigger className="w-[160px]"><SelectValue placeholder="Source" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sources</SelectItem>
+              {uniqueSources.map((s) => (
+                <SelectItem key={s} value={s} className="capitalize">{s.replace(/_/g, ' ')}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Table */}
+        {isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Users className="w-12 h-12 text-muted-foreground mb-3" />
+            <p className="text-muted-foreground font-medium">No leads found</p>
+            <p className="text-sm text-muted-foreground">Try adjusting your filters</p>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={selectedIds.length === filtered.length && filtered.length > 0}
+                      onCheckedChange={toggleAll}
+                    />
+                  </TableHead>
+                  <SortableHead label="Name" sortKey="name" currentKey={sortKey} asc={sortAsc} onSort={handleSort} />
+                  <TableHead>Contact</TableHead>
+                  <SortableHead label="Status" sortKey="status" currentKey={sortKey} asc={sortAsc} onSort={handleSort} />
+                  <SortableHead label="Priority" sortKey="priority" currentKey={sortKey} asc={sortAsc} onSort={handleSort} />
+                  <TableHead>Source</TableHead>
+                  <SortableHead label="Budget" sortKey="budget_max" currentKey={sortKey} asc={sortAsc} onSort={handleSort} />
+                  <TableHead>Agent</TableHead>
+                  <TableHead>Location</TableHead>
+                  <SortableHead label="Created" sortKey="created_at" currentKey={sortKey} asc={sortAsc} onSort={handleSort} />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((lead) => (
+                  <LeadTableRow
+                    key={lead.id}
+                    lead={lead}
+                    selected={selectedIds.includes(lead.id)}
+                    onToggle={() => toggleSelect(lead.id)}
+                    onClick={() => navigate(`/leads/${lead.id}`)}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
     </MainLayout>
   );
 }
@@ -227,15 +263,18 @@ function SortableHead({
   );
 }
 
-function LeadTableRow({ lead, onClick }: { lead: LeadWithProfile; onClick: () => void }) {
+function LeadTableRow({ lead, selected, onToggle, onClick }: { lead: LeadWithProfile; selected: boolean; onToggle: () => void; onClick: () => void }) {
   const PriorityIcon = priorityConfig[lead.priority].icon;
   const currency = lead.budget_currency || 'AED';
 
   return (
-    <TableRow className="premium-table-row" onClick={onClick}>
-      <TableCell>
+    <TableRow className={cn('premium-table-row', selected && 'bg-primary/5')}>
+      <TableCell onClick={(e) => e.stopPropagation()}>
+        <Checkbox checked={selected} onCheckedChange={onToggle} />
+      </TableCell>
+      <TableCell onClick={onClick}>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-semibold text-muted-foreground">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
             {lead.name.charAt(0)}
           </div>
           <div>
@@ -246,7 +285,7 @@ function LeadTableRow({ lead, onClick }: { lead: LeadWithProfile; onClick: () =>
           </div>
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell onClick={onClick}>
         <div className="space-y-0.5">
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Phone className="w-3 h-3" />
@@ -260,21 +299,21 @@ function LeadTableRow({ lead, onClick }: { lead: LeadWithProfile; onClick: () =>
           )}
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell onClick={onClick}>
         <span className={cn('status-badge capitalize', statusBadgeClass[lead.status])}>
           {lead.status}
         </span>
       </TableCell>
-      <TableCell>
+      <TableCell onClick={onClick}>
         <div className="flex items-center gap-1">
           <PriorityIcon className={cn('w-4 h-4', priorityConfig[lead.priority].color)} />
           <span className="text-sm capitalize">{lead.priority}</span>
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell onClick={onClick}>
         <span className="text-sm text-muted-foreground capitalize">{lead.source.replace(/_/g, ' ')}</span>
       </TableCell>
-      <TableCell>
+      <TableCell onClick={onClick}>
         {lead.budget_max ? (
           <span className="text-sm font-medium text-foreground">
             {formatCurrency(lead.budget_max, currency)}
@@ -283,12 +322,12 @@ function LeadTableRow({ lead, onClick }: { lead: LeadWithProfile; onClick: () =>
           <span className="text-sm text-muted-foreground">—</span>
         )}
       </TableCell>
-      <TableCell>
+      <TableCell onClick={onClick}>
         <span className="text-sm text-muted-foreground">
           {lead.profiles?.full_name?.split(' ')[0] || 'Unassigned'}
         </span>
       </TableCell>
-      <TableCell>
+      <TableCell onClick={onClick}>
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <MapPin className="w-3 h-3" />
           <span className="truncate max-w-[120px]">
@@ -296,7 +335,7 @@ function LeadTableRow({ lead, onClick }: { lead: LeadWithProfile; onClick: () =>
           </span>
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell onClick={onClick}>
         <span className="text-xs text-muted-foreground">{formatRelativeTime(lead.created_at)}</span>
       </TableCell>
     </TableRow>

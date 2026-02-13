@@ -1,382 +1,443 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { MainLayout, PageHeader, PageContent } from '@/components/layout/MainLayout';
-import { useCreateLead } from '@/hooks/useLeads';
-import { useLeads } from '@/hooks/useLeads';
+import { useLeads, useCreateLead } from '@/hooks/useLeads';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent } from '@/components/ui/card';
+import { CreateLeadDialog } from '@/components/forms/CreateLeadDialog';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
-import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
-  UserPlus,
-  Zap,
-  Target,
-  TrendingUp,
+  Search,
+  RotateCcw,
   Users,
-  ArrowRight,
+  Building2,
+  ChevronDown,
+  ChevronRight,
   Phone,
   Mail,
   MapPin,
-  Building2,
-  DollarSign,
-  Bed,
+  UserPlus,
+  Shuffle,
+  ChevronLeft,
+  Filter,
 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
-type LeadSource = Database['public']['Enums']['lead_source'];
-type LeadPriority = Database['public']['Enums']['lead_priority'];
-type PropertyType = Database['public']['Enums']['property_type'];
 type LeadType = Database['public']['Enums']['lead_type'];
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
-};
+// Location tree data for real estate CRM
+const locationTree = [
+  {
+    label: 'Dubai',
+    children: ['Downtown Dubai', 'Dubai Marina', 'JBR', 'Business Bay', 'Palm Jumeirah', 'JLT', 'DIFC', 'Dubai Hills'],
+  },
+  {
+    label: 'Abu Dhabi',
+    children: ['Al Reem Island', 'Saadiyat Island', 'Yas Island', 'Al Raha Beach', 'Khalifa City'],
+  },
+  {
+    label: 'Sharjah',
+    children: ['Al Majaz', 'Al Khan', 'Al Nahda', 'Muwaileh'],
+  },
+  {
+    label: 'Other Emirates',
+    children: ['Ajman', 'Ras Al Khaimah', 'Fujairah', 'Umm Al Quwain'],
+  },
+];
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-};
-
-const initialForm = {
-  name: '',
-  phone: '',
-  email: '',
-  source: 'other' as LeadSource,
-  priority: 'warm' as LeadPriority,
-  lead_type: 'buyer' as LeadType,
-  budget_min: '',
-  budget_max: '',
-  budget_currency: 'AED',
-  bedrooms: '',
-  property_types: [] as PropertyType[],
-  locations: '',
-  area_name: '',
-  building_name: '',
-  requirements_notes: '',
-};
+const ITEMS_PER_PAGE = 50;
 
 export default function LeadGenerationPage() {
-  const createLead = useCreateLead();
-  const { data: leads = [] } = useLeads();
+  const { data: leads = [], isLoading } = useLeads();
   const navigate = useNavigate();
-  const [form, setForm] = useState(initialForm);
 
-  const recentLeads = leads.slice(0, 5);
+  const [activeTab, setActiveTab] = useState<'people' | 'companies'>('people');
+  const [nameFilter, setNameFilter] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState<string>('');
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(['Dubai']);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Stats
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const leadsToday = leads.filter((l) => new Date(l.created_at) >= todayStart).length;
-  const leadsThisWeek = leads.filter((l) => {
-    const d = new Date(l.created_at);
-    const weekAgo = new Date(Date.now() - 7 * 86400000);
-    return d >= weekAgo;
-  }).length;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name || !form.phone) {
-      toast.error('Name and phone are required');
-      return;
-    }
-    try {
-      await createLead.mutateAsync({
-        name: form.name,
-        phone: form.phone,
-        email: form.email || null,
-        source: form.source,
-        priority: form.priority,
-        lead_type: form.lead_type,
-        budget_min: form.budget_min ? Number(form.budget_min) : null,
-        budget_max: form.budget_max ? Number(form.budget_max) : null,
-        budget_currency: form.budget_currency,
-        bedrooms: form.bedrooms ? Number(form.bedrooms) : null,
-        property_types: form.property_types.length > 0 ? form.property_types : null,
-        locations: form.locations ? form.locations.split(',').map((s) => s.trim()) : null,
-        area_name: form.area_name || null,
-        building_name: form.building_name || null,
-        requirements_notes: form.requirements_notes || null,
-      });
-      setForm(initialForm);
-      toast.success('Lead created! It will appear in All Leads and the Pipeline.');
-    } catch {}
+  const toggleGroup = (group: string) => {
+    setExpandedGroups((prev) =>
+      prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group]
+    );
   };
 
-  const updateField = (key: string, value: any) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+  const filtered = useMemo(() => {
+    return leads.filter((l) => {
+      const matchesName = !nameFilter || l.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesLocation =
+        !selectedLocation ||
+        l.area_name?.toLowerCase().includes(selectedLocation.toLowerCase()) ||
+        l.locations?.some((loc) => loc.toLowerCase().includes(selectedLocation.toLowerCase()));
+      const matchesSearch =
+        !searchQuery ||
+        l.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        l.phone.includes(searchQuery) ||
+        l.email?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesTab =
+        activeTab === 'people'
+          ? l.lead_type === 'buyer' || l.lead_type === 'tenant' || !l.lead_type
+          : l.lead_type === 'landlord';
+      return matchesName && matchesLocation && matchesSearch && matchesTab;
+    });
+  }, [leads, nameFilter, selectedLocation, searchQuery, activeTab]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const paginatedLeads = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  const toggleSelect = (id: string) => {
+    setSelectedLeadIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
   };
 
-  const togglePropertyType = (type: PropertyType) => {
-    setForm((prev) => ({
-      ...prev,
-      property_types: prev.property_types.includes(type)
-        ? prev.property_types.filter((t) => t !== type)
-        : [...prev.property_types, type],
-    }));
+  const handleSelectAll = () => {
+    const ids = paginatedLeads.map((l) => l.id);
+    setSelectedLeadIds((prev) => [...new Set([...prev, ...ids])]);
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedLeadIds([]);
+  };
+
+  const handleReset = () => {
+    setNameFilter('');
+    setSelectedLocation('');
+    setSearchQuery('');
+    setCurrentPage(1);
   };
 
   return (
     <MainLayout>
-      <PageHeader
-        title="Lead Generation"
-        subtitle="Capture new leads and feed them into outreach workflows"
-        actions={
-          <Button variant="outline" onClick={() => navigate('/all-leads')}>
-            <Users className="w-4 h-4 mr-2" />
-            View All Leads
-          </Button>
-        }
-      />
+      {/* Purple-tinted header */}
+      <div className="px-6 py-4 bg-primary/5 border-b border-primary/10 sticky top-0 z-10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
+              <UserPlus className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-primary">Lead Generation</h1>
+              <p className="text-sm text-muted-foreground">Search for the perfect leads</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <CreateLeadDialog
+              trigger={
+                <Button className="bg-primary hover:bg-primary/90">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Add Lead
+                </Button>
+              }
+            />
+          </div>
+        </div>
+      </div>
 
-      <PageContent>
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              { label: 'Total Leads', value: leads.length, icon: Users, color: 'primary' },
-              { label: 'Added Today', value: leadsToday, icon: Zap, color: 'accent' },
-              { label: 'This Week', value: leadsThisWeek, icon: TrendingUp, color: 'success' },
-            ].map((m) => (
-              <motion.div key={m.label} variants={itemVariants}>
-                <div className={cn('metric-card', `metric-card-${m.color}`)}>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground font-medium">{m.label}</p>
-                      <p className="text-3xl font-bold text-foreground mt-2">{m.value}</p>
-                    </div>
-                    <div className={cn(
-                      'p-3 rounded-xl',
-                      m.color === 'primary' && 'bg-pastel-blue',
-                      m.color === 'accent' && 'bg-pastel-green',
-                      m.color === 'success' && 'bg-pastel-green',
-                    )}>
-                      <m.icon className={cn(
-                        'w-6 h-6',
-                        m.color === 'primary' && 'text-primary',
-                        m.color === 'accent' && 'text-accent',
-                        m.color === 'success' && 'text-success',
-                      )} />
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Filter Sidebar */}
+        <div className="w-[280px] border-r border-border bg-card p-4 overflow-y-auto shrink-0">
+          {/* People / Companies Toggle */}
+          <div className="flex rounded-lg overflow-hidden border border-border mb-6">
+            <button
+              onClick={() => setActiveTab('people')}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors',
+                activeTab === 'people'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-card text-muted-foreground hover:bg-muted'
+              )}
+            >
+              <Users className="w-4 h-4" />
+              People
+            </button>
+            <button
+              onClick={() => setActiveTab('companies')}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors',
+                activeTab === 'companies'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-card text-muted-foreground hover:bg-muted'
+              )}
+            >
+              <Building2 className="w-4 h-4" />
+              Companies
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Lead Form */}
-            <motion.div variants={itemVariants} className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <UserPlus className="w-5 h-5 text-primary" />
-                    New Lead Entry
-                  </CardTitle>
-                  <CardDescription>Enter lead details. They'll instantly appear in All Leads and trigger outreach.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-5">
-                    {/* Basic Info */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Full Name *</Label>
-                        <Input value={form.name} onChange={(e) => updateField('name', e.target.value)} placeholder="John Smith" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Phone *</Label>
-                        <Input value={form.phone} onChange={(e) => updateField('phone', e.target.value)} placeholder="+971501234567" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Email</Label>
-                        <Input type="email" value={form.email} onChange={(e) => updateField('email', e.target.value)} placeholder="john@email.com" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Lead Type</Label>
-                        <Select value={form.lead_type} onValueChange={(v) => updateField('lead_type', v)}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="buyer">Buyer</SelectItem>
-                            <SelectItem value="landlord">Landlord</SelectItem>
-                            <SelectItem value="tenant">Tenant</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+          {/* Name Filter */}
+          <div className="mb-5">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-semibold text-foreground">Name</label>
+              <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+            </div>
+            <Input
+              value={nameFilter}
+              onChange={(e) => setNameFilter(e.target.value)}
+              placeholder="Enter Name..."
+              className="text-sm"
+            />
+          </div>
 
-                    {/* Classification */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Source</Label>
-                        <Select value={form.source} onValueChange={(v) => updateField('source', v)}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {['website', 'referral', 'cold_call', 'social_media', 'property_portal', 'walk_in', 'other'].map((s) => (
-                              <SelectItem key={s} value={s} className="capitalize">{s.replace(/_/g, ' ')}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Priority</Label>
-                        <Select value={form.priority} onValueChange={(v) => updateField('priority', v)}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="hot">🔥 Hot</SelectItem>
-                            <SelectItem value="warm">🌡️ Warm</SelectItem>
-                            <SelectItem value="cold">❄️ Cold</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Bedrooms</Label>
-                        <Input type="number" value={form.bedrooms} onChange={(e) => updateField('bedrooms', e.target.value)} placeholder="2" />
-                      </div>
-                    </div>
-
-                    {/* Budget */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Budget Min</Label>
-                        <Input type="number" value={form.budget_min} onChange={(e) => updateField('budget_min', e.target.value)} placeholder="500000" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Budget Max</Label>
-                        <Input type="number" value={form.budget_max} onChange={(e) => updateField('budget_max', e.target.value)} placeholder="1500000" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Currency</Label>
-                        <Select value={form.budget_currency} onValueChange={(v) => updateField('budget_currency', v)}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="AED">AED</SelectItem>
-                            <SelectItem value="USD">USD</SelectItem>
-                            <SelectItem value="EUR">EUR</SelectItem>
-                            <SelectItem value="GBP">GBP</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Property Types */}
-                    <div className="space-y-2">
-                      <Label>Property Types</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {(['apartment', 'villa', 'townhouse', 'penthouse', 'studio', 'commercial', 'land'] as PropertyType[]).map((type) => (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() => togglePropertyType(type)}
+          {/* Location Tree */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-semibold text-foreground">Location</label>
+              <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+            </div>
+            {selectedLocation && (
+              <div className="mb-2">
+                <Badge variant="secondary" className="text-xs">
+                  {selectedLocation}
+                  <button
+                    className="ml-1 hover:text-destructive"
+                    onClick={() => setSelectedLocation('')}
+                  >
+                    ×
+                  </button>
+                </Badge>
+              </div>
+            )}
+            <div className="space-y-0.5">
+              {locationTree.map((group) => (
+                <div key={group.label}>
+                  <button
+                    onClick={() => toggleGroup(group.label)}
+                    className="flex items-center gap-2 w-full py-1.5 text-sm hover:text-primary transition-colors"
+                  >
+                    {expandedGroups.includes(group.label) ? (
+                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedLocation(selectedLocation === group.label ? '' : group.label);
+                      }}
+                      className={cn(
+                        'w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0',
+                        selectedLocation === group.label
+                          ? 'border-primary bg-primary'
+                          : 'border-muted-foreground/40'
+                      )}
+                    >
+                      {selectedLocation === group.label && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
+                      )}
+                    </button>
+                    <span className={cn(
+                      'font-medium',
+                      selectedLocation === group.label ? 'text-primary' : 'text-foreground'
+                    )}>
+                      {group.label}
+                    </span>
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      ({group.children.length})
+                    </span>
+                  </button>
+                  {expandedGroups.includes(group.label) && (
+                    <div className="ml-6 space-y-0.5">
+                      {group.children.map((child) => (
+                        <button
+                          key={child}
+                          onClick={() => setSelectedLocation(selectedLocation === child ? '' : child)}
+                          className={cn(
+                            'flex items-center gap-2 w-full py-1 text-sm transition-colors',
+                            selectedLocation === child ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                          )}
+                        >
+                          <div
                             className={cn(
-                              'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize',
-                              form.property_types.includes(type)
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                              'w-3 h-3 rounded-full border-2 flex items-center justify-center shrink-0',
+                              selectedLocation === child
+                                ? 'border-primary bg-primary'
+                                : 'border-muted-foreground/40'
                             )}
                           >
-                            {type}
-                          </button>
-                        ))}
-                      </div>
+                            {selectedLocation === child && (
+                              <div className="w-1 h-1 rounded-full bg-primary-foreground" />
+                            )}
+                          </div>
+                          {child}
+                        </button>
+                      ))}
                     </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
 
-                    {/* Location */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Area Name</Label>
-                        <Input value={form.area_name} onChange={(e) => updateField('area_name', e.target.value)} placeholder="Downtown Dubai" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Building Name</Label>
-                        <Input value={form.building_name} onChange={(e) => updateField('building_name', e.target.value)} placeholder="Burj Vista" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Locations (comma-sep)</Label>
-                        <Input value={form.locations} onChange={(e) => updateField('locations', e.target.value)} placeholder="Marina, JBR, Downtown" />
-                      </div>
-                    </div>
+        {/* Main Results Area */}
+        <div className="flex-1 overflow-y-auto p-5">
+          {/* Results Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Users className="w-5 h-5 text-muted-foreground" />
+              <span className="text-sm font-semibold text-foreground">
+                Showing {filtered.length} results
+              </span>
+              <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                <Shuffle className="w-3 h-3" />
+                Shuffled
+              </button>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">{selectedLeadIds.length} selected</span>
+              <Button variant="outline" size="sm" onClick={() => { setSearchQuery(''); setCurrentPage(1); }}>
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                New Search
+              </Button>
+            </div>
+          </div>
 
-                    {/* Notes */}
-                    <div className="space-y-2">
-                      <Label>Requirements Notes</Label>
-                      <Textarea value={form.requirements_notes} onChange={(e) => updateField('requirements_notes', e.target.value)} placeholder="Any specific requirements, preferences, or notes..." rows={3} />
-                    </div>
+          {/* Search Bar */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                placeholder="Describe what you're looking for..."
+                className="pl-10"
+              />
+            </div>
+            <Button className="bg-primary hover:bg-primary/90">
+              <Search className="w-4 h-4 mr-2" />
+              Search
+            </Button>
+            <Button variant="outline" onClick={handleReset}>
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Reset
+            </Button>
+          </div>
 
-                    <div className="flex justify-end gap-3">
-                      <Button type="button" variant="outline" onClick={() => setForm(initialForm)}>Reset</Button>
-                      <Button type="submit" disabled={createLead.isPending} className="bg-gradient-primary hover:opacity-90">
-                        {createLead.isPending ? 'Creating...' : (
-                          <>
-                            <UserPlus className="w-4 h-4 mr-2" />
-                            Create Lead
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
-            </motion.div>
+          {/* Pagination & Actions */}
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
+                <ChevronLeft className="w-3.5 h-3.5 mr-1" />
+                Prev
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                Next
+                <ChevronRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                Select All
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleDeselectAll}>
+                Deselect
+              </Button>
+            </div>
+          </div>
 
-            {/* Recent Leads Sidebar */}
-            <motion.div variants={itemVariants}>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <Target className="w-4 h-4 text-accent" />
-                      Recent Leads
-                    </span>
-                    <Button variant="ghost" size="sm" onClick={() => navigate('/all-leads')}>
-                      View all <ArrowRight className="w-3 h-3 ml-1" />
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {recentLeads.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-6">No leads yet. Create your first lead!</p>
-                  ) : (
-                    recentLeads.map((lead) => (
+          {/* Results Grid */}
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-28 rounded-xl" />
+              ))}
+            </div>
+          ) : paginatedLeads.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Users className="w-14 h-14 text-muted-foreground/40 mb-4" />
+              <p className="text-lg font-medium text-muted-foreground">No leads found</p>
+              <p className="text-sm text-muted-foreground mt-1">Try adjusting your filters or search query</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {paginatedLeads.map((lead) => (
+                <Card
+                  key={lead.id}
+                  className={cn(
+                    'cursor-pointer hover:shadow-card-hover transition-all border',
+                    selectedLeadIds.includes(lead.id) && 'ring-2 ring-primary border-primary'
+                  )}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={selectedLeadIds.includes(lead.id)}
+                        onCheckedChange={() => toggleSelect(lead.id)}
+                        className="mt-1"
+                      />
                       <div
-                        key={lead.id}
-                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                        className="flex-1 min-w-0"
                         onClick={() => navigate(`/leads/${lead.id}`)}
                       >
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-semibold text-muted-foreground shrink-0">
-                          {lead.name.charAt(0)}
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">
+                            {lead.name.charAt(0)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-foreground text-sm truncate">{lead.name}</p>
+                            {lead.lead_type && (
+                              <Badge variant="outline" className="text-[10px] capitalize">{lead.lead_type}</Badge>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{lead.name}</p>
-                          <p className="text-xs text-muted-foreground">{lead.phone}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            {lead.phone}
+                          </span>
+                          {lead.email && (
+                            <span className="flex items-center gap-1">
+                              <Mail className="w-3 h-3" />
+                              <span className="truncate max-w-[140px]">{lead.email}</span>
+                            </span>
+                          )}
+                          {(lead.area_name || (lead.locations && lead.locations[0])) && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {lead.area_name || lead.locations?.[0]}
+                            </span>
+                          )}
                         </div>
-                        <span className={cn('status-badge text-[10px]', statusBadgeClass[lead.status] || 'status-badge-new')}>
-                          {lead.status}
-                        </span>
                       </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          </div>
-        </motion.div>
-      </PageContent>
+                      <Badge
+                        className={cn(
+                          'text-[10px] shrink-0',
+                          lead.priority === 'hot' && 'bg-destructive/10 text-destructive border-destructive/20',
+                          lead.priority === 'warm' && 'bg-warning/10 text-warning border-warning/20',
+                          lead.priority === 'cold' && 'bg-primary/10 text-primary border-primary/20'
+                        )}
+                        variant="outline"
+                      >
+                        {lead.priority}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </MainLayout>
   );
 }
-
-const statusBadgeClass: Record<string, string> = {
-  new: 'status-badge-new',
-  contacted: 'status-badge-contacted',
-  viewing: 'status-badge-viewing',
-  viewed: 'status-badge-viewed',
-  negotiation: 'status-badge-negotiation',
-  closed: 'status-badge-closed',
-  lost: 'status-badge-lost',
-};
