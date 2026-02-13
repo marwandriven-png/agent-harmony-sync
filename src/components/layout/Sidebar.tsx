@@ -1,6 +1,7 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import xEstateLogo from '@/assets/x-estate-logo.svg';
 import { 
   LayoutDashboard, 
   Users, 
@@ -66,9 +67,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="h-16 flex items-center px-4 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center">
-            <Building2 className="w-5 h-5 text-accent-foreground" />
-          </div>
+          <img src={xEstateLogo} alt="X-Estate" className="w-9 h-9" />
           <AnimatePresence>
             {!collapsed && (
               <motion.span
@@ -77,7 +76,7 @@ export function Sidebar() {
                 exit={{ opacity: 0, width: 0 }}
                 className="font-bold text-sidebar-foreground text-lg whitespace-nowrap overflow-hidden"
               >
-                RealEstate CRM
+                X-Estate
               </motion.span>
             )}
           </AnimatePresence>
