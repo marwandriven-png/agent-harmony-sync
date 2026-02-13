@@ -34,16 +34,16 @@ import { toast } from 'sonner';
 
 // --- DUMMY DATA ---
 const dummyPeople = [
-  { id: '1', name: 'Joe Anis', title: 'President and CEO, Europe, Middle East and Africa, Gas Power', company: 'GE Vernova', location: 'Dubai, AE', email: '@gmail.com', phone: '624-XXXX', linkedin: true, education: null },
-  { id: '2', name: 'Alberto Canteli Suarez', title: 'Chairman and CEO Nordics, CEE, Middle East and Africa', company: 'Havas', location: 'United Arab Emirates', email: '@gmail.com', phone: '', linkedin: true, education: null },
-  { id: '3', name: 'Elie Chaillot', title: 'President and CEO | International', company: 'GE HealthCare', location: 'Dubai, AE', email: '@gehealthcare.com', phone: '', linkedin: true, education: null },
-  { id: '4', name: 'Tamara Bakir', title: 'Partner', company: 'Driven Properties', location: 'Dubai, AE', email: '@drivenproperties.ae', phone: '324-XXXX', linkedin: true, education: null },
-  { id: '5', name: 'Hadi Hamra', title: 'Managing Partner', company: 'Driven Properties', location: 'United Arab Emirates', email: '@drivenproperties.com', phone: '', linkedin: true, education: { school: 'American University of Sharjah', degree: 'Bachelor of Science (B.Sc.), Civil Engineering' } },
-  { id: '6', name: 'Emily Wade', title: 'Director of People and Culture', company: 'Driven Properties', location: 'Dubai, AE', email: '@drivenproperties.com', phone: '8848XXXX', linkedin: true, education: null },
-  { id: '7', name: 'Jelena Stanković', title: 'Partner', company: 'Driven Properties', location: 'Dubai, AE', email: '@drivenproperties.com', phone: '322 XXXX', linkedin: true, education: null },
-  { id: '8', name: 'Fatma Hashim', title: 'Partner', company: 'Driven Properties L.L.C.', location: 'United Arab Emirates', email: '@drivenproperties.ae', phone: '', linkedin: true, education: null },
-  { id: '9', name: 'Kelly Robinson', title: 'Senior Property Consultant', company: 'Driven Properties', location: 'Dubai, AE', email: '@drivenproperties.com', phone: '551-XXXX', linkedin: true, education: null },
-  { id: '10', name: 'Sarah Al Madani', title: 'CEO', company: 'Refresh Market', location: 'Dubai, AE', email: '@refreshmarket.ae', phone: '500-XXXX', linkedin: true, education: null },
+  { id: '1', name: 'Joe Anis', title: 'President and CEO, Europe, Middle East and Africa, Gas Power', company: 'GE Vernova', location: 'Dubai, AE', email: '@gmail.com', phone: '624-XXXX', linkedin: true, linkedinUrl: 'https://www.linkedin.com/in/joe-anis', education: null },
+  { id: '2', name: 'Alberto Canteli Suarez', title: 'Chairman and CEO Nordics, CEE, Middle East and Africa', company: 'Havas', location: 'United Arab Emirates', email: '@gmail.com', phone: '', linkedin: true, linkedinUrl: 'https://www.linkedin.com/in/alberto-canteli-suarez', education: null },
+  { id: '3', name: 'Elie Chaillot', title: 'President and CEO | International', company: 'GE HealthCare', location: 'Dubai, AE', email: '@gehealthcare.com', phone: '', linkedin: true, linkedinUrl: 'https://www.linkedin.com/in/elie-chaillot', education: null },
+  { id: '4', name: 'Tamara Bakir', title: 'Partner', company: 'Driven Properties', location: 'Dubai, AE', email: '@drivenproperties.ae', phone: '324-XXXX', linkedin: true, linkedinUrl: 'https://www.linkedin.com/in/tamara-bakir', education: null },
+  { id: '5', name: 'Hadi Hamra', title: 'Managing Partner', company: 'Driven Properties', location: 'United Arab Emirates', email: '@drivenproperties.com', phone: '', linkedin: true, linkedinUrl: 'https://www.linkedin.com/in/hadi-hamra', education: { school: 'American University of Sharjah', degree: 'Bachelor of Science (B.Sc.), Civil Engineering' } },
+  { id: '6', name: 'Emily Wade', title: 'Director of People and Culture', company: 'Driven Properties', location: 'Dubai, AE', email: '@drivenproperties.com', phone: '8848XXXX', linkedin: true, linkedinUrl: 'https://www.linkedin.com/in/emily-wade', education: null },
+  { id: '7', name: 'Jelena Stanković', title: 'Partner', company: 'Driven Properties', location: 'Dubai, AE', email: '@drivenproperties.com', phone: '322 XXXX', linkedin: true, linkedinUrl: 'https://www.linkedin.com/in/jelena-stankovic', education: null },
+  { id: '8', name: 'Fatma Hashim', title: 'Partner', company: 'Driven Properties L.L.C.', location: 'United Arab Emirates', email: '@drivenproperties.ae', phone: '', linkedin: true, linkedinUrl: 'https://www.linkedin.com/in/fatma-hashim', education: null },
+  { id: '9', name: 'Kelly Robinson', title: 'Senior Property Consultant', company: 'Driven Properties', location: 'Dubai, AE', email: '@drivenproperties.com', phone: '551-XXXX', linkedin: true, linkedinUrl: 'https://www.linkedin.com/in/kelly-robinson', education: null },
+  { id: '10', name: 'Sarah Al Madani', title: 'CEO', company: 'Refresh Market', location: 'Dubai, AE', email: '@refreshmarket.ae', phone: '500-XXXX', linkedin: true, linkedinUrl: 'https://www.linkedin.com/in/sarah-al-madani', education: null },
 ];
 
 const dummyCompanies = [
@@ -287,7 +287,11 @@ function PersonCard({ person, selected, onToggle, expanded, onToggleExpand }: { 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-foreground">{person.name}</span>
-              {person.linkedin && <Linkedin className="w-4 h-4 text-[#0A66C2]" />}
+              {person.linkedin && (
+                <a href={person.linkedinUrl || `https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(person.name)}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} title="View LinkedIn Profile">
+                  <Linkedin className="w-4 h-4 text-[#0A66C2] hover:scale-110 transition-transform cursor-pointer" />
+                </a>
+              )}
             </div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
               <Building2 className="w-3 h-3" />
