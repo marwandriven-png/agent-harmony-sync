@@ -25,8 +25,8 @@ import { toast } from 'sonner';
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/leads', icon: Users, label: 'Leads Pipeline' },
-  { to: '/all-leads', icon: List, label: 'All Leads' },
   { to: '/lead-generation', icon: UserPlus, label: 'Lead Generation' },
+  { to: '/all-leads', icon: List, label: 'Leads Exports' },
   { to: '/outreach', icon: Megaphone, label: 'Outreach Center' },
   { to: '/cold-calls', icon: Phone, label: 'Cold Calls' },
   { to: '/calendar', icon: Calendar, label: 'Calendar' },
