@@ -142,6 +142,186 @@ export type Database = {
           },
         ]
       }
+      campaign_leads: {
+        Row: {
+          campaign_id: string
+          channel: string | null
+          created_at: string
+          delivered_at: string | null
+          error_message: string | null
+          id: string
+          lead_id: string
+          read_at: string | null
+          replied_at: string | null
+          retry_count: number
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          channel?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          lead_id: string
+          read_at?: string | null
+          replied_at?: string | null
+          retry_count?: number
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          channel?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          lead_id?: string
+          read_at?: string | null
+          replied_at?: string | null
+          retry_count?: number
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_leads_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_leads_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          campaign_type: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          delivered_count: number
+          description: string | null
+          email_body: string | null
+          email_enabled: boolean
+          email_subject: string | null
+          failed_count: number
+          id: string
+          linkedin_enabled: boolean
+          linkedin_message: string | null
+          name: string
+          read_count: number
+          replied_count: number
+          scheduled_at: string | null
+          send_interval_seconds: number | null
+          sent_count: number
+          started_at: string | null
+          status: string
+          total_leads: number
+          updated_at: string
+          whatsapp_enabled: boolean
+          whatsapp_template: string | null
+        }
+        Insert: {
+          campaign_type?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_count?: number
+          description?: string | null
+          email_body?: string | null
+          email_enabled?: boolean
+          email_subject?: string | null
+          failed_count?: number
+          id?: string
+          linkedin_enabled?: boolean
+          linkedin_message?: string | null
+          name: string
+          read_count?: number
+          replied_count?: number
+          scheduled_at?: string | null
+          send_interval_seconds?: number | null
+          sent_count?: number
+          started_at?: string | null
+          status?: string
+          total_leads?: number
+          updated_at?: string
+          whatsapp_enabled?: boolean
+          whatsapp_template?: string | null
+        }
+        Update: {
+          campaign_type?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_count?: number
+          description?: string | null
+          email_body?: string | null
+          email_enabled?: boolean
+          email_subject?: string | null
+          failed_count?: number
+          id?: string
+          linkedin_enabled?: boolean
+          linkedin_message?: string | null
+          name?: string
+          read_count?: number
+          replied_count?: number
+          scheduled_at?: string | null
+          send_interval_seconds?: number | null
+          sent_count?: number
+          started_at?: string | null
+          status?: string
+          total_leads?: number
+          updated_at?: string
+          whatsapp_enabled?: boolean
+          whatsapp_template?: string | null
+        }
+        Relationships: []
+      }
+      channel_credentials: {
+        Row: {
+          channel: string
+          created_at: string
+          created_by: string | null
+          credential_key: string
+          credential_value: string
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          created_by?: string | null
+          credential_key: string
+          credential_value: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          credential_key?: string
+          credential_value?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cold_calls: {
         Row: {
           assigned_agent_id: string | null
@@ -465,6 +645,90 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          body: string
+          campaign_id: string | null
+          channel: string
+          created_at: string
+          created_by: string | null
+          delivered_at: string | null
+          direction: string
+          error_message: string | null
+          external_message_id: string | null
+          id: string
+          lead_id: string
+          read_at: string | null
+          replied_at: string | null
+          retry_count: number
+          sent_at: string | null
+          status: string
+          subject: string | null
+          template_name: string | null
+          template_variables: Json | null
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          campaign_id?: string | null
+          channel: string
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          direction?: string
+          error_message?: string | null
+          external_message_id?: string | null
+          id?: string
+          lead_id: string
+          read_at?: string | null
+          replied_at?: string | null
+          retry_count?: number
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          template_name?: string | null
+          template_variables?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          campaign_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          direction?: string
+          error_message?: string | null
+          external_message_id?: string | null
+          id?: string
+          lead_id?: string
+          read_at?: string | null
+          replied_at?: string | null
+          retry_count?: number
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          template_name?: string | null
+          template_variables?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
