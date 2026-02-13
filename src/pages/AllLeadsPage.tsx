@@ -58,6 +58,7 @@ export default function AllLeadsPage() {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewExport, setReviewExport] = useState<LeadExport | null>(null);
   const [sheetUrl, setSheetUrl] = useState('');
+  const [selectedJobTitle, setSelectedJobTitle] = useState<string>('all');
   const [uploadSource, setUploadSource] = useState<'google-sheet' | 'apollo'>('google-sheet');
 
   // Backend-powered leads by status
@@ -82,9 +83,24 @@ export default function AllLeadsPage() {
 
   const reviewLeads = reviewExport?.leads || [];
 
+  // Job title counts for filter dropdown
+  const jobTitleCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    reviewLeads.forEach(l => {
+      const title = l.jobTitle || 'Unknown';
+      counts[title] = (counts[title] || 0) + 1;
+    });
+    return counts;
+  }, [reviewLeads]);
+
+  const filteredReviewLeads = useMemo(() => {
+    if (selectedJobTitle === 'all') return reviewLeads;
+    return reviewLeads.filter(l => l.jobTitle === selectedJobTitle);
+  }, [reviewLeads, selectedJobTitle]);
+
   const toggleAll = () => {
-    if (selectedIds.length === reviewLeads.length) setSelectedIds([]);
-    else setSelectedIds(reviewLeads.map((l) => l.id));
+    if (selectedIds.length === filteredReviewLeads.length) setSelectedIds([]);
+    else setSelectedIds(filteredReviewLeads.map((l) => l.id));
   };
 
   const openReviewModal = (exportId: string) => {
@@ -442,16 +458,27 @@ export default function AllLeadsPage() {
             <div className="flex items-center justify-between mb-1">
               <div>
                 <DialogTitle className="text-xl font-bold">Review Leads</DialogTitle>
-                <p className="text-sm text-muted-foreground mt-1">{reviewLeads.length} leads · {selectedIds.length} selected</p>
+                <p className="text-sm text-muted-foreground mt-1">{filteredReviewLeads.length} leads · {selectedIds.length} selected</p>
               </div>
               <div className="flex items-center gap-3">
+                <Select value={selectedJobTitle} onValueChange={setSelectedJobTitle}>
+                  <SelectTrigger className="w-[220px] bg-background">
+                    <SelectValue placeholder="All Job Titles" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover z-50 max-h-60">
+                    <SelectItem value="all">All Job Titles ({reviewLeads.length})</SelectItem>
+                    {Object.entries(jobTitleCounts).sort(([a], [b]) => a.localeCompare(b)).map(([title, count]) => (
+                      <SelectItem key={title} value={title}>{title} ({count})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <div className="flex items-center gap-1.5 text-primary">
                   <Phone className="w-4 h-4" />
                   <span className="font-bold italic text-sm">5 Calling Credits</span>
                 </div>
                 <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
-                  <SelectTrigger className="w-[200px]"><SelectValue placeholder="Select campaign *" /></SelectTrigger>
-                  <SelectContent>
+                  <SelectTrigger className="w-[200px] bg-background"><SelectValue placeholder="Select campaign *" /></SelectTrigger>
+                  <SelectContent className="bg-popover z-50">
                     {(campaigns || []).map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
@@ -492,7 +519,7 @@ export default function AllLeadsPage() {
                 <TableRow className="bg-muted/30">
                   <TableHead className="w-10 pl-6">
                     <Checkbox
-                      checked={selectedIds.length === reviewLeads.length && reviewLeads.length > 0}
+                      checked={selectedIds.length === filteredReviewLeads.length && filteredReviewLeads.length > 0}
                       onCheckedChange={toggleAll}
                     />
                   </TableHead>
@@ -505,14 +532,14 @@ export default function AllLeadsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {reviewLeads.length === 0 ? (
+                {filteredReviewLeads.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No leads in this export
                     </TableCell>
                   </TableRow>
                 ) : (
-                  reviewLeads.map((lead) => (
+                  filteredReviewLeads.map((lead) => (
                     <TableRow key={lead.id} className={cn('hover:bg-muted/20', selectedIds.includes(lead.id) && 'bg-primary/5')}>
                       <TableCell className="pl-6">
                         <Checkbox
