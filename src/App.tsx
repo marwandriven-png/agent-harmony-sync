@@ -19,6 +19,9 @@ import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthPage from "./pages/AuthPage";
 import SetupPage from "./pages/SetupPage";
+import OutreachCenterPage from "./pages/OutreachCenterPage";
+import AllLeadsPage from "./pages/AllLeadsPage";
+import LeadGenerationPage from "./pages/LeadGenerationPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -140,6 +143,30 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <SettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/outreach"
+              element={
+                <ProtectedRoute>
+                  <OutreachCenterPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/all-leads"
+              element={
+                <ProtectedRoute>
+                  <AllLeadsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/lead-generation"
+              element={
+                <ProtectedRoute>
+                  <LeadGenerationPage />
                 </ProtectedRoute>
               }
             />
