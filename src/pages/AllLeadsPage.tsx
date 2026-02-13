@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import {
-  Phone, FileText, CheckCircle, Download, XCircle, Filter, ExternalLink, AlertCircle, Upload, Link2, Sheet, UserPlus, Loader2,
+  Phone, FileText, CheckCircle, Download, XCircle, Filter, ExternalLink, AlertCircle, Upload, Link2, Sheet, UserPlus, Loader2, Linkedin,
 } from 'lucide-react';
 import { useLeadExportsStore, type LeadExport, type ExportedLead } from '@/store/leadExportsStore';
 import { useLeads } from '@/hooks/useLeads';
@@ -537,9 +537,16 @@ export default function AllLeadsPage() {
                       <TableCell className="text-sm text-muted-foreground">{lead.location}</TableCell>
                       <TableCell>
                         {lead.linkedin && (
-                          <button className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground">
-                            <ExternalLink className="w-4 h-4" />
-                          </button>
+                          <a
+                            href={lead.linkedinUrl || `https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(lead.name)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 rounded hover:bg-muted transition-colors inline-flex"
+                            title="View LinkedIn Profile"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <Linkedin className="w-4 h-4 text-[#0A66C2]" />
+                          </a>
                         )}
                       </TableCell>
                     </TableRow>
