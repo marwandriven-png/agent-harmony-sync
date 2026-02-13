@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -13,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import {
-  Phone, FileText, CheckCircle, Download, XCircle, Filter, Lock, ExternalLink, AlertCircle,
+  Phone, FileText, CheckCircle, Download, XCircle, Filter, Lock, ExternalLink, AlertCircle, Upload, Link2, Sheet, UserPlus,
 } from 'lucide-react';
 
 type TabId = 'review' | 'contacted' | 'replied' | 'self-generated';
@@ -22,7 +23,7 @@ const tabs: { id: TabId; label: string; locked?: boolean }[] = [
   { id: 'review', label: 'Review New Leads' },
   { id: 'contacted', label: 'Contacted Leads' },
   { id: 'replied', label: 'Replied Leads' },
-  { id: 'self-generated', label: 'Self-Generated', locked: true },
+  { id: 'self-generated', label: 'Self-Generated' },
 ];
 
 // Dummy completed exports
@@ -71,6 +72,8 @@ export default function AllLeadsPage() {
   const [recentFilter, setRecentFilter] = useState<'all' | 'accepted' | 'rejected'>('all');
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewExportId, setReviewExportId] = useState<string | null>(null);
+  const [sheetUrl, setSheetUrl] = useState('');
+  const [uploadSource, setUploadSource] = useState<'google-sheet' | 'apollo'>('google-sheet');
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]);
@@ -91,8 +94,8 @@ export default function AllLeadsPage() {
     <MainLayout>
       {/* Header */}
       <div className="px-6 py-4 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-primary/10">
-        <h1 className="text-xl font-bold italic text-primary">All Leads</h1>
-        <p className="text-sm text-muted-foreground">Manage and track all your leads</p>
+        <h1 className="text-xl font-bold italic text-primary">Leads Exports</h1>
+        <p className="text-sm text-muted-foreground">Manage and track all your leads exports</p>
       </div>
 
       <div className="p-6 space-y-6">
@@ -101,40 +104,93 @@ export default function AllLeadsPage() {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => !tab.locked && setActiveTab(tab.id)}
+              onClick={() => setActiveTab(tab.id)}
               className={cn(
                 'px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5',
                 activeTab === tab.id
                   ? 'bg-primary text-primary-foreground shadow-sm'
-                  : tab.locked
-                  ? 'text-muted-foreground/60 cursor-not-allowed'
                   : 'text-muted-foreground hover:text-foreground hover:bg-background'
               )}
             >
               {tab.label}
-              {tab.locked && <Lock className="w-3 h-3" />}
             </button>
           ))}
         </div>
 
         {/* Self-Generated tab */}
         {activeTab === 'self-generated' && (
-          <Card className="border-2 border-dashed border-primary/20">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Lock className="w-7 h-7 text-primary/40" />
+          <Card>
+            <CardContent className="p-6 space-y-6">
+              <div>
+                <h3 className="text-xl font-bold text-foreground mb-1">Self-Generated Leads</h3>
+                <p className="text-sm text-muted-foreground">Upload your own leads via Google Sheet link or Apollo export</p>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">Self-Generated Leads</h3>
-              <p className="text-muted-foreground text-center max-w-lg mb-2">
-                Manually add and manage your own leads with full control over contact information and campaign assignments.
-              </p>
-              <p className="text-sm text-muted-foreground mb-5">
-                Available on: <span className="text-primary font-medium">Basic</span>, <span className="text-primary font-medium">Business</span>, <span className="text-primary font-medium">Enterprise</span> plans
-              </p>
-              <Button className="bg-primary hover:bg-primary/90 rounded-full px-6 gap-2">
-                <Lock className="w-4 h-4" />
-                Upgrade to Unlock
-              </Button>
+
+              {/* Source Toggle */}
+              <div className="flex items-center gap-2 bg-muted/40 p-1 rounded-xl w-fit">
+                <button
+                  onClick={() => setUploadSource('google-sheet')}
+                  className={cn(
+                    'px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2',
+                    uploadSource === 'google-sheet'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-background'
+                  )}
+                >
+                  <Sheet className="w-4 h-4" />
+                  Google Sheet
+                </button>
+                <button
+                  onClick={() => setUploadSource('apollo')}
+                  className={cn(
+                    'px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2',
+                    uploadSource === 'apollo'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-background'
+                  )}
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Apollo Data
+                </button>
+              </div>
+
+              {/* Upload Area */}
+              <div className="border-2 border-dashed border-primary/20 rounded-xl p-8 text-center space-y-4">
+                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                  <Link2 className="w-7 h-7 text-primary" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-foreground">
+                    {uploadSource === 'google-sheet' ? 'Paste your Google Sheet link' : 'Paste your Apollo export Google Sheet link'}
+                  </h4>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {uploadSource === 'google-sheet'
+                      ? 'Share your Google Sheet with view access and paste the link below'
+                      : 'Export your Apollo leads to Google Sheets and paste the link below'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 max-w-lg mx-auto">
+                  <Input
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    value={sheetUrl}
+                    onChange={(e) => setSheetUrl(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button className="bg-primary hover:bg-primary/90 gap-2" disabled={!sheetUrl.trim()}>
+                    <Upload className="w-4 h-4" />
+                    Import
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Make sure the sheet is shared as "Anyone with the link can view"
+                </p>
+              </div>
+
+              {/* Uploaded sheets history (dummy) */}
+              <div className="space-y-3">
+                <h4 className="font-semibold text-foreground text-sm">Recent Imports</h4>
+                <div className="text-sm text-muted-foreground italic">No imports yet. Paste a Google Sheet link above to get started.</div>
+              </div>
             </CardContent>
           </Card>
         )}
