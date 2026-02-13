@@ -101,10 +101,35 @@ export function useStartCampaign() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (campaignId: string) => {
+      // First check if campaign has leads, if not add all available leads
+      const { data: checkData } = await supabase.functions.invoke('campaign-engine', {
+        body: { action: 'get', campaign_id: campaignId },
+      });
+      
+      if (!checkData?.leads || checkData.leads.length === 0) {
+        // Fetch all leads and add them to the campaign
+        const { data: allLeads, error: leadsError } = await supabase
+          .from('leads')
+          .select('id')
+          .not('status', 'eq', 'lost');
+        
+        if (leadsError) throw leadsError;
+        if (!allLeads || allLeads.length === 0) {
+          throw new Error('No leads available to add to this campaign. Create some leads first.');
+        }
+
+        const leadIds = allLeads.map((l) => l.id);
+        const { error: addError } = await supabase.functions.invoke('campaign-engine', {
+          body: { action: 'add_leads', campaign_id: campaignId, data: { lead_ids: leadIds } },
+        });
+        if (addError) throw addError;
+      }
+
       const { data, error } = await supabase.functions.invoke('campaign-engine', {
         body: { action: 'start', campaign_id: campaignId },
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       return data;
     },
     onSuccess: () => {
