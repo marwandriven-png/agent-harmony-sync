@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.kimi-gateway]
 verify_jwt = false
+
+[functions.call-evaluate]
+verify_jwt = false

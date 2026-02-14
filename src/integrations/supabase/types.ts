@@ -295,6 +295,243 @@ export type Database = {
           },
         ]
       }
+      call_kpis: {
+        Row: {
+          agent_id: string
+          answer_rate: number | null
+          answered_calls: number | null
+          avg_ai_score: number | null
+          avg_duration_seconds: number | null
+          common_strengths: Json | null
+          common_weaknesses: Json | null
+          conversion_rate: number | null
+          created_at: string
+          high_intent_calls: number | null
+          id: string
+          improvement_suggestions: string | null
+          inbound_calls: number | null
+          leads_converted: number | null
+          missed_calls: number | null
+          outbound_calls: number | null
+          period_end: string
+          period_start: string
+          period_type: string
+          total_calls: number | null
+          total_duration_seconds: number | null
+          updated_at: string
+          weak_calls: number | null
+        }
+        Insert: {
+          agent_id: string
+          answer_rate?: number | null
+          answered_calls?: number | null
+          avg_ai_score?: number | null
+          avg_duration_seconds?: number | null
+          common_strengths?: Json | null
+          common_weaknesses?: Json | null
+          conversion_rate?: number | null
+          created_at?: string
+          high_intent_calls?: number | null
+          id?: string
+          improvement_suggestions?: string | null
+          inbound_calls?: number | null
+          leads_converted?: number | null
+          missed_calls?: number | null
+          outbound_calls?: number | null
+          period_end: string
+          period_start: string
+          period_type: string
+          total_calls?: number | null
+          total_duration_seconds?: number | null
+          updated_at?: string
+          weak_calls?: number | null
+        }
+        Update: {
+          agent_id?: string
+          answer_rate?: number | null
+          answered_calls?: number | null
+          avg_ai_score?: number | null
+          avg_duration_seconds?: number | null
+          common_strengths?: Json | null
+          common_weaknesses?: Json | null
+          conversion_rate?: number | null
+          created_at?: string
+          high_intent_calls?: number | null
+          id?: string
+          improvement_suggestions?: string | null
+          inbound_calls?: number | null
+          leads_converted?: number | null
+          missed_calls?: number | null
+          outbound_calls?: number | null
+          period_end?: string
+          period_start?: string
+          period_type?: string
+          total_calls?: number | null
+          total_duration_seconds?: number | null
+          updated_at?: string
+          weak_calls?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_kpis_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      call_webhook_logs: {
+        Row: {
+          error_message: string | null
+          event_type: string
+          id: string
+          payload: Json
+          processed: boolean | null
+          processed_at: string | null
+          provider: string
+          received_at: string
+        }
+        Insert: {
+          error_message?: string | null
+          event_type: string
+          id?: string
+          payload: Json
+          processed?: boolean | null
+          processed_at?: string | null
+          provider: string
+          received_at?: string
+        }
+        Update: {
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed?: boolean | null
+          processed_at?: string | null
+          provider?: string
+          received_at?: string
+        }
+        Relationships: []
+      }
+      called_calls: {
+        Row: {
+          agent_id: string | null
+          ai_closing_probability: number | null
+          ai_confidence_score: number | null
+          ai_evaluation_status: string | null
+          ai_full_analysis: Json | null
+          ai_lead_intent_score: number | null
+          ai_overall_score: number | null
+          ai_strengths: Json | null
+          ai_weaknesses: Json | null
+          call_date: string
+          created_at: string
+          created_by: string | null
+          direction: Database["public"]["Enums"]["call_direction"]
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          lead_id: string | null
+          notes: string | null
+          phone_number: string
+          provider_call_sid: string | null
+          provider_recording_sid: string | null
+          recording_duration: number | null
+          recording_url: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["call_status"]
+          transcript_provider: string | null
+          transcript_status: string | null
+          transcript_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          ai_closing_probability?: number | null
+          ai_confidence_score?: number | null
+          ai_evaluation_status?: string | null
+          ai_full_analysis?: Json | null
+          ai_lead_intent_score?: number | null
+          ai_overall_score?: number | null
+          ai_strengths?: Json | null
+          ai_weaknesses?: Json | null
+          call_date?: string
+          created_at?: string
+          created_by?: string | null
+          direction?: Database["public"]["Enums"]["call_direction"]
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          phone_number: string
+          provider_call_sid?: string | null
+          provider_recording_sid?: string | null
+          recording_duration?: number | null
+          recording_url?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["call_status"]
+          transcript_provider?: string | null
+          transcript_status?: string | null
+          transcript_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          ai_closing_probability?: number | null
+          ai_confidence_score?: number | null
+          ai_evaluation_status?: string | null
+          ai_full_analysis?: Json | null
+          ai_lead_intent_score?: number | null
+          ai_overall_score?: number | null
+          ai_strengths?: Json | null
+          ai_weaknesses?: Json | null
+          call_date?: string
+          created_at?: string
+          created_by?: string | null
+          direction?: Database["public"]["Enums"]["call_direction"]
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          phone_number?: string
+          provider_call_sid?: string | null
+          provider_recording_sid?: string | null
+          recording_duration?: number | null
+          recording_url?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["call_status"]
+          transcript_provider?: string | null
+          transcript_status?: string | null
+          transcript_text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "called_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "called_calls_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "called_calls_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_leads: {
         Row: {
           campaign_id: string
@@ -1798,6 +2035,15 @@ export type Database = {
         | "status_change"
         | "property_sent"
       app_role: "admin" | "agent"
+      call_direction: "inbound" | "outbound"
+      call_status:
+        | "answered"
+        | "missed"
+        | "rejected"
+        | "busy"
+        | "failed"
+        | "in_progress"
+        | "completed"
       cold_call_status:
         | "new"
         | "called"
@@ -1984,6 +2230,16 @@ export const Constants = {
         "property_sent",
       ],
       app_role: ["admin", "agent"],
+      call_direction: ["inbound", "outbound"],
+      call_status: [
+        "answered",
+        "missed",
+        "rejected",
+        "busy",
+        "failed",
+        "in_progress",
+        "completed",
+      ],
       cold_call_status: [
         "new",
         "called",
