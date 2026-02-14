@@ -6,7 +6,7 @@ import {
   LayoutDashboard, 
   Users, 
   Phone, 
-  PhoneCall,
+  
   Calendar, 
   CheckSquare,
   Building2,
@@ -32,7 +32,7 @@ const navItems = [
   { to: '/all-leads', icon: List, label: 'Leads Exports' },
   { to: '/outreach', icon: Megaphone, label: 'Outreach Center' },
   { to: '/cold-calls', icon: Phone, label: 'Cold Calls' },
-  { to: '/calls', icon: PhoneCall, label: 'Called Calls' },
+  
   { to: '/calendar', icon: Calendar, label: 'Calendar' },
   { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
   { to: '/properties', icon: Building2, label: 'Properties' },
