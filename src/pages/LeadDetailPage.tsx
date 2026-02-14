@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SendTemplateDialog } from '@/components/leads/SendTemplateDialog';
 import { EditLeadDialog } from '@/components/forms/EditLeadDialog';
 import { DeleteLeadDialog } from '@/components/forms/DeleteLeadDialog';
+import { LeadCallHistory } from '@/components/calls/LeadCallHistory';
+import { CallRecorder } from '@/components/calls/CallRecorder';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import {
@@ -306,8 +308,9 @@ export default function LeadDetailPage() {
 
             {/* Tabs */}
             <Tabs defaultValue="activities" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="activities">Activities</TabsTrigger>
+                <TabsTrigger value="calls">Calls</TabsTrigger>
                 <TabsTrigger value="attachments">Attachments</TabsTrigger>
               </TabsList>
               
@@ -375,6 +378,16 @@ export default function LeadDetailPage() {
                 </div>
               </TabsContent>
 
+              <TabsContent value="calls" className="mt-4">
+                <div className="bg-card rounded-xl p-6 shadow-card">
+                  <LeadCallHistory
+                    leadId={lead.id}
+                    leadName={lead.name}
+                    phoneNumber={lead.phone}
+                  />
+                </div>
+              </TabsContent>
+
               <TabsContent value="attachments" className="mt-4">
                 <div className="bg-card rounded-xl p-6 shadow-card">
                   <div className="flex items-center justify-between mb-4">
@@ -403,6 +416,13 @@ export default function LeadDetailPage() {
             >
               <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
               <div className="space-y-2">
+                <CallRecorder
+                  leadId={lead.id}
+                  leadName={lead.name}
+                  phoneNumber={lead.phone}
+                  variant="button"
+                  className="w-full justify-start"
+                />
                 <Button 
                   className="w-full justify-start" 
                   variant="outline"
@@ -410,7 +430,7 @@ export default function LeadDetailPage() {
                   disabled={createActivity.isPending}
                 >
                   <Phone className="w-4 h-4 mr-2" />
-                  Log Call
+                  Log Activity
                 </Button>
                 <Button 
                   className="w-full justify-start" 
