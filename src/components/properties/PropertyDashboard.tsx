@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useProperties, usePropertyMetrics, useDeleteProperty } from '@/hooks/useProperties';
 import { PropertySectionTabs, type PropertySection } from './PropertySectionTabs';
 import { PropertySectionList } from './PropertySectionList';
@@ -27,6 +28,7 @@ type PropertyStatus = Database['public']['Enums']['property_status'];
 export function PropertyDashboard() {
   const { data: properties = [], isLoading, refetch } = useProperties();
   const deleteProperty = useDeleteProperty();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Section & filter state
   const [activeSection, setActiveSection] = useState<PropertySection>('pocket_listing');
@@ -37,6 +39,21 @@ export function PropertyDashboard() {
   // Dialog state
   const [convertProperty, setConvertProperty] = useState<PropertyRow | null>(null);
   const [deleteConfirmProperty, setDeleteConfirmProperty] = useState<PropertyRow | null>(null);
+
+  // Auto-open convert dialog from URL param (e.g. from Cold Calls export)
+  useEffect(() => {
+    const convertId = searchParams.get('convert');
+    if (convertId && properties.length > 0) {
+      const prop = properties.find(p => p.id === convertId);
+      if (prop) {
+        setActiveSection('database');
+        setConvertProperty(prop);
+        // Clear the param so it doesn't re-trigger
+        searchParams.delete('convert');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [searchParams, properties, setSearchParams]);
 
   // Filter properties by section
   const sectionedProperties = useMemo(() => {
