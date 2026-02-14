@@ -142,6 +142,159 @@ export type Database = {
           },
         ]
       }
+      automation_logs: {
+        Row: {
+          campaign_id: string | null
+          channel: string | null
+          created_at: string
+          event_type: string
+          id: string
+          lead_id: string
+          lead_local_timestamp: string | null
+          lead_source_classification:
+            | Database["public"]["Enums"]["lead_source_classification"]
+            | null
+          lead_timezone: string | null
+          metadata: Json | null
+          stop_condition: string | null
+          stop_reason: string | null
+          system_timestamp: string
+          trigger_source: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          channel?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          lead_id: string
+          lead_local_timestamp?: string | null
+          lead_source_classification?:
+            | Database["public"]["Enums"]["lead_source_classification"]
+            | null
+          lead_timezone?: string | null
+          metadata?: Json | null
+          stop_condition?: string | null
+          stop_reason?: string | null
+          system_timestamp?: string
+          trigger_source?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          channel?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          lead_id?: string
+          lead_local_timestamp?: string | null
+          lead_source_classification?:
+            | Database["public"]["Enums"]["lead_source_classification"]
+            | null
+          lead_timezone?: string | null
+          metadata?: Json | null
+          stop_condition?: string | null
+          stop_reason?: string | null
+          system_timestamp?: string
+          trigger_source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_logs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_queue: {
+        Row: {
+          attempt_count: number
+          campaign_id: string | null
+          cancelled_reason: string | null
+          channel: string
+          created_at: string
+          error_message: string | null
+          id: string
+          lead_id: string
+          lead_timezone: string
+          max_attempts: number
+          message_body: string
+          message_subject: string | null
+          scheduled_at: string
+          scheduled_local_time: string
+          sent_at: string | null
+          sequence_step: number
+          status: string
+          template_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          campaign_id?: string | null
+          cancelled_reason?: string | null
+          channel: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          lead_id: string
+          lead_timezone?: string
+          max_attempts?: number
+          message_body: string
+          message_subject?: string | null
+          scheduled_at: string
+          scheduled_local_time: string
+          sent_at?: string | null
+          sequence_step?: number
+          status?: string
+          template_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          campaign_id?: string | null
+          cancelled_reason?: string | null
+          channel?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string
+          lead_timezone?: string
+          max_attempts?: number
+          message_body?: string
+          message_subject?: string | null
+          scheduled_at?: string
+          scheduled_local_time?: string
+          sent_at?: string | null
+          sequence_step?: number
+          status?: string
+          template_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_queue_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_leads: {
         Row: {
           campaign_id: string
@@ -463,6 +616,78 @@ export type Database = {
           },
         ]
       }
+      email_provider_config: {
+        Row: {
+          auth_status: string
+          config: Json
+          created_at: string
+          created_by: string | null
+          daily_send_limit: number
+          display_name: string
+          dkim_verified: boolean
+          dmarc_verified: boolean
+          from_email: string
+          from_name: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          last_reset_at: string
+          provider_type: string
+          sent_today: number
+          spf_verified: boolean
+          updated_at: string
+          warmup_daily_increment: number
+          warmup_enabled: boolean
+          warmup_started_at: string | null
+        }
+        Insert: {
+          auth_status?: string
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          daily_send_limit?: number
+          display_name: string
+          dkim_verified?: boolean
+          dmarc_verified?: boolean
+          from_email: string
+          from_name?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          last_reset_at?: string
+          provider_type: string
+          sent_today?: number
+          spf_verified?: boolean
+          updated_at?: string
+          warmup_daily_increment?: number
+          warmup_enabled?: boolean
+          warmup_started_at?: string | null
+        }
+        Update: {
+          auth_status?: string
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          daily_send_limit?: number
+          display_name?: string
+          dkim_verified?: boolean
+          dmarc_verified?: boolean
+          from_email?: string
+          from_name?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          last_reset_at?: string
+          provider_type?: string
+          sent_today?: number
+          spf_verified?: boolean
+          updated_at?: string
+          warmup_daily_increment?: number
+          warmup_enabled?: boolean
+          warmup_started_at?: string | null
+        }
+        Relationships: []
+      }
       follow_up_templates: {
         Row: {
           content: string
@@ -551,14 +776,22 @@ export type Database = {
         Row: {
           area_name: string | null
           assigned_agent_id: string | null
+          automation_eligible: boolean
+          automation_stop_reason: string | null
+          automation_stopped: boolean
+          automation_stopped_at: string | null
           bedrooms: number | null
           budget_currency: string | null
           budget_max: number | null
           budget_min: number | null
           building_name: string | null
+          contact_verified: boolean
           created_at: string
           created_by: string | null
+          detected_country: string | null
+          detected_timezone: string | null
           email: string | null
+          email_bounce: boolean
           google_sheet_row_id: string | null
           id: string
           last_contacted_at: string | null
@@ -571,22 +804,35 @@ export type Database = {
           property_types: Database["public"]["Enums"]["property_type"][] | null
           requirements_notes: string | null
           source: Database["public"]["Enums"]["lead_source"]
+          source_classification:
+            | Database["public"]["Enums"]["lead_source_classification"]
+            | null
           status: Database["public"]["Enums"]["lead_status"]
           tags: string[] | null
           updated_at: string
           urgency_level: string | null
+          whatsapp_initiated: boolean
+          whatsapp_opt_in: boolean
         }
         Insert: {
           area_name?: string | null
           assigned_agent_id?: string | null
+          automation_eligible?: boolean
+          automation_stop_reason?: string | null
+          automation_stopped?: boolean
+          automation_stopped_at?: string | null
           bedrooms?: number | null
           budget_currency?: string | null
           budget_max?: number | null
           budget_min?: number | null
           building_name?: string | null
+          contact_verified?: boolean
           created_at?: string
           created_by?: string | null
+          detected_country?: string | null
+          detected_timezone?: string | null
           email?: string | null
+          email_bounce?: boolean
           google_sheet_row_id?: string | null
           id?: string
           last_contacted_at?: string | null
@@ -599,22 +845,35 @@ export type Database = {
           property_types?: Database["public"]["Enums"]["property_type"][] | null
           requirements_notes?: string | null
           source?: Database["public"]["Enums"]["lead_source"]
+          source_classification?:
+            | Database["public"]["Enums"]["lead_source_classification"]
+            | null
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
           updated_at?: string
           urgency_level?: string | null
+          whatsapp_initiated?: boolean
+          whatsapp_opt_in?: boolean
         }
         Update: {
           area_name?: string | null
           assigned_agent_id?: string | null
+          automation_eligible?: boolean
+          automation_stop_reason?: string | null
+          automation_stopped?: boolean
+          automation_stopped_at?: string | null
           bedrooms?: number | null
           budget_currency?: string | null
           budget_max?: number | null
           budget_min?: number | null
           building_name?: string | null
+          contact_verified?: boolean
           created_at?: string
           created_by?: string | null
+          detected_country?: string | null
+          detected_timezone?: string | null
           email?: string | null
+          email_bounce?: boolean
           google_sheet_row_id?: string | null
           id?: string
           last_contacted_at?: string | null
@@ -627,10 +886,15 @@ export type Database = {
           property_types?: Database["public"]["Enums"]["property_type"][] | null
           requirements_notes?: string | null
           source?: Database["public"]["Enums"]["lead_source"]
+          source_classification?:
+            | Database["public"]["Enums"]["lead_source_classification"]
+            | null
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
           updated_at?: string
           urgency_level?: string | null
+          whatsapp_initiated?: boolean
+          whatsapp_opt_in?: boolean
         }
         Relationships: [
           {
@@ -1549,6 +1813,13 @@ export type Database = {
         | "property_portal"
         | "walk_in"
         | "other"
+      lead_source_classification:
+        | "linkedin_inbound"
+        | "linkedin_outreach_response"
+        | "whatsapp_inbound"
+        | "dubai_owner_database"
+        | "referral"
+        | "cold_imported"
       lead_status:
         | "new"
         | "contacted"
@@ -1729,6 +2000,14 @@ export const Constants = {
         "property_portal",
         "walk_in",
         "other",
+      ],
+      lead_source_classification: [
+        "linkedin_inbound",
+        "linkedin_outreach_response",
+        "whatsapp_inbound",
+        "dubai_owner_database",
+        "referral",
+        "cold_imported",
       ],
       lead_status: [
         "new",
