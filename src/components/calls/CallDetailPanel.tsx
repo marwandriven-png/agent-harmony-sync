@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { CalledCall, useEvaluateCall } from '@/hooks/useCalls';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { format } from 'date-fns';
-import { Phone, PhoneIncoming, PhoneOutgoing, Clock, Brain, Star, AlertTriangle, Loader2, X } from 'lucide-react';
+import { Phone, PhoneIncoming, PhoneOutgoing, Clock, Brain, Star, AlertTriangle, Loader2, X, FileText } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface CallDetailPanelProps {
   call: CalledCall;
@@ -37,8 +41,29 @@ function ScoreGauge({ label, score, color }: { label: string; score: number | nu
 
 export function CallDetailPanel({ call, onClose }: CallDetailPanelProps) {
   const evaluateCall = useEvaluateCall();
+  const queryClient = useQueryClient();
+  const [transcribing, setTranscribing] = useState(false);
   const hasEvaluation = call.ai_evaluation_status === 'completed';
   const canEvaluate = call.transcript_text && call.ai_evaluation_status !== 'processing';
+  const canTranscribe = !call.transcript_text && call.notes;
+
+  const handleTranscribe = async () => {
+    setTranscribing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('call-transcribe', {
+        body: { call_id: call.id, notes: call.notes, direction: call.direction, duration_seconds: call.duration_seconds },
+      });
+      if (error) throw error;
+      if (data?.has_transcript) {
+        toast.success('Transcript generated from notes!');
+        queryClient.invalidateQueries({ queryKey: ['called_calls'] });
+      }
+    } catch (err: any) {
+      toast.error(`Transcription failed: ${err.message}`);
+    } finally {
+      setTranscribing(false);
+    }
+  };
 
   const formatDuration = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -118,12 +143,26 @@ export function CallDetailPanel({ call, onClose }: CallDetailPanelProps) {
                   <ScoreGauge label="Closing Probability" score={call.ai_closing_probability} color="" />
                 </>
               ) : (
-                <div className="text-center py-3">
-                  <p className="text-sm text-muted-foreground mb-2">
+                <div className="text-center py-3 space-y-2">
+                  <p className="text-sm text-muted-foreground">
                     {call.ai_evaluation_status === 'processing'
                       ? 'AI is analyzing the call...'
                       : 'No AI evaluation yet'}
                   </p>
+                  {canTranscribe && !canEvaluate && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleTranscribe}
+                      disabled={transcribing}
+                    >
+                      {transcribing ? (
+                        <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Generating transcript...</>
+                      ) : (
+                        <><FileText className="w-4 h-4 mr-1" /> Generate Transcript from Notes</>
+                      )}
+                    </Button>
+                  )}
                   {canEvaluate && (
                     <Button
                       size="sm"
