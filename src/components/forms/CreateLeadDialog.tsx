@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCreateLead } from '@/hooks/useLeads';
+import { useDetectLeadMetadata } from '@/hooks/useAutomation';
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,15 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, X, Plus } from 'lucide-react';
 import { Constants } from '@/integrations/supabase/types';
 
+const SOURCE_CLASSIFICATIONS = [
+  { value: 'linkedin_inbound', label: 'LinkedIn – Inbound' },
+  { value: 'linkedin_outreach_response', label: 'LinkedIn – Outreach Response' },
+  { value: 'whatsapp_inbound', label: 'WhatsApp Inbound' },
+  { value: 'dubai_owner_database', label: 'Dubai Owner Database' },
+  { value: 'referral', label: 'Referral' },
+  { value: 'cold_imported', label: 'Cold / Imported' },
+] as const;
+
 const leadSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
   email: z.string().trim().email('Invalid email').max(255).optional().or(z.literal('')),
@@ -39,6 +49,7 @@ const leadSchema = z.object({
   source: z.enum(Constants.public.Enums.lead_source as unknown as [string, ...string[]]),
   priority: z.enum(Constants.public.Enums.lead_priority as unknown as [string, ...string[]]),
   lead_type: z.enum(['buyer', 'landlord', 'tenant'] as const),
+  source_classification: z.string().optional(),
   building_name: z.string().max(200).optional(),
   area_name: z.string().max(200).optional(),
   budget_min: z.coerce.number().min(0).optional(),
@@ -60,7 +71,7 @@ export function CreateLeadDialog({ trigger }: CreateLeadDialogProps) {
   const [locationInput, setLocationInput] = useState('');
   const [propertyTypes, setPropertyTypes] = useState<string[]>([]);
   const createLead = useCreateLead();
-
+  const detectMetadata = useDetectLeadMetadata();
   const form = useForm<LeadFormData>({
     resolver: zodResolver(leadSchema),
     defaultValues: {
@@ -70,6 +81,7 @@ export function CreateLeadDialog({ trigger }: CreateLeadDialogProps) {
       source: 'website',
       priority: 'warm',
       lead_type: 'buyer',
+      source_classification: '',
       building_name: '',
       area_name: '',
       budget_min: undefined,
@@ -100,7 +112,7 @@ export function CreateLeadDialog({ trigger }: CreateLeadDialogProps) {
   };
 
   const onSubmit = async (data: LeadFormData) => {
-    await createLead.mutateAsync({
+    const result = await createLead.mutateAsync({
       name: data.name,
       phone: data.phone,
       email: data.email || null,
@@ -116,7 +128,19 @@ export function CreateLeadDialog({ trigger }: CreateLeadDialogProps) {
       requirements_notes: data.requirements_notes,
       locations,
       property_types: propertyTypes as any,
-    });
+      source_classification: data.source_classification || undefined,
+    } as any);
+
+    // Auto-detect country/timezone for the new lead
+    if (result?.id) {
+      detectMetadata.mutate({
+        id: result.id,
+        phone: data.phone,
+        email: data.email || null,
+        source: data.source,
+      });
+    }
+
     setOpen(false);
     form.reset();
     setLocations([]);
@@ -250,6 +274,33 @@ export function CreateLeadDialog({ trigger }: CreateLeadDialogProps) {
                 )}
               />
             </div>
+
+            {/* Source Classification (Automation) */}
+            <FormField
+              control={form.control}
+              name="source_classification"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Source Classification (Automation)</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Auto-detect or select..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {SOURCE_CLASSIFICATIONS.map((sc) => (
+                        <SelectItem key={sc.value} value={sc.value}>
+                          {sc.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Controls automation behavior for this lead</p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Building & Area */}
             <div className="grid grid-cols-2 gap-4">

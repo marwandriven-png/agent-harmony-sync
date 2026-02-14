@@ -87,9 +87,14 @@ export function useAddLeadsToCampaign() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, { campaignId }) => {
+    onSuccess: (data, { campaignId }) => {
       queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
-      toast.success('Leads added to campaign');
+      const skipped = data?.skipped?.length || 0;
+      if (skipped > 0) {
+        toast.info(`${data.added} leads added, ${skipped} skipped (eligibility rules)`);
+      } else {
+        toast.success('Leads added to campaign');
+      }
     },
     onError: (error) => {
       toast.error(`Failed to add leads: ${error.message}`);
@@ -105,30 +110,36 @@ export function useStartCampaign() {
       const { data: checkData } = await supabase.functions.invoke('campaign-engine', {
         body: { action: 'get', campaign_id: campaignId },
       });
-      
+
       const campaignLeads = checkData?.leads || [];
       const hasPending = campaignLeads.some((l: any) => l.status === 'pending');
       const hasFailed = campaignLeads.some((l: any) => l.status === 'failed');
 
       if (campaignLeads.length === 0) {
-        // No leads at all — fetch all and add them
+        // No leads at all — fetch eligible leads and add them
         const { data: allLeads, error: leadsError } = await supabase
           .from('leads')
           .select('id')
-          .not('status', 'eq', 'lost');
-        
+          .not('status', 'eq', 'lost')
+          .not('status', 'eq', 'closed');
+
         if (leadsError) throw leadsError;
         if (!allLeads || allLeads.length === 0) {
-          throw new Error('No leads available to add to this campaign. Create some leads first.');
+          throw new Error('No leads available. Create some leads first.');
         }
 
         const leadIds = allLeads.map((l) => l.id);
-        const { error: addError } = await supabase.functions.invoke('campaign-engine', {
+        const { data: addResult, error: addError } = await supabase.functions.invoke('campaign-engine', {
           body: { action: 'add_leads', campaign_id: campaignId, data: { lead_ids: leadIds } },
         });
         if (addError) throw addError;
+        
+        // Notify about skipped leads
+        if (addResult?.skipped?.length > 0) {
+          toast.info(`${addResult.skipped.length} leads skipped due to eligibility rules`);
+        }
       } else if (!hasPending && hasFailed) {
-        // All leads failed — retry them by resetting to pending
+        // All leads failed — retry them
         const { error: retryError } = await supabase.functions.invoke('campaign-engine', {
           body: { action: 'retry_failed', campaign_id: campaignId },
         });
@@ -142,9 +153,14 @@ export function useStartCampaign() {
       if (data?.error) throw new Error(data.error);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      toast.success('Campaign started');
+      const r = data?.results;
+      if (r) {
+        toast.success(`Campaign started: ${r.sent} sent, ${r.queued} queued, ${r.skipped} skipped`);
+      } else {
+        toast.success('Campaign started');
+      }
     },
     onError: (error) => {
       toast.error(`Failed to start campaign: ${error.message}`);
@@ -163,6 +179,6 @@ export function useCampaignStats(campaignId: string | undefined) {
       return data;
     },
     enabled: !!campaignId,
-    refetchInterval: 10000, // Poll every 10s for active campaigns
+    refetchInterval: 10000,
   });
 }
