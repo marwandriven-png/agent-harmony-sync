@@ -84,9 +84,8 @@ function formatDuration(seconds: number) {
   return `${m}m ${s}s`;
 }
 
-// Inline expandable call row
-function CallLogRow({ call }: { call: CalledCall }) {
-  const [expanded, setExpanded] = useState(false);
+// Inline call detail card shown inside a cold call row
+function InlineCallDetail({ call }: { call: CalledCall }) {
   const evaluateCall = useEvaluateCall();
   const queryClient = useQueryClient();
   const [transcribing, setTranscribing] = useState(false);
@@ -113,188 +112,142 @@ function CallLogRow({ call }: { call: CalledCall }) {
   };
 
   return (
-    <>
-      <TableRow
-        className="cursor-pointer hover:bg-muted/50"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <TableCell>
-          <div className="flex items-center gap-2">
-            {call.direction === 'outbound' ? (
-              <PhoneOutgoing className="w-4 h-4 text-primary" />
-            ) : (
-              <PhoneIncoming className="w-4 h-4 text-green-500" />
-            )}
-            <span className="font-mono text-sm">{call.phone_number}</span>
-          </div>
-        </TableCell>
-        <TableCell>
-          <span className="text-sm">{call.lead?.name || '—'}</span>
-        </TableCell>
-        <TableCell>
-          <Badge variant="outline" className={`text-xs ${callStatusColors[call.status] || ''}`}>
-            {call.status.replace('_', ' ')}
-          </Badge>
-        </TableCell>
-        <TableCell>
-          <span className="text-sm flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-            {formatDuration(call.duration_seconds || 0)}
+    <div className="border border-border rounded-lg p-3 bg-muted/20 space-y-3">
+      {/* Header row */}
+      <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+        {call.direction === 'outbound' ? (
+          <span className="flex items-center gap-1"><PhoneOutgoing className="w-3.5 h-3.5 text-primary" /> Outbound</span>
+        ) : (
+          <span className="flex items-center gap-1"><PhoneIncoming className="w-3.5 h-3.5 text-green-500" /> Inbound</span>
+        )}
+        <Badge variant="outline" className={`text-xs ${callStatusColors[call.status] || ''}`}>
+          {call.status.replace('_', ' ')}
+        </Badge>
+        <span className="flex items-center gap-1">
+          <Clock className="w-3 h-3" /> {formatDuration(call.duration_seconds || 0)}
+        </span>
+        <span>{format(new Date(call.call_date), 'MMM d, HH:mm')}</span>
+        {call.ai_overall_score != null && (
+          <span className={`font-semibold ${
+            call.ai_overall_score >= 70 ? 'text-green-500' :
+            call.ai_overall_score >= 50 ? 'text-yellow-500' : 'text-destructive'
+          }`}>
+            Score: {Math.round(call.ai_overall_score)}/100
           </span>
-        </TableCell>
-        <TableCell>
-          {call.ai_overall_score != null ? (
-            <span className={`font-semibold text-sm ${
-              call.ai_overall_score >= 70 ? 'text-green-500' :
-              call.ai_overall_score >= 50 ? 'text-yellow-500' : 'text-destructive'
-            }`}>
-              {Math.round(call.ai_overall_score)}/100
-            </span>
-          ) : (
-            <span className="text-muted-foreground text-sm">—</span>
-          )}
-        </TableCell>
-        <TableCell className="text-sm text-muted-foreground">
-          {format(new Date(call.call_date), 'MMM d, HH:mm')}
-        </TableCell>
-        <TableCell>
-          {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </TableCell>
-      </TableRow>
+        )}
+      </div>
 
-      {/* Expanded Detail Row */}
-      {expanded && (
-        <TableRow className="bg-muted/20 hover:bg-muted/20">
-          <TableCell colSpan={7} className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* KPI Scores */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Brain className="w-4 h-4 text-purple-400" />
-                    AI Evaluation
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {hasEvaluation ? (
-                    <>
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Overall</span>
-                          <span className="font-semibold">{call.ai_overall_score ?? 0}/100</span>
-                        </div>
-                        <Progress value={call.ai_overall_score ?? 0} className="h-1.5" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Confidence</span>
-                          <span className="font-semibold">{call.ai_confidence_score ?? 0}/100</span>
-                        </div>
-                        <Progress value={call.ai_confidence_score ?? 0} className="h-1.5" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Lead Intent</span>
-                          <span className="font-semibold">{call.ai_lead_intent_score ?? 0}/100</span>
-                        </div>
-                        <Progress value={call.ai_lead_intent_score ?? 0} className="h-1.5" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Closing Probability</span>
-                          <span className="font-semibold">{call.ai_closing_probability ?? 0}/100</span>
-                        </div>
-                        <Progress value={call.ai_closing_probability ?? 0} className="h-1.5" />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-2 space-y-2">
-                      <p className="text-xs text-muted-foreground">
-                        {call.ai_evaluation_status === 'processing' ? 'AI analyzing...' : 'No evaluation yet'}
-                      </p>
-                      {canTranscribe && !canEvaluate && (
-                        <Button size="sm" variant="outline" onClick={handleTranscribe} disabled={transcribing} className="text-xs">
-                          {transcribing ? <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Generating...</> : <><FileText className="w-3 h-3 mr-1" /> Generate Transcript</>}
-                        </Button>
-                      )}
-                      {canEvaluate && (
-                        <Button size="sm" onClick={() => evaluateCall.mutate(call.id)} disabled={evaluateCall.isPending} className="text-xs">
-                          {evaluateCall.isPending ? <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Evaluating...</> : <><Brain className="w-3 h-3 mr-1" /> Run AI Evaluation</>}
-                        </Button>
-                      )}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* KPI Scores */}
+        <Card className="border-border">
+          <CardHeader className="pb-2 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <Brain className="w-3.5 h-3.5 text-purple-400" /> AI Evaluation
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 space-y-1.5">
+            {hasEvaluation ? (
+              <>
+                {[
+                  { label: 'Overall', value: call.ai_overall_score },
+                  { label: 'Confidence', value: call.ai_confidence_score },
+                  { label: 'Lead Intent', value: call.ai_lead_intent_score },
+                  { label: 'Closing', value: call.ai_closing_probability },
+                ].map(({ label, value }) => (
+                  <div key={label} className="space-y-0.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className="font-semibold">{value ?? 0}/100</span>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                    <Progress value={value ?? 0} className="h-1" />
+                  </div>
+                ))}
+              </>
+            ) : (
+              <div className="text-center py-1 space-y-1.5">
+                <p className="text-xs text-muted-foreground">
+                  {call.ai_evaluation_status === 'processing' ? 'AI analyzing...' : 'No evaluation yet'}
+                </p>
+                {canTranscribe && !canEvaluate && (
+                  <Button size="sm" variant="outline" onClick={handleTranscribe} disabled={transcribing} className="text-xs h-7">
+                    {transcribing ? <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Generating...</> : <><FileText className="w-3 h-3 mr-1" /> Generate Transcript</>}
+                  </Button>
+                )}
+                {canEvaluate && (
+                  <Button size="sm" onClick={() => evaluateCall.mutate(call.id)} disabled={evaluateCall.isPending} className="text-xs h-7">
+                    {evaluateCall.isPending ? <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Evaluating...</> : <><Brain className="w-3 h-3 mr-1" /> Run AI Evaluation</>}
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-              {/* Strengths & Weaknesses */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Strengths & Weaknesses</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {hasEvaluation ? (
-                    <>
-                      {call.ai_strengths?.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium text-green-400 flex items-center gap-1 mb-1">
-                            <Star className="w-3 h-3" /> Strengths
-                          </p>
-                          <ul className="space-y-0.5">
-                            {call.ai_strengths.map((s, i) => (
-                              <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
-                                <span className="text-green-400 mt-0.5">✓</span> {s}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {call.ai_weaknesses?.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium text-orange-400 flex items-center gap-1 mb-1">
-                            <AlertTriangle className="w-3 h-3" /> Weaknesses
-                          </p>
-                          <ul className="space-y-0.5">
-                            {call.ai_weaknesses.map((w, i) => (
-                              <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
-                                <span className="text-orange-400 mt-0.5">!</span> {w}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {!call.ai_strengths?.length && !call.ai_weaknesses?.length && (
-                        <p className="text-xs text-muted-foreground">No strengths/weaknesses data</p>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">Run AI evaluation to see analysis</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Transcript */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Transcript & Notes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {call.transcript_text ? (
-                    <p className="text-xs text-muted-foreground whitespace-pre-wrap max-h-40 overflow-y-auto">
-                      {call.transcript_text}
+        {/* Strengths & Weaknesses */}
+        <Card className="border-border">
+          <CardHeader className="pb-2 pt-3 px-3">
+            <CardTitle className="text-xs">Strengths & Weaknesses</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 space-y-2">
+            {hasEvaluation ? (
+              <>
+                {call.ai_strengths?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-green-400 flex items-center gap-1 mb-0.5">
+                      <Star className="w-3 h-3" /> Strengths
                     </p>
-                  ) : call.notes ? (
-                    <p className="text-xs text-muted-foreground">{call.notes}</p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground italic">No transcript or notes</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TableCell>
-        </TableRow>
-      )}
-    </>
+                    <ul className="space-y-0.5">
+                      {call.ai_strengths.map((s, i) => (
+                        <li key={i} className="text-xs text-muted-foreground flex gap-1">
+                          <span className="text-green-400">✓</span> {s}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {call.ai_weaknesses?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-orange-400 flex items-center gap-1 mb-0.5">
+                      <AlertTriangle className="w-3 h-3" /> Weaknesses
+                    </p>
+                    <ul className="space-y-0.5">
+                      {call.ai_weaknesses.map((w, i) => (
+                        <li key={i} className="text-xs text-muted-foreground flex gap-1">
+                          <span className="text-orange-400">!</span> {w}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {!call.ai_strengths?.length && !call.ai_weaknesses?.length && (
+                  <p className="text-xs text-muted-foreground">No analysis data</p>
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">Run evaluation to see analysis</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Transcript */}
+        <Card className="border-border">
+          <CardHeader className="pb-2 pt-3 px-3">
+            <CardTitle className="text-xs">Transcript & Notes</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            {call.transcript_text ? (
+              <p className="text-xs text-muted-foreground whitespace-pre-wrap max-h-32 overflow-y-auto">
+                {call.transcript_text}
+              </p>
+            ) : call.notes ? (
+              <p className="text-xs text-muted-foreground">{call.notes}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground italic">No transcript or notes</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }
 
@@ -310,7 +263,7 @@ export default function ColdCallsPage() {
   const removeExportedLeads = useCallExportsStore((s) => s.removeLeads);
 
   const [searchParams] = useSearchParams();
-  const [activeView, setActiveView] = useState<'cold-calls' | 'exported' | 'call-log'>(
+  const [activeView, setActiveView] = useState<'cold-calls' | 'exported'>(
     searchParams.get('view') === 'exported' ? 'exported' : 'cold-calls'
   );
 
@@ -321,11 +274,37 @@ export default function ColdCallsPage() {
   }, [exportedLeads.length, searchParams]);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [callLogSearch, setCallLogSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<ColdCallStatus | 'all'>('all');
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [selectedColdCall, setSelectedColdCall] = useState<ColdCallWithProfile | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  // Build a map of phone -> calls for inline display
+  const callsByPhone = useMemo(() => {
+    const map = new Map<string, CalledCall[]>();
+    calledCalls.forEach((c) => {
+      const phone = c.phone_number.replace(/\D/g, '');
+      const existing = map.get(phone) || [];
+      existing.push(c);
+      map.set(phone, existing);
+    });
+    return map;
+  }, [calledCalls]);
+
+  const toggleRow = (id: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const getCallsForColdCall = (coldCall: ColdCallWithProfile): CalledCall[] => {
+    const normalized = coldCall.phone.replace(/\D/g, '');
+    return callsByPhone.get(normalized) || [];
+  };
 
   const filteredCalls = useMemo(() => {
     return coldCalls.filter((call) => {
@@ -336,16 +315,6 @@ export default function ColdCallsPage() {
       return matchesSearch && matchesStatus;
     });
   }, [coldCalls, searchQuery, filterStatus]);
-
-  const filteredCalledCalls = useMemo(() => {
-    if (!callLogSearch) return calledCalls;
-    const term = callLogSearch.toLowerCase();
-    return calledCalls.filter((c) =>
-      c.phone_number.includes(term) ||
-      c.lead?.name?.toLowerCase().includes(term) ||
-      c.status.includes(term)
-    );
-  }, [calledCalls, callLogSearch]);
 
   const handleStatusChange = async (callId: string, status: ColdCallStatus) => {
     await updateColdCall.mutateAsync({
@@ -464,18 +433,6 @@ export default function ColdCallsPage() {
             Cold Calls ({coldCalls.length})
           </button>
           <button
-            onClick={() => setActiveView('call-log')}
-            className={cn(
-              'px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2',
-              activeView === 'call-log'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground hover:bg-background'
-            )}
-          >
-            <PhoneCall className="w-4 h-4" />
-            Call Log ({calledCalls.length})
-          </button>
-          <button
             onClick={() => setActiveView('exported')}
             className={cn(
               'px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2',
@@ -547,6 +504,9 @@ export default function ColdCallsPage() {
                       {filteredCalls.map((call, index) => {
                         const StatusIcon = statusConfig[call.status].icon;
                         const agentName = call.profiles?.full_name || 'Unassigned';
+                        const relatedCalls = getCallsForColdCall(call);
+                        const isExpanded = expandedRows.has(call.id);
+                        const hasCallLogs = relatedCalls.length > 0;
                         
                         return (
                           <motion.tr
@@ -555,130 +515,179 @@ export default function ColdCallsPage() {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
                             transition={{ delay: index * 0.05 }}
-                            className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
+                            className={cn(
+                              "border-b border-border last:border-0 hover:bg-muted/30 transition-colors",
+                              isExpanded && "border-b-0"
+                            )}
                           >
-                            <td className="py-4 px-6">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                                  <span className="text-sm font-semibold text-foreground">
-                                    {call.name.charAt(0)}
+                            {/* Main Row */}
+                            <td colSpan={8} className="p-0">
+                              <div
+                                className={cn(
+                                  "grid grid-cols-[1fr_auto_auto_auto_auto_auto_auto_auto] items-center cursor-pointer",
+                                  hasCallLogs && "cursor-pointer"
+                                )}
+                                onClick={() => hasCallLogs && toggleRow(call.id)}
+                              >
+                                <div className="py-4 px-6">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                                      <span className="text-sm font-semibold text-foreground">
+                                        {call.name.charAt(0)}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <p className="font-medium text-foreground">{call.name}</p>
+                                        {hasCallLogs && (
+                                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 gap-0.5">
+                                            <PhoneCall className="w-2.5 h-2.5" />
+                                            {relatedCalls.length}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      {call.email && (
+                                        <p className="text-xs text-muted-foreground">{call.email}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="py-4 px-4">
+                                  <span className="text-sm text-foreground">{call.phone}</span>
+                                </div>
+                                <div className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <button className="focus:outline-none">
+                                        <Badge className={cn(
+                                          "gap-1 cursor-pointer hover:opacity-80",
+                                          statusConfig[call.status].bg,
+                                          statusConfig[call.status].color
+                                        )}>
+                                          <StatusIcon className="w-3 h-3" />
+                                          {statusConfig[call.status].label}
+                                        </Badge>
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start">
+                                      {(['new', 'called', 'interested', 'not_interested'] as ColdCallStatus[]).map((status) => {
+                                        const config = statusConfig[status];
+                                        const Icon = config.icon;
+                                        return (
+                                          <DropdownMenuItem
+                                            key={status}
+                                            onClick={() => handleStatusChange(call.id, status)}
+                                            disabled={call.status === 'converted' || updateColdCall.isPending}
+                                          >
+                                            <Icon className={cn("w-4 h-4 mr-2", config.color)} />
+                                            {config.label}
+                                          </DropdownMenuItem>
+                                        );
+                                      })}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                                <div className="py-4 px-4">
+                                  <span className="text-sm text-muted-foreground">
+                                    {call.location || '-'}
                                   </span>
                                 </div>
-                                <div>
-                                  <p className="font-medium text-foreground">{call.name}</p>
-                                  {call.email && (
-                                    <p className="text-xs text-muted-foreground">{call.email}</p>
-                                  )}
+                                <div className="py-4 px-4">
+                                  <span className="text-sm font-medium text-foreground">
+                                    {call.budget ? formatCurrency(call.budget) : '-'}
+                                  </span>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="py-4 px-4">
-                              <span className="text-sm text-foreground">{call.phone}</span>
-                            </td>
-                            <td className="py-4 px-4">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <button className="focus:outline-none">
-                                    <Badge className={cn(
-                                      "gap-1 cursor-pointer hover:opacity-80",
-                                      statusConfig[call.status].bg,
-                                      statusConfig[call.status].color
-                                    )}>
-                                      <StatusIcon className="w-3 h-3" />
-                                      {statusConfig[call.status].label}
-                                    </Badge>
-                                  </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start">
-                                  {(['new', 'called', 'interested', 'not_interested'] as ColdCallStatus[]).map((status) => {
-                                    const config = statusConfig[status];
-                                    const Icon = config.icon;
-                                    return (
-                                      <DropdownMenuItem
-                                        key={status}
-                                        onClick={() => handleStatusChange(call.id, status)}
-                                        disabled={call.status === 'converted' || updateColdCall.isPending}
-                                      >
-                                        <Icon className={cn("w-4 h-4 mr-2", config.color)} />
-                                        {config.label}
-                                      </DropdownMenuItem>
-                                    );
-                                  })}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </td>
-                            <td className="py-4 px-4">
-                              <span className="text-sm text-muted-foreground">
-                                {call.location || '-'}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4">
-                              <span className="text-sm font-medium text-foreground">
-                                {call.budget ? formatCurrency(call.budget) : '-'}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4">
-                              <span className="text-sm text-muted-foreground">
-                                {agentName}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4">
-                              <span className="text-sm text-muted-foreground">
-                                {call.last_call_date ? formatDate(call.last_call_date) : 'Never'}
-                              </span>
-                            </td>
-                            <td className="py-4 px-6">
-                              <div className="flex items-center justify-end gap-2">
-                                {call.status !== 'converted' ? (
-                                  <>
-                                    <CallRecorder
-                                      phoneNumber={call.phone}
-                                      leadName={call.name}
-                                      variant="icon"
-                                      onCallStarted={() => {
-                                        if (call.status === 'new') {
-                                          handleStatusChange(call.id, 'called');
-                                        }
-                                      }}
-                                    />
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleStatusChange(call.id, 'interested')}
-                                      disabled={updateColdCall.isPending}
-                                      title="Mark as Interested"
-                                    >
-                                      <MessageSquare className="w-4 h-4" />
-                                    </Button>
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
+                                <div className="py-4 px-4">
+                                  <span className="text-sm text-muted-foreground">
+                                    {agentName}
+                                  </span>
+                                </div>
+                                <div className="py-4 px-4">
+                                  <span className="text-sm text-muted-foreground">
+                                    {call.last_call_date ? formatDate(call.last_call_date) : 'Never'}
+                                  </span>
+                                </div>
+                                <div className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
+                                  <div className="flex items-center justify-end gap-2">
+                                    {hasCallLogs && (
+                                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => toggleRow(call.id)}>
+                                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                      </Button>
+                                    )}
+                                    {call.status !== 'converted' ? (
+                                      <>
+                                        <CallRecorder
+                                          phoneNumber={call.phone}
+                                          leadName={call.name}
+                                          variant="icon"
+                                          onCallStarted={() => {
+                                            if (call.status === 'new') {
+                                              handleStatusChange(call.id, 'called');
+                                            }
+                                          }}
+                                        />
                                         <Button
                                           size="sm"
-                                          className="bg-gradient-success hover:opacity-90"
+                                          variant="outline"
+                                          onClick={() => handleStatusChange(call.id, 'interested')}
+                                          disabled={updateColdCall.isPending}
+                                          title="Mark as Interested"
                                         >
-                                          <ArrowRight className="w-4 h-4 mr-1" />
-                                          Convert
+                                          <MessageSquare className="w-4 h-4" />
                                         </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => handleConvertClick(call)}>
-                                          <UserPlus className="w-4 h-4 mr-2" />
-                                          Convert to Lead
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleConvertClick(call)}>
-                                          <Building2 className="w-4 h-4 mr-2" />
-                                          Convert to Listing
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </>
-                                ) : (
-                                  <Badge variant="secondary">
-                                    <CheckCircle className="w-3 h-3 mr-1" />
-                                    Converted
-                                  </Badge>
-                                )}
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button
+                                              size="sm"
+                                              className="bg-gradient-success hover:opacity-90"
+                                            >
+                                              <ArrowRight className="w-4 h-4 mr-1" />
+                                              Convert
+                                            </Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => handleConvertClick(call)}>
+                                              <UserPlus className="w-4 h-4 mr-2" />
+                                              Convert to Lead
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleConvertClick(call)}>
+                                              <Building2 className="w-4 h-4 mr-2" />
+                                              Convert to Listing
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      </>
+                                    ) : (
+                                      <Badge variant="secondary">
+                                        <CheckCircle className="w-3 h-3 mr-1" />
+                                        Converted
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
+
+                              {/* Expanded call details inline */}
+                              <AnimatePresence>
+                                {isExpanded && hasCallLogs && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="overflow-hidden border-t border-border"
+                                  >
+                                    <div className="px-6 py-4 space-y-3 bg-muted/10">
+                                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                        Call History ({relatedCalls.length})
+                                      </p>
+                                      {relatedCalls.map((rc) => (
+                                        <InlineCallDetail key={rc.id} call={rc} />
+                                      ))}
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
                             </td>
                           </motion.tr>
                         );
@@ -697,60 +706,6 @@ export default function ColdCallsPage() {
               )}
             </motion.div>
           </>
-        )}
-
-        {/* Call Log Tab */}
-        {activeView === 'call-log' && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search calls..."
-                value={callLogSearch}
-                onChange={(e) => setCallLogSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Lead</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>AI Score</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="w-10"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {callsLoading ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                          Loading calls...
-                        </TableCell>
-                      </TableRow>
-                    ) : filteredCalledCalls.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                          <PhoneCall className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                          <p className="text-lg font-medium">No call logs yet</p>
-                          <p className="text-sm">Click "Log Call" or use the recorder to add calls</p>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredCalledCalls.map((call) => (
-                        <CallLogRow key={call.id} call={call} />
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </motion.div>
         )}
 
         {/* Exported Tab */}
