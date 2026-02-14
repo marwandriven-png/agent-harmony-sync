@@ -22,7 +22,7 @@ import SetupPage from "./pages/SetupPage";
 import OutreachCenterPage from "./pages/OutreachCenterPage";
 import AllLeadsPage from "./pages/AllLeadsPage";
 import LeadGenerationPage from "./pages/LeadGenerationPage";
-import CallsPage from "./pages/CallsPage";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -80,14 +80,6 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <BuyerMatchingPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/calls"
-              element={
-                <ProtectedRoute>
-                  <CallsPage />
                 </ProtectedRoute>
               }
             />

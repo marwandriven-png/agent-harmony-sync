@@ -39,6 +39,7 @@ import {
   Trash2,
   FileText,
 } from 'lucide-react';
+import { CallRecorder } from '@/components/calls/CallRecorder';
 import type { Database } from '@/integrations/supabase/types';
 import type { ColdCallWithProfile } from '@/hooks/useColdCalls';
 import { useCallExportsStore, type CallExportedLead } from '@/store/callExportsStore';
@@ -357,15 +358,11 @@ export default function ColdCallsPage() {
                               <div className="flex items-center justify-end gap-2">
                                 {call.status !== 'converted' ? (
                                   <>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleStatusChange(call.id, 'called')}
-                                      disabled={updateColdCall.isPending}
-                                      title="Mark as Called"
-                                    >
-                                      <Phone className="w-4 h-4" />
-                                    </Button>
+                                    <CallRecorder
+                                      phoneNumber={call.phone}
+                                      leadName={call.name}
+                                      variant="icon"
+                                    />
                                     <Button
                                       size="sm"
                                       variant="outline"

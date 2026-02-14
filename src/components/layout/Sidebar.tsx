@@ -30,7 +30,6 @@ const navItems = [
   { to: '/lead-generation', icon: UserPlus, label: 'Lead Generation' },
   { to: '/all-leads', icon: List, label: 'Leads Exports' },
   { to: '/outreach', icon: Megaphone, label: 'Outreach Center' },
-  { to: '/calls', icon: PhoneCall, label: 'Called Calls' },
   { to: '/cold-calls', icon: Phone, label: 'Cold Calls' },
   { to: '/calendar', icon: Calendar, label: 'Calendar' },
   { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
