@@ -635,6 +635,11 @@ export default function ColdCallsPage() {
                                       phoneNumber={call.phone}
                                       leadName={call.name}
                                       variant="icon"
+                                      onCallStarted={() => {
+                                        if (call.status === 'new') {
+                                          handleStatusChange(call.id, 'called');
+                                        }
+                                      }}
                                     />
                                     <Button
                                       size="sm"

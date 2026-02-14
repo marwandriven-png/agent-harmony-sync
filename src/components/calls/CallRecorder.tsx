@@ -19,6 +19,7 @@ interface CallRecorderProps {
   phoneNumber: string;
   variant?: 'icon' | 'button' | 'compact';
   className?: string;
+  onCallStarted?: () => void;
 }
 
 type CallState = 'idle' | 'ringing' | 'connected' | 'ended' | 'processing';
@@ -29,6 +30,7 @@ export function CallRecorder({
   phoneNumber,
   variant = 'button',
   className,
+  onCallStarted,
 }: CallRecorderProps) {
   const [callState, setCallState] = useState<CallState>('idle');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -108,6 +110,7 @@ export function CallRecorder({
       const id = setInterval(() => setDuration((d) => d + 1), 1000);
       setIntervalId(id);
       await startRecording();
+      onCallStarted?.();
     }, 2000);
   };
 
