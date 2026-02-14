@@ -1,9 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { MainLayout, PageHeader, PageContent } from '@/components/layout/MainLayout';
 import { useColdCalls, useUpdateColdCall } from '@/hooks/useColdCalls';
+import { useCreateProperty } from '@/hooks/useProperties';
 import { CreateColdCallDialog } from '@/components/forms/CreateColdCallDialog';
 import { ConvertColdCallDialog } from '@/components/forms/ConvertColdCallDialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { formatDate, formatCurrency } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Phone,
@@ -52,6 +56,9 @@ const statusConfig: Record<ColdCallStatus, { label: string; color: string; bg: s
 export default function ColdCallsPage() {
   const { data: coldCalls = [], isLoading } = useColdCalls();
   const updateColdCall = useUpdateColdCall();
+  const createProperty = useCreateProperty();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   
   const exportedLeads = useCallExportsStore((s) => s.exportedLeads);
   const removeExportedLeads = useCallExportsStore((s) => s.removeLeads);
@@ -95,6 +102,57 @@ export default function ColdCallsPage() {
   const handleConvertClick = (coldCall: ColdCallWithProfile) => {
     setSelectedColdCall(coldCall);
     setConvertDialogOpen(true);
+  };
+
+  const handleExportedToLead = async (lead: CallExportedLead) => {
+    try {
+      const { error } = await supabase.from('leads').insert({
+        name: lead.name,
+        email: lead.email || null,
+        phone: lead.phone || 'N/A',
+        source: 'other' as const,
+        status: 'new' as const,
+        priority: 'warm' as const,
+        locations: lead.location ? [lead.location] : [],
+        created_by: user?.id,
+      });
+      if (error) throw error;
+      removeExportedLeads([lead.id]);
+      toast.success(`${lead.name} converted to new lead`);
+    } catch (err: any) {
+      toast.error(`Failed to convert: ${err.message}`);
+    }
+  };
+
+  const handleExportedToListing = async (lead: CallExportedLead) => {
+    try {
+      const property = await createProperty.mutateAsync({
+        title: `Property from ${lead.name}`,
+        type: 'apartment',
+        price: 0,
+        currency: 'AED',
+        location: lead.location || 'TBD',
+        bedrooms: 1,
+        bathrooms: 1,
+        size: 0,
+        size_unit: 'sqft',
+        description: `Listing sourced from exported lead: ${lead.name}`,
+        features: [],
+        images: [],
+        status: 'available',
+        section: 'database',
+        database_status: 'interested',
+        owner_name: lead.name,
+        owner_mobile: lead.phone,
+      });
+      removeExportedLeads([lead.id]);
+      // Navigate to properties page so user can convert to pocket/active
+      if (property?.id) {
+        navigate(`/properties?convert=${property.id}`);
+      }
+    } catch (err: any) {
+      toast.error(`Failed to convert: ${err.message}`);
+    }
   };
 
   if (isLoading) {
@@ -437,14 +495,38 @@ export default function ColdCallsPage() {
                           {new Date(lead.exportedAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="gap-1.5 text-destructive hover:text-destructive"
-                            onClick={() => removeExportedLeads([lead.id])}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1.5"
+                              onClick={() => handleExportedToLead(lead)}
+                              title="Convert to New Lead"
+                            >
+                              <UserPlus className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Lead</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1.5"
+                              onClick={() => handleExportedToListing(lead)}
+                              disabled={createProperty.isPending}
+                              title="Convert to New Listing"
+                            >
+                              <Building2 className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Listing</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="gap-1.5 text-destructive hover:text-destructive"
+                              onClick={() => removeExportedLeads([lead.id])}
+                              title="Remove"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
