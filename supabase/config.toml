@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.call-kpis]
 verify_jwt = false
+
+[functions.call-transcribe]
+verify_jwt = false
