@@ -17,9 +17,11 @@ import {
   Phone, FileText, CheckCircle, Download, XCircle, Filter, ExternalLink, AlertCircle, Upload, Link2, Sheet, UserPlus, Loader2, Linkedin,
 } from 'lucide-react';
 import { useLeadExportsStore, type LeadExport, type ExportedLead } from '@/store/leadExportsStore';
+import { useCallExportsStore, type CallExportedLead } from '@/store/callExportsStore';
 import { useLeads } from '@/hooks/useLeads';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 type TabId = 'review' | 'contacted' | 'replied' | 'self-generated';
 
@@ -48,6 +50,8 @@ function downloadCSV(leads: ExportedLead[], fileName: string) {
 
 export default function AllLeadsPage() {
   const storeExports = useLeadExportsStore((s) => s.exports);
+  const addCallLeads = useCallExportsStore((s) => s.addLeads);
+  const navigate = useNavigate();
   const { data: leads, isLoading: leadsLoading } = useLeads();
   const { data: campaigns, isLoading: campaignsLoading } = useCampaigns();
 
@@ -503,6 +507,33 @@ export default function AllLeadsPage() {
               <Button size="sm" className="bg-primary hover:bg-primary/90 rounded-full gap-1.5" disabled={selectedIds.length === 0}>
                 <CheckCircle className="w-3.5 h-3.5" />
                 Send for Outreach ({selectedIds.length})
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-full gap-1.5"
+                disabled={selectedIds.length === 0}
+                onClick={() => {
+                  const selected = filteredReviewLeads
+                    .filter((l) => selectedIds.includes(l.id))
+                    .map((l): CallExportedLead => ({
+                      id: l.id,
+                      name: l.name,
+                      email: l.email,
+                      phone: l.phone,
+                      jobTitle: l.jobTitle,
+                      company: l.company,
+                      location: l.location,
+                      exportedAt: new Date().toISOString(),
+                    }));
+                  addCallLeads(selected);
+                  toast.success(`${selected.length} lead(s) exported to Call Page`);
+                  setReviewModalOpen(false);
+                  navigate('/cold-calls?view=exported');
+                }}
+              >
+                <Phone className="w-3.5 h-3.5" />
+                Export to Call Page ({selectedIds.length})
               </Button>
               <span className="text-xs text-muted-foreground">Email connection required</span>
               <Button variant="ghost" size="sm" disabled={selectedIds.length === 0} className="gap-1.5">
