@@ -127,59 +127,86 @@ export function CallDetailPanel({ call, onClose }: CallDetailPanelProps) {
           </Card>
 
           {/* AI Evaluation */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Brain className="w-4 h-4 text-purple-400" />
-                AI Evaluation
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {hasEvaluation ? (
-                <>
-                  <ScoreGauge label="Overall Score" score={call.ai_overall_score} color="" />
-                  <ScoreGauge label="Confidence" score={call.ai_confidence_score} color="" />
-                  <ScoreGauge label="Lead Intent" score={call.ai_lead_intent_score} color="" />
-                  <ScoreGauge label="Closing Probability" score={call.ai_closing_probability} color="" />
-                </>
-              ) : (
-                <div className="text-center py-3 space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    {call.ai_evaluation_status === 'processing'
-                      ? 'AI is analyzing the call...'
-                      : 'No AI evaluation yet'}
-                  </p>
-                  {canTranscribe && !canEvaluate && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleTranscribe}
-                      disabled={transcribing}
-                    >
-                      {transcribing ? (
-                        <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Generating transcript...</>
-                      ) : (
-                        <><FileText className="w-4 h-4 mr-1" /> Generate Transcript from Notes</>
+          {(() => {
+            const analysis = call.ai_full_analysis as any;
+            const isFCVS = hasEvaluation && analysis?.call_type;
+
+            return (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-purple-400" />
+                    AI Evaluation {isFCVS && <Badge variant="outline" className="text-xs ml-auto">{analysis.call_type}</Badge>}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {hasEvaluation ? (
+                    <>
+                      <ScoreGauge label="F-CVS (Final Score)" score={call.ai_overall_score} color="" />
+                      <ScoreGauge label="Agent Performance (APS)" score={call.ai_confidence_score} color="" />
+                      <ScoreGauge label="Core CVS" score={call.ai_lead_intent_score} color="" />
+                      {isFCVS && analysis.confidence_level && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Confidence</span>
+                          <Badge variant="outline" className={`text-xs ${
+                            analysis.confidence_level === 'High' ? 'bg-green-500/10 text-green-400' :
+                            analysis.confidence_level === 'Medium' ? 'bg-yellow-500/10 text-yellow-400' :
+                            'bg-red-500/10 text-red-400'
+                          }`}>{analysis.confidence_level}</Badge>
+                        </div>
                       )}
-                    </Button>
-                  )}
-                  {canEvaluate && (
-                    <Button
-                      size="sm"
-                      onClick={() => evaluateCall.mutate(call.id)}
-                      disabled={evaluateCall.isPending}
-                    >
-                      {evaluateCall.isPending ? (
-                        <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Evaluating...</>
-                      ) : (
-                        <><Brain className="w-4 h-4 mr-1" /> Run AI Evaluation</>
+                    </>
+                  ) : (
+                    <div className="text-center py-3 space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        {call.ai_evaluation_status === 'processing'
+                          ? 'AI is analyzing the call...'
+                          : 'No AI evaluation yet'}
+                      </p>
+                      {canTranscribe && !canEvaluate && (
+                        <Button size="sm" variant="outline" onClick={handleTranscribe} disabled={transcribing}>
+                          {transcribing ? (
+                            <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Generating transcript...</>
+                          ) : (
+                            <><FileText className="w-4 h-4 mr-1" /> Generate Transcript from Notes</>
+                          )}
+                        </Button>
                       )}
-                    </Button>
+                      {canEvaluate && (
+                        <Button size="sm" onClick={() => evaluateCall.mutate(call.id)} disabled={evaluateCall.isPending}>
+                          {evaluateCall.isPending ? (
+                            <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Evaluating...</>
+                          ) : (
+                            <><Brain className="w-4 h-4 mr-1" /> Run AI Evaluation</>
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {/* Risk Flags & Recommendations */}
+          {hasEvaluation && (call.ai_full_analysis as any)?.risk_flags?.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2 text-orange-400">
+                  <AlertTriangle className="w-4 h-4" /> Risk Flags
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-1.5">
+                  {((call.ai_full_analysis as any).risk_flags || []).map((f: string, i: number) => (
+                    <li key={i} className="text-sm text-muted-foreground flex gap-2">
+                      <span className="text-orange-400 mt-0.5">⚠</span> {f}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Strengths & Weaknesses */}
           {hasEvaluation && (
@@ -221,6 +248,26 @@ export function CallDetailPanel({ call, onClose }: CallDetailPanelProps) {
                 </Card>
               )}
             </div>
+          )}
+
+          {/* Action Recommendations */}
+          {hasEvaluation && (call.ai_full_analysis as any)?.action_recommendations?.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2 text-blue-400">
+                  <Star className="w-4 h-4" /> Recommendations
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-1.5">
+                  {((call.ai_full_analysis as any).action_recommendations || []).map((r: string, i: number) => (
+                    <li key={i} className="text-sm text-muted-foreground flex gap-2">
+                      <span className="text-blue-400 mt-0.5">→</span> {r}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
           )}
 
           {/* Transcript */}
