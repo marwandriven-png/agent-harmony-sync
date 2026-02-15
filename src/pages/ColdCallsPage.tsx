@@ -84,6 +84,21 @@ function formatDuration(seconds: number) {
   return `${m}m ${s}s`;
 }
 
+// F-CVS KPI row component
+function KPIRow({ name, score, weight, weightedScore, notes }: { name: string; score: number; weight: number; weightedScore: number; notes?: string }) {
+  const pct = (score / 5) * 100;
+  return (
+    <div className="space-y-0.5">
+      <div className="flex justify-between text-xs">
+        <span className="text-muted-foreground truncate mr-2" title={name}>{name} <span className="text-muted-foreground/60">×{weight}</span></span>
+        <span className="font-semibold whitespace-nowrap">{score}/5 → {weightedScore.toFixed(1)}</span>
+      </div>
+      <Progress value={pct} className="h-1" />
+      {notes && <p className="text-[10px] text-muted-foreground/70 italic truncate" title={notes}>{notes}</p>}
+    </div>
+  );
+}
+
 // Inline call detail card shown inside a cold call row
 function InlineCallDetail({ call }: { call: CalledCall }) {
   const evaluateCall = useEvaluateCall();
@@ -92,6 +107,9 @@ function InlineCallDetail({ call }: { call: CalledCall }) {
   const hasEvaluation = call.ai_evaluation_status === 'completed';
   const canEvaluate = call.transcript_text && call.ai_evaluation_status !== 'processing';
   const canTranscribe = !call.transcript_text && call.notes;
+
+  const analysis = call.ai_full_analysis as any;
+  const isFCVS = hasEvaluation && analysis?.call_type;
 
   const handleTranscribe = async () => {
     setTranscribing(true);
@@ -127,7 +145,27 @@ function InlineCallDetail({ call }: { call: CalledCall }) {
           <Clock className="w-3 h-3" /> {formatDuration(call.duration_seconds || 0)}
         </span>
         <span>{format(new Date(call.call_date), 'MMM d, HH:mm')}</span>
-        {call.ai_overall_score != null && (
+        {isFCVS && (
+          <>
+            <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">
+              {analysis.call_type}
+            </Badge>
+            <Badge variant="outline" className={`text-xs ${
+              analysis.confidence_level === 'High' ? 'bg-green-500/10 text-green-400 border-green-500/30' :
+              analysis.confidence_level === 'Medium' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' :
+              'bg-red-500/10 text-red-400 border-red-500/30'
+            }`}>
+              {analysis.confidence_level} Confidence
+            </Badge>
+            <span className={`font-bold ${
+              call.ai_overall_score != null && call.ai_overall_score >= 70 ? 'text-green-500' :
+              call.ai_overall_score != null && call.ai_overall_score >= 40 ? 'text-yellow-500' : 'text-destructive'
+            }`}>
+              F-CVS: {call.ai_overall_score ?? 0}/100
+            </span>
+          </>
+        )}
+        {!isFCVS && call.ai_overall_score != null && (
           <span className={`font-semibold ${
             call.ai_overall_score >= 70 ? 'text-green-500' :
             call.ai_overall_score >= 50 ? 'text-yellow-500' : 'text-destructive'
@@ -137,116 +175,204 @@ function InlineCallDetail({ call }: { call: CalledCall }) {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* KPI Scores */}
-        <Card className="border-border">
-          <CardHeader className="pb-2 pt-3 px-3">
-            <CardTitle className="text-xs flex items-center gap-1.5">
-              <Brain className="w-3.5 h-3.5 text-purple-400" /> AI Evaluation
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 pb-3 space-y-1.5">
-            {hasEvaluation ? (
-              <>
-                {[
-                  { label: 'Overall', value: call.ai_overall_score },
-                  { label: 'Confidence', value: call.ai_confidence_score },
-                  { label: 'Lead Intent', value: call.ai_lead_intent_score },
-                  { label: 'Closing', value: call.ai_closing_probability },
-                ].map(({ label, value }) => (
-                  <div key={label} className="space-y-0.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">{label}</span>
-                      <span className="font-semibold">{value ?? 0}/100</span>
-                    </div>
-                    <Progress value={value ?? 0} className="h-1" />
-                  </div>
-                ))}
-              </>
-            ) : (
-              <div className="text-center py-1 space-y-1.5">
-                <p className="text-xs text-muted-foreground">
-                  {call.ai_evaluation_status === 'processing' ? 'AI analyzing...' : 'No evaluation yet'}
+      {/* F-CVS Detailed Breakdown */}
+      {isFCVS ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          {/* Core KPIs */}
+          <Card className="border-border">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-xs flex items-center gap-1.5">
+                <Brain className="w-3.5 h-3.5 text-purple-400" />
+                {analysis.call_type === 'SELLER' ? 'Listing KPIs (LCVS)' : 'Buyer KPIs (BCVS)'}
+              </CardTitle>
+              <p className="text-[10px] text-muted-foreground">Core: {analysis.core_cvs?.toFixed(1)} | ×{analysis.aps_multiplier}</p>
+            </CardHeader>
+            <CardContent className="px-3 pb-3 space-y-1">
+              {analysis.core_kpis?.map((kpi: any, i: number) => (
+                <KPIRow key={i} name={kpi.name} score={kpi.score} weight={kpi.weight} weightedScore={kpi.weighted_score} notes={kpi.notes} />
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Agent Performance */}
+          <Card className="border-border">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-xs flex items-center gap-1.5">
+                <Star className="w-3.5 h-3.5 text-yellow-400" />
+                Agent Performance (APS)
+              </CardTitle>
+              <p className="text-[10px] text-muted-foreground">Score: {analysis.agent_performance_score?.toFixed(1)}/52.5</p>
+            </CardHeader>
+            <CardContent className="px-3 pb-3 space-y-1">
+              {analysis.agent_kpis?.map((kpi: any, i: number) => (
+                <KPIRow key={i} name={kpi.name} score={kpi.score} weight={kpi.weight} weightedScore={kpi.weighted_score} notes={kpi.notes} />
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Risk Flags & Recommendations */}
+          <Card className="border-border">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-xs flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-orange-400" />
+                Risks & Actions
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3 space-y-2">
+              {analysis.risk_flags?.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-medium text-orange-400 mb-0.5">Risk Flags</p>
+                  <ul className="space-y-0.5">
+                    {analysis.risk_flags.map((f: string, i: number) => (
+                      <li key={i} className="text-xs text-muted-foreground flex gap-1">
+                        <span className="text-orange-400">⚠</span> {f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {analysis.action_recommendations?.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-medium text-blue-400 mb-0.5">Recommendations</p>
+                  <ul className="space-y-0.5">
+                    {analysis.action_recommendations.map((r: string, i: number) => (
+                      <li key={i} className="text-xs text-muted-foreground flex gap-1">
+                        <span className="text-blue-400">→</span> {r}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {(!analysis.risk_flags?.length && !analysis.action_recommendations?.length) && (
+                <p className="text-xs text-muted-foreground italic">No flags</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Transcript */}
+          <Card className="border-border">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-xs">Transcript & Notes</CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3">
+              {call.transcript_text ? (
+                <p className="text-xs text-muted-foreground whitespace-pre-wrap max-h-32 overflow-y-auto">
+                  {call.transcript_text}
                 </p>
-                {canTranscribe && !canEvaluate && (
-                  <Button size="sm" variant="outline" onClick={handleTranscribe} disabled={transcribing} className="text-xs h-7">
-                    {transcribing ? <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Generating...</> : <><FileText className="w-3 h-3 mr-1" /> Generate Transcript</>}
-                  </Button>
-                )}
-                {canEvaluate && (
-                  <Button size="sm" onClick={() => evaluateCall.mutate(call.id)} disabled={evaluateCall.isPending} className="text-xs h-7">
-                    {evaluateCall.isPending ? <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Evaluating...</> : <><Brain className="w-3 h-3 mr-1" /> Run AI Evaluation</>}
-                  </Button>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              ) : call.notes ? (
+                <p className="text-xs text-muted-foreground">{call.notes}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">No transcript or notes</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        /* Fallback for calls without F-CVS */
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Card className="border-border">
+            <CardHeader className="pb-2 pt-3 px-3">
+              <CardTitle className="text-xs flex items-center gap-1.5">
+                <Brain className="w-3.5 h-3.5 text-purple-400" /> AI Evaluation
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3 space-y-1.5">
+              {hasEvaluation ? (
+                <>
+                  {[
+                    { label: 'F-CVS', value: call.ai_overall_score },
+                    { label: 'Agent (APS)', value: call.ai_confidence_score },
+                    { label: 'Core CVS', value: call.ai_lead_intent_score },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="space-y-0.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">{label}</span>
+                        <span className="font-semibold">{value ?? 0}/100</span>
+                      </div>
+                      <Progress value={value ?? 0} className="h-1" />
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <div className="text-center py-1 space-y-1.5">
+                  <p className="text-xs text-muted-foreground">
+                    {call.ai_evaluation_status === 'processing' ? 'AI analyzing...' : 'No evaluation yet'}
+                  </p>
+                  {canTranscribe && !canEvaluate && (
+                    <Button size="sm" variant="outline" onClick={handleTranscribe} disabled={transcribing} className="text-xs h-7">
+                      {transcribing ? <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Generating...</> : <><FileText className="w-3 h-3 mr-1" /> Generate Transcript</>}
+                    </Button>
+                  )}
+                  {canEvaluate && (
+                    <Button size="sm" onClick={() => evaluateCall.mutate(call.id)} disabled={evaluateCall.isPending} className="text-xs h-7">
+                      {evaluateCall.isPending ? <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Evaluating...</> : <><Brain className="w-3 h-3 mr-1" /> Run AI Evaluation</>}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Strengths & Weaknesses */}
-        <Card className="border-border">
-          <CardHeader className="pb-2 pt-3 px-3">
-            <CardTitle className="text-xs">Strengths & Weaknesses</CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 pb-3 space-y-2">
-            {hasEvaluation ? (
-              <>
-                {call.ai_strengths?.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-green-400 flex items-center gap-1 mb-0.5">
-                      <Star className="w-3 h-3" /> Strengths
-                    </p>
-                    <ul className="space-y-0.5">
-                      {call.ai_strengths.map((s, i) => (
-                        <li key={i} className="text-xs text-muted-foreground flex gap-1">
-                          <span className="text-green-400">✓</span> {s}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {call.ai_weaknesses?.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-orange-400 flex items-center gap-1 mb-0.5">
-                      <AlertTriangle className="w-3 h-3" /> Weaknesses
-                    </p>
-                    <ul className="space-y-0.5">
-                      {call.ai_weaknesses.map((w, i) => (
-                        <li key={i} className="text-xs text-muted-foreground flex gap-1">
-                          <span className="text-orange-400">!</span> {w}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {!call.ai_strengths?.length && !call.ai_weaknesses?.length && (
-                  <p className="text-xs text-muted-foreground">No analysis data</p>
-                )}
-              </>
-            ) : (
-              <p className="text-xs text-muted-foreground">Run evaluation to see analysis</p>
-            )}
-          </CardContent>
-        </Card>
+          <Card className="border-border">
+            <CardHeader className="pb-2 pt-3 px-3">
+              <CardTitle className="text-xs">Strengths & Weaknesses</CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3 space-y-2">
+              {hasEvaluation ? (
+                <>
+                  {call.ai_strengths?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-green-400 flex items-center gap-1 mb-0.5">
+                        <Star className="w-3 h-3" /> Strengths
+                      </p>
+                      <ul className="space-y-0.5">
+                        {call.ai_strengths.map((s, i) => (
+                          <li key={i} className="text-xs text-muted-foreground flex gap-1">
+                            <span className="text-green-400">✓</span> {s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {call.ai_weaknesses?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-orange-400 flex items-center gap-1 mb-0.5">
+                        <AlertTriangle className="w-3 h-3" /> Weaknesses
+                      </p>
+                      <ul className="space-y-0.5">
+                        {call.ai_weaknesses.map((w, i) => (
+                          <li key={i} className="text-xs text-muted-foreground flex gap-1">
+                            <span className="text-orange-400">!</span> {w}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">Run evaluation to see analysis</p>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Transcript */}
-        <Card className="border-border">
-          <CardHeader className="pb-2 pt-3 px-3">
-            <CardTitle className="text-xs">Transcript & Notes</CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 pb-3">
-            {call.transcript_text ? (
-              <p className="text-xs text-muted-foreground whitespace-pre-wrap max-h-32 overflow-y-auto">
-                {call.transcript_text}
-              </p>
-            ) : call.notes ? (
-              <p className="text-xs text-muted-foreground">{call.notes}</p>
-            ) : (
-              <p className="text-xs text-muted-foreground italic">No transcript or notes</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          <Card className="border-border">
+            <CardHeader className="pb-2 pt-3 px-3">
+              <CardTitle className="text-xs">Transcript & Notes</CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3">
+              {call.transcript_text ? (
+                <p className="text-xs text-muted-foreground whitespace-pre-wrap max-h-32 overflow-y-auto">
+                  {call.transcript_text}
+                </p>
+              ) : call.notes ? (
+                <p className="text-xs text-muted-foreground">{call.notes}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">No transcript or notes</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
