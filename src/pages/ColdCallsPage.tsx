@@ -551,7 +551,7 @@ export default function ColdCallsPage() {
             className={cn(
               'px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2',
               activeView === 'cold-calls'
-                ? 'bg-primary text-primary-foreground shadow-sm'
+                ? 'bg-foreground text-background shadow-sm'
                 : 'text-muted-foreground hover:text-foreground hover:bg-background'
             )}
           >
@@ -563,7 +563,7 @@ export default function ColdCallsPage() {
             className={cn(
               'px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2',
               activeView === 'exported'
-                ? 'bg-primary text-primary-foreground shadow-sm'
+                ? 'bg-foreground text-background shadow-sm'
                 : 'text-muted-foreground hover:text-foreground hover:bg-background'
             )}
           >
@@ -595,7 +595,7 @@ export default function ColdCallsPage() {
                     className={cn(
                       "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
                       filterStatus === status
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-foreground text-background"
                         : "bg-muted text-muted-foreground hover:bg-muted/80"
                     )}
                   >
