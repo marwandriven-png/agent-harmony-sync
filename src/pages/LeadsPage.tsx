@@ -201,7 +201,7 @@ export default function LeadsPage() {
                   className={cn(
                     "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
                     filterPriority === priority
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-foreground text-background"
                       : "bg-muted text-muted-foreground hover:bg-muted/80"
                   )}
                 >

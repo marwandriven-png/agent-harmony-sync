@@ -140,7 +140,7 @@ export default function AllLeadsPage() {
               className={cn(
                 'px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5',
                 activeTab === tab.id
-                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  ? 'bg-foreground text-background shadow-sm'
                   : 'text-muted-foreground hover:text-foreground hover:bg-background'
               )}
             >
@@ -166,7 +166,7 @@ export default function AllLeadsPage() {
                     className={cn(
                       'px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2',
                       uploadSource === 'google-sheet'
-                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        ? 'bg-foreground text-background shadow-sm'
                         : 'text-muted-foreground hover:text-foreground hover:bg-background'
                     )}
                   >
@@ -178,7 +178,7 @@ export default function AllLeadsPage() {
                     className={cn(
                       'px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2',
                       uploadSource === 'apollo'
-                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        ? 'bg-foreground text-background shadow-sm'
                         : 'text-muted-foreground hover:text-foreground hover:bg-background'
                     )}
                   >
@@ -440,7 +440,7 @@ export default function AllLeadsPage() {
                         className={cn(
                           'px-3 py-1 rounded-md text-xs font-medium transition-colors',
                           recentFilter === f
-                            ? 'bg-primary text-primary-foreground'
+                            ? 'bg-foreground text-background'
                             : 'text-muted-foreground hover:text-foreground'
                         )}
                       >

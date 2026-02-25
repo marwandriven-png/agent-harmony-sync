@@ -138,8 +138,8 @@ export default function TasksPage() {
             animate={{ opacity: 1, y: 0 }}
             className="bg-card rounded-xl p-4 shadow-card flex items-center gap-4"
           >
-            <div className="p-3 bg-pastel-red rounded-lg">
-              <AlertCircle className="w-6 h-6 text-destructive" />
+            <div className="p-3 bg-foreground rounded-lg">
+              <AlertCircle className="w-6 h-6 text-background" />
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{overdueTasks}</p>
@@ -152,8 +152,8 @@ export default function TasksPage() {
             transition={{ delay: 0.1 }}
             className="bg-card rounded-xl p-4 shadow-card flex items-center gap-4"
           >
-            <div className="p-3 bg-pastel-orange rounded-lg">
-              <Clock className="w-6 h-6 text-warning" />
+            <div className="p-3 bg-foreground rounded-lg">
+              <Clock className="w-6 h-6 text-background" />
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{dueTodayTasks}</p>
@@ -166,8 +166,8 @@ export default function TasksPage() {
             transition={{ delay: 0.2 }}
             className="bg-card rounded-xl p-4 shadow-card flex items-center gap-4"
           >
-            <div className="p-3 bg-pastel-green rounded-lg">
-              <CheckCircle className="w-6 h-6 text-success" />
+            <div className="p-3 bg-foreground rounded-lg">
+              <CheckCircle className="w-6 h-6 text-background" />
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">
@@ -190,7 +190,7 @@ export default function TasksPage() {
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
                   filterStatus === status
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-foreground text-background"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
               >
@@ -207,7 +207,7 @@ export default function TasksPage() {
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
                   filterType === type
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-foreground text-background"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
               >
