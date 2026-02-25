@@ -160,15 +160,15 @@ export default function PlotsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <Card>
+            <Card className="bg-foreground text-background">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Plots</p>
-                    <p className="text-2xl font-bold">{stats.total}</p>
+                    <p className="text-sm text-background/70">Total Plots</p>
+                    <p className="text-2xl font-bold text-background">{stats.total}</p>
                   </div>
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <MapPin className="h-5 w-5 text-primary" />
+                  <div className="h-10 w-10 rounded-lg bg-background/20 flex items-center justify-center">
+                    <MapPin className="h-5 w-5 text-background" />
                   </div>
                 </div>
               </CardContent>
@@ -180,15 +180,15 @@ export default function PlotsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
           >
-            <Card>
+            <Card className="bg-foreground text-background">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Available</p>
-                    <p className="text-2xl font-bold text-green-600">{stats.available}</p>
+                    <p className="text-sm text-background/70">Available</p>
+                    <p className="text-2xl font-bold text-background">{stats.available}</p>
                   </div>
-                  <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
-                    <Building className="h-5 w-5 text-green-600" />
+                  <div className="h-10 w-10 rounded-lg bg-background/20 flex items-center justify-center">
+                    <Building className="h-5 w-5 text-background" />
                   </div>
                 </div>
               </CardContent>
@@ -200,15 +200,15 @@ export default function PlotsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <Card>
+            <Card className="bg-foreground text-background">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Negotiation</p>
-                    <p className="text-2xl font-bold text-amber-600">{stats.underNegotiation}</p>
+                    <p className="text-sm text-background/70">Negotiation</p>
+                    <p className="text-2xl font-bold text-background">{stats.underNegotiation}</p>
                   </div>
-                  <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                    <Users className="h-5 w-5 text-amber-600" />
+                  <div className="h-10 w-10 rounded-lg bg-background/20 flex items-center justify-center">
+                    <Users className="h-5 w-5 text-background" />
                   </div>
                 </div>
               </CardContent>
@@ -220,15 +220,15 @@ export default function PlotsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
           >
-            <Card>
+            <Card className="bg-foreground text-background">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Sold</p>
-                    <p className="text-2xl font-bold text-red-600">{stats.sold}</p>
+                    <p className="text-sm text-background/70">Sold</p>
+                    <p className="text-2xl font-bold text-background">{stats.sold}</p>
                   </div>
-                  <div className="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center">
-                    <DollarSign className="h-5 w-5 text-red-600" />
+                  <div className="h-10 w-10 rounded-lg bg-background/20 flex items-center justify-center">
+                    <DollarSign className="h-5 w-5 text-background" />
                   </div>
                 </div>
               </CardContent>
@@ -240,15 +240,15 @@ export default function PlotsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <Card>
+            <Card className="bg-foreground text-background">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Value</p>
-                    <p className="text-xl font-bold">{formatCurrency(stats.totalValue)}</p>
+                    <p className="text-sm text-background/70">Total Value</p>
+                    <p className="text-xl font-bold text-background">{formatCurrency(stats.totalValue)}</p>
                   </div>
-                  <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                    <TrendingUp className="h-5 w-5 text-purple-600" />
+                  <div className="h-10 w-10 rounded-lg bg-background/20 flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-background" />
                   </div>
                 </div>
               </CardContent>

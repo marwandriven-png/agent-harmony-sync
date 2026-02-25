@@ -37,14 +37,14 @@ export function PropertySectionTabs({ activeSection, onSectionChange, counts }: 
               "relative flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all duration-200",
               "text-sm font-medium",
               isActive
-                ? "text-foreground"
+                ? "text-background"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
             )}
           >
             {isActive && (
               <motion.div
                 layoutId="activeSection"
-                className="absolute inset-0 bg-card rounded-lg shadow-card"
+                className="absolute inset-0 bg-foreground rounded-lg shadow-card"
                 transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
               />
             )}
@@ -54,7 +54,7 @@ export function PropertySectionTabs({ activeSection, onSectionChange, counts }: 
               <span className={cn(
                 "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-semibold rounded-full",
                 isActive
-                  ? "bg-accent text-accent-foreground"
+                  ? "bg-background text-foreground"
                   : "bg-muted-foreground/20 text-muted-foreground"
               )}>
                 {count}

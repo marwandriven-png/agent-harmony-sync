@@ -133,18 +133,8 @@ export default function DashboardPage() {
                       <span>{card.trend}</span>
                     </div>
                   </div>
-                  <div className={cn(
-                    "p-3 rounded-xl",
-                    card.color === 'primary' && "bg-pastel-blue",
-                    card.color === 'accent' && "bg-pastel-orange",
-                    card.color === 'success' && "bg-pastel-green",
-                  )}>
-                    <card.icon className={cn(
-                      "w-6 h-6",
-                      card.color === 'primary' && "text-primary",
-                      card.color === 'accent' && "text-accent",
-                      card.color === 'success' && "text-success",
-                    )} />
+                  <div className="p-3 rounded-xl bg-foreground">
+                    <card.icon className="w-6 h-6 text-background" />
                   </div>
                 </div>
               </motion.div>
