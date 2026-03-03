@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
+import {
   MapPin, Plus, Search, Filter, RefreshCw, Brain,
   Building, TrendingUp, DollarSign, Users, Loader2,
-  Map, BarChart3
+  Map, BarChart3, Target
 } from 'lucide-react';
+import { LandMatchingWizard } from '@/components/plots/LandMatchingWizard';
+import { PlotData } from '@/services/DDAGISService';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,9 +34,9 @@ import { PlotTable } from '@/components/plots/PlotTable';
 import { PlotFeasibilityCard } from '@/components/plots/PlotFeasibilityCard';
 import { CreatePlotDialog } from '@/components/plots/CreatePlotDialog';
 import { PlotOffersDialog, PlotInterestedDialog } from '@/components/plots/PlotDialogs';
-import { 
-  usePlots, 
-  useDeletePlot, 
+import {
+  usePlots,
+  useDeletePlot,
   useRunFeasibility,
   usePlotFeasibility,
   type Plot
@@ -51,7 +53,7 @@ export default function PlotsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [zoningFilter, setZoningFilter] = useState<string>('all');
-  
+
   // Dialog State
   const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
   const [offersDialogOpen, setOffersDialogOpen] = useState(false);
@@ -59,17 +61,18 @@ export default function PlotsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [feasibilityPlot, setFeasibilityPlot] = useState<Plot | null>(null);
   const [runningPlotId, setRunningPlotId] = useState<string | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   // Feasibility data for selected plot
   const { data: feasibilityReports = [] } = usePlotFeasibility(feasibilityPlot?.id);
 
   // Filters
   const filteredPlots = plots.filter((plot) => {
-    const matchesSearch = 
+    const matchesSearch =
       plot.plot_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       plot.area_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (plot.owner_name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-    
+
     const matchesStatus = statusFilter === 'all' || plot.status === statusFilter;
     const matchesZoning = zoningFilter === 'all' || plot.zoning === zoningFilter;
 
@@ -148,6 +151,14 @@ export default function PlotsPage() {
             <Button variant="outline" onClick={() => refetch()}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
+            </Button>
+            <Button
+              variant="secondary"
+              className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
+              onClick={() => setWizardOpen(true)}
+            >
+              <Target className="h-4 w-4 mr-2" />
+              Matching Wizard
             </Button>
             <CreatePlotDialog />
           </div>
@@ -416,7 +427,7 @@ export default function PlotsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Plot?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete plot "{selectedPlot?.plot_number}"? 
+              Are you sure you want to delete plot "{selectedPlot?.plot_number}"?
               This will also remove all offers and interested buyers. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -432,6 +443,30 @@ export default function PlotsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Land Matching Wizard */}
+      <LandMatchingWizard
+        isOpen={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        plots={plots.map(p => ({
+          id: p.plot_number,
+          area: p.area_sqft ? p.area_sqft / 10.7639 : 0,
+          gfa: p.gfa_sqft ? p.gfa_sqft / 10.7639 : 0,
+          zoning: p.zoning,
+          status: p.status,
+          location: p.area_name
+        }))}
+        onHighlightPlots={(ids) => {
+          console.log('Highlighting plots:', ids);
+          setSearchQuery(ids.join(', '));
+        }}
+        onSelectPlot={(plot) => {
+          console.log('Selected plot from wizard:', plot);
+          setWizardOpen(false);
+          // Auto-fill search with the plot number
+          setSearchQuery(plot.id);
+        }}
+      />
     </MainLayout>
   );
 }
