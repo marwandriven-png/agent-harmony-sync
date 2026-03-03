@@ -41,6 +41,7 @@ import {
   usePlotFeasibility,
   type Plot
 } from '@/hooks/usePlots';
+import { DecisionConfidence } from '@/components/plots/DecisionConfidence';
 import { cn } from '@/lib/utils';
 
 export default function PlotsPage() {
@@ -62,6 +63,7 @@ export default function PlotsPage() {
   const [feasibilityPlot, setFeasibilityPlot] = useState<Plot | null>(null);
   const [runningPlotId, setRunningPlotId] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [reportPlot, setReportPlot] = useState<Plot | null>(null);
 
   // Feasibility data for selected plot
   const { data: feasibilityReports = [] } = usePlotFeasibility(feasibilityPlot?.id);
@@ -131,6 +133,10 @@ export default function PlotsPage() {
     if (amount >= 1000000000) return `AED ${(amount / 1000000000).toFixed(1)}B`;
     if (amount >= 1000000) return `AED ${(amount / 1000000).toFixed(1)}M`;
     return `AED ${amount.toLocaleString()}`;
+  };
+
+  const handleViewDecisionConfidence = (plot: Plot) => {
+    setReportPlot(plot);
   };
 
   return (
@@ -352,6 +358,7 @@ export default function PlotsPage() {
                     onViewOffers={handleViewOffers}
                     onViewInterested={handleViewInterested}
                     onRunFeasibility={handleRunFeasibility}
+                    onViewDecisionConfidence={handleViewDecisionConfidence}
                     isRunningFeasibility={runFeasibility.isPending}
                     runningPlotId={runningPlotId}
                   />
@@ -467,6 +474,35 @@ export default function PlotsPage() {
           setSearchQuery(plot.id);
         }}
       />
+      {/* Decision Confidence Report Dialog */}
+      <AlertDialog open={!!reportPlot} onOpenChange={() => setReportPlot(null)}>
+        <AlertDialogContent className="max-w-7xl h-[90vh] p-0 overflow-hidden border-none bg-background">
+          {reportPlot && (
+            <div className="h-full flex flex-col relative">
+              <button
+                onClick={() => setReportPlot(null)}
+                className="absolute top-4 right-4 z-50 p-2 rounded-full bg-background/80 hover:bg-background border shadow-sm transition-colors"
+              >
+                <Plus className="h-5 w-5 rotate-45" />
+              </button>
+              <DecisionConfidence
+                plot={{
+                  id: reportPlot.plot_number,
+                  area: reportPlot.area_sqft ? reportPlot.area_sqft / 10.7639 : 0,
+                  gfa: reportPlot.gfa_sqft ? reportPlot.gfa_sqft / 10.7639 : 0,
+                  zoning: reportPlot.zoning,
+                  status: reportPlot.status,
+                  location: reportPlot.area_name,
+                  project: reportPlot.master_plan,
+                  floors: reportPlot.floors_allowed
+                } as any}
+                isFullscreen={true}
+                onToggleFullscreen={() => { }}
+              />
+            </div>
+          )}
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }

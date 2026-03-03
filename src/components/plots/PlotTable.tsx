@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Edit3, Trash2, FileText, Users, DollarSign, Brain, 
-  ChevronDown, ChevronUp, MapPin, Building, Ruler, Layers, 
+import {
+  Edit3, Trash2, FileText, Users, DollarSign, Brain,
+  ChevronDown, ChevronUp, MapPin, Building, Ruler, Layers,
   Phone, Plus, ExternalLink, Loader2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ interface PlotTableProps {
   onViewOffers: (plot: Plot) => void;
   onViewInterested: (plot: Plot) => void;
   onRunFeasibility: (plot: Plot) => void;
+  onViewDecisionConfidence: (plot: Plot) => void;
   isRunningFeasibility: boolean;
   runningPlotId: string | null;
 }
@@ -43,6 +44,7 @@ export function PlotTable({
   onViewOffers,
   onViewInterested,
   onRunFeasibility,
+  onViewDecisionConfidence,
   isRunningFeasibility,
   runningPlotId,
 }: PlotTableProps) {
@@ -82,7 +84,7 @@ export function PlotTable({
         <tbody>
           {plots.map((plot) => (
             <>
-              <tr 
+              <tr
                 key={plot.id}
                 className="border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
                 onClick={() => toggleExpand(plot.id)}
@@ -118,7 +120,7 @@ export function PlotTable({
                 </td>
                 <td className="py-3 px-4 hidden md:table-cell">
                   {plot.zoning && (
-                    <Badge className={cn('text-xs', zoningColors[plot.zoning.toLowerCase()] || 'bg-gray-100 text-gray-800')}>
+                    <Badge variant="secondary" className={cn('text-xs', zoningColors[plot.zoning.toLowerCase()] || 'bg-gray-100 text-gray-800')}>
                       {plot.zoning}
                     </Badge>
                   )}
@@ -127,7 +129,7 @@ export function PlotTable({
                   <span className="font-medium text-foreground">{formatPrice(plot.price)}</span>
                 </td>
                 <td className="py-3 px-4">
-                  <Badge className={cn('text-xs', statusColors[plot.status] || 'bg-gray-100 text-gray-800')}>
+                  <Badge variant="secondary" className={cn('text-xs', statusColors[plot.status] || 'bg-gray-100 text-gray-800')}>
                     {plot.status.replace('_', ' ')}
                   </Badge>
                 </td>
@@ -177,6 +179,15 @@ export function PlotTable({
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="h-8 w-8 text-primary hover:text-primary"
+                      onClick={() => onViewDecisionConfidence(plot)}
+                      title="Decision Confidence"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-8 w-8 text-destructive hover:text-destructive"
                       onClick={() => onDelete(plot)}
                       title="Delete"
@@ -215,9 +226,9 @@ export function PlotTable({
                             {plot.pdf_source_link && (
                               <div className="flex items-center gap-2">
                                 <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                                <a 
-                                  href={plot.pdf_source_link} 
-                                  target="_blank" 
+                                <a
+                                  href={plot.pdf_source_link}
+                                  target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-primary hover:underline flex items-center gap-1"
                                 >
