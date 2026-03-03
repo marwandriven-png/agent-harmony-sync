@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Edit3, Trash2, FileText, Users, DollarSign, Brain,
   ChevronDown, ChevronUp, MapPin, Building, Ruler, Layers,
-  Phone, Plus, ExternalLink, Loader2
+  Phone, Plus, ExternalLink, Loader2, Check, X, Pencil, UserPlus
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -49,6 +49,26 @@ export function PlotTable({
   runningPlotId,
 }: PlotTableProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<{ owner: string; mobile: string }>({ owner: '', mobile: '' });
+
+  const startEditing = (plot: Plot) => {
+    setEditingId(plot.id);
+    setEditValues({
+      owner: plot.owner_name || '',
+      mobile: plot.owner_mobile || ''
+    });
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+  };
+
+  const saveEditing = (plot: Plot) => {
+    // In a real app, you'd call an onUpdate prop here
+    onEdit({ ...plot, owner_name: editValues.owner, owner_mobile: editValues.mobile });
+    setEditingId(null);
+  };
 
   const toggleExpand = (plotId: string) => {
     setExpandedId(expandedId === plotId ? null : plotId);
@@ -129,71 +149,101 @@ export function PlotTable({
                   <span className="font-medium text-foreground">{formatPrice(plot.price)}</span>
                 </td>
                 <td className="py-3 px-4">
-                  <Badge variant="secondary" className={cn('text-xs', statusColors[plot.status] || 'bg-gray-100 text-gray-800')}>
-                    {plot.status.replace('_', ' ')}
-                  </Badge>
+                  {editingId === plot.id ? (
+                    <div className="flex flex-col gap-1" onClick={e => e.stopPropagation()}>
+                      <input
+                        className="bg-background border rounded px-2 py-1 text-xs w-24"
+                        value={editValues.owner}
+                        onChange={e => setEditValues({ ...editValues, owner: e.target.value })}
+                        placeholder="Owner name"
+                      />
+                      <input
+                        className="bg-background border rounded px-2 py-1 text-xs w-24"
+                        value={editValues.mobile}
+                        onChange={e => setEditValues({ ...editValues, mobile: e.target.value })}
+                        placeholder="Mobile"
+                      />
+                    </div>
+                  ) : (
+                    <Badge variant="secondary" className={cn('text-xs font-medium', statusColors[plot.status] || 'bg-gray-100 text-gray-800')}>
+                      {plot.status.replace('_', ' ')}
+                    </Badge>
+                  )}
                 </td>
                 <td className="py-3 px-4">
                   <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => onEdit(plot)}
-                      title="Edit"
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => onViewOffers(plot)}
-                      title="View Offers"
-                    >
-                      <DollarSign className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => onViewInterested(plot)}
-                      title="Interested Buyers"
-                    >
-                      <Users className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => onRunFeasibility(plot)}
-                      disabled={isRunningFeasibility && runningPlotId === plot.id}
-                      title="AI Feasibility"
-                    >
-                      {isRunningFeasibility && runningPlotId === plot.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Brain className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-primary hover:text-primary"
-                      onClick={() => onViewDecisionConfidence(plot)}
-                      title="Decision Confidence"
-                    >
-                      <FileText className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => onDelete(plot)}
-                      title="Delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {editingId === plot.id ? (
+                      <>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={() => saveEditing(plot)}>
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={cancelEditing}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => startEditing(plot)}
+                          title="Quick Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-primary"
+                          onClick={() => onViewDecisionConfidence(plot)}
+                          title="Decision Confidence"
+                        >
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => onViewOffers(plot)}
+                          title="View Offers"
+                        >
+                          <DollarSign className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => onViewInterested(plot)}
+                          title="Interested Buyers"
+                        >
+                          <UserPlus className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => onRunFeasibility(plot)}
+                          disabled={isRunningFeasibility && runningPlotId === plot.id}
+                          title="AI Feasibility"
+                        >
+                          {isRunningFeasibility && runningPlotId === plot.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Brain className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => onDelete(plot)}
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>

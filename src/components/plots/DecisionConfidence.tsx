@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { cn } from "@/lib/utils";
 import { Loader2, TrendingUp, DollarSign, Building2, BarChart3, Target, Shield, Printer, Maximize2, Minimize2, Settings2, GitCompareArrows, X, Lightbulb, StickyNote, ChevronRight, Share2, FileWarning } from 'lucide-react';
 import { DCShareModal } from './DCShareModal';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -262,175 +263,188 @@ export function DecisionConfidence({ plot, comparisonPlots = [], isFullscreen, o
 
     const masterTxnData = getAreaSalesData(scopedAreaCode || '') || { avgPsf: {}, medianPsf: {}, count: { total: 0 }, sharePct: {}, insufficient: {}, noData: {} };
 
+    // Main container logic
+    const containerClasses = isFullscreen
+        ? "fixed inset-0 z-50 bg-background overflow-hidden flex flex-col pt-16 px-4 pb-4"
+        : "w-full space-y-4 px-2 py-4";
+
     return (
-        <div className="h-full flex flex-col overflow-hidden bg-background">
-            <div className="shrink-0 px-6 py-4 border-b">
-                <div className="flex items-center justify-between mb-4">
-                    <div>
-                        <h2 className="text-xl font-bold flex items-center gap-2">
-                            <Shield className="w-6 h-6 text-primary" />
-                            Decision Confidence Report
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                            Plot {activePlot.id} · {areaName} · {dscInput.zone}
-                        </p>
+        <div className={containerClasses}>
+            {/* Scrollable Content */}
+            <div className={cn(
+                "flex-1 overflow-y-auto min-h-0 pr-2 custom-scrollbar",
+                isFullscreen ? "h-[calc(100vh-140px)]" : ""
+            )}>
+                <div className="space-y-6">
+                    <div className="shrink-0 px-6 py-4 border-b">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 className="text-xl font-bold flex items-center gap-2">
+                                    <Shield className="w-6 h-6 text-primary" />
+                                    Decision Confidence Report
+                                </h2>
+                                <p className="text-sm text-muted-foreground">
+                                    Plot {activePlot.id} · {areaName} · {dscInput.zone}
+                                </p>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button variant="outline" size="sm" onClick={() => setShowShareModal(true)}>
+                                    <Share2 className="w-4 h-4 mr-2" /> Share
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => window.print()}>
+                                    <Printer className="w-4 h-4 mr-2" /> Print
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <KpiCard label="Total GDV" value={fmtM(fs.grossSales)} sub={`Avg PSF AED ${fmt(Math.round(fs.avgPsf))}`} accent />
+                            <KpiCard label="Net Profit" value={fmtM(fs.grossProfit)} sub={`Margin: ${pct(fs.grossMargin)}`} positive={fs.grossMargin > 0.2} negative={fs.grossMargin < 0} />
+                            <KpiCard label="ROI" value={pct(fs.roi)} sub="Return on cost" positive={fs.roi > 0.2} negative={fs.roi < 0} />
+                            <KpiCard label="Units" value={fmt(fs.units.total)} sub={`${fmt(Math.round(fs.bua))} sqft BUA`} />
+                        </div>
                     </div>
-                    <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setShowShareModal(true)}>
-                            <Share2 className="w-4 h-4 mr-2" /> Share
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => window.print()}>
-                            <Printer className="w-4 h-4 mr-2" /> Print
-                        </Button>
+
+                    <div className="flex border-b px-6 bg-muted/30">
+                        {[
+                            ['feasibility', 'Feasibility'],
+                            ['comparison', 'Benchmarks'],
+                            ['sensitivity', 'Sensitivity'],
+                            ['plotCompare', `Compare (${allPlots.length})`],
+                        ].map(([k, l]) => (
+                            <button
+                                key={k}
+                                onClick={() => setActiveTab(k as any)}
+                                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === k ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+                                    }`}
+                            >
+                                {l}
+                            </button>
+                        ))}
                     </div>
-                </div>
 
-                <div className="flex gap-4">
-                    <KpiCard label="Total GDV" value={fmtM(fs.grossSales)} sub={`Avg PSF AED ${fmt(Math.round(fs.avgPsf))}`} accent />
-                    <KpiCard label="Net Profit" value={fmtM(fs.grossProfit)} sub={`Margin: ${pct(fs.grossMargin)}`} positive={fs.grossMargin > 0.2} negative={fs.grossMargin < 0} />
-                    <KpiCard label="ROI" value={pct(fs.roi)} sub="Return on cost" positive={fs.roi > 0.2} negative={fs.roi < 0} />
-                    <KpiCard label="Units" value={fmt(fs.units.total)} sub={`${fmt(Math.round(fs.bua))} sqft BUA`} />
-                </div>
-            </div>
-
-            <div className="flex border-b px-6 bg-muted/30">
-                {[
-                    ['feasibility', 'Feasibility'],
-                    ['comparison', 'Benchmarks'],
-                    ['sensitivity', 'Sensitivity'],
-                    ['plotCompare', `Compare (${allPlots.length})`],
-                ].map(([k, l]) => (
-                    <button
-                        key={k}
-                        onClick={() => setActiveTab(k as any)}
-                        className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === k ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-                            }`}
-                    >
-                        {l}
-                    </button>
-                ))}
-            </div>
-
-            <ScrollArea className="flex-1">
-                <div className="p-6">
-                    {activeTab === 'feasibility' && (
-                        <div className="space-y-8">
-                            <Section num={1} title="Development Configuration">
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="data-card p-4 border rounded-xl">
-                                        <h4 className="text-xs font-bold text-muted-foreground uppercase mb-4">Plot Characteristics</h4>
-                                        <div className="space-y-3">
-                                            {[
-                                                ['Plot Area', `${fmt(Math.round(dscInput.area))} sqft`],
-                                                ['GFA', `${fmt(Math.round(fs.gfa))} sqft`],
-                                                ['Efficiency', `${pct(effectiveOverrides.efficiency || 0.95)}`],
-                                                ['Sellable Area', `${fmt(Math.round(fs.sellableArea))} sqft`],
-                                            ].map(([l, v]) => (
-                                                <div key={l} className="flex justify-between text-sm py-1 border-b last:border-0 border-border/50">
-                                                    <span className="text-muted-foreground">{l}</span>
-                                                    <span className="font-mono font-bold">{v}</span>
+                    <ScrollArea className="flex-1">
+                        <div className="p-6">
+                            {activeTab === 'feasibility' && (
+                                <div className="space-y-8">
+                                    <Section num={1} title="Development Configuration">
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div className="data-card p-4 border rounded-xl">
+                                                <h4 className="text-xs font-bold text-muted-foreground uppercase mb-4">Plot Characteristics</h4>
+                                                <div className="space-y-3">
+                                                    {[
+                                                        ['Plot Area', `${fmt(Math.round(dscInput.area))} sqft`],
+                                                        ['GFA', `${fmt(Math.round(fs.gfa))} sqft`],
+                                                        ['Efficiency', `${pct(effectiveOverrides.efficiency || 0.95)}`],
+                                                        ['Sellable Area', `${fmt(Math.round(fs.sellableArea))} sqft`],
+                                                    ].map(([l, v]) => (
+                                                        <div key={l} className="flex justify-between text-sm py-1 border-b last:border-0 border-border/50">
+                                                            <span className="text-muted-foreground">{l}</span>
+                                                            <span className="font-mono font-bold">{v}</span>
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                            ))}
+                                            </div>
+                                            <div className="data-card p-4 border rounded-xl">
+                                                <h4 className="text-xs font-bold text-muted-foreground uppercase mb-4">Utilization</h4>
+                                                <ProgressBar label="GFA Usage" value="100%" percent={100} />
+                                                <ProgressBar label="Sellable Ratio" value={pct(fs.sellableArea / fs.gfa)} percent={(fs.sellableArea / fs.gfa) * 100} />
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="data-card p-4 border rounded-xl">
-                                        <h4 className="text-xs font-bold text-muted-foreground uppercase mb-4">Utilization</h4>
-                                        <ProgressBar label="GFA Usage" value="100%" percent={100} />
-                                        <ProgressBar label="Sellable Ratio" value={pct(fs.sellableArea / fs.gfa)} percent={(fs.sellableArea / fs.gfa) * 100} />
-                                    </div>
+                                    </Section>
+
+                                    <Section num={2} title="Project Financials">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Cost Item</TableHead>
+                                                    <TableHead className="text-right">Basis</TableHead>
+                                                    <TableHead className="text-right">Amount (AED)</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                <TableRow>
+                                                    <TableCell className="font-medium">Land Acquisition</TableCell>
+                                                    <TableCell className="text-right text-xs text-muted-foreground">Market Appraised</TableCell>
+                                                    <TableCell className="text-right font-mono">{fmtA(fs.landCost)}</TableCell>
+                                                </TableRow>
+                                                <TableRow>
+                                                    <TableCell className="font-medium">Construction</TableCell>
+                                                    <TableCell className="text-right text-xs text-muted-foreground">AED {effectiveOverrides.constructionPsf}/sqft</TableCell>
+                                                    <TableCell className="text-right font-mono">{fmtA(fs.constructionCost)}</TableCell>
+                                                </TableRow>
+                                            </TableBody>
+                                            <TableFooter>
+                                                <TableRow>
+                                                    <TableCell className="font-bold">Total Development Cost</TableCell>
+                                                    <TableCell />
+                                                    <TableCell className="text-right font-bold font-mono">{fmtA(fs.totalCost)}</TableCell>
+                                                </TableRow>
+                                            </TableFooter>
+                                        </Table>
+                                    </Section>
                                 </div>
-                            </Section>
+                            )}
 
-                            <Section num={2} title="Project Financials">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Cost Item</TableHead>
-                                            <TableHead className="text-right">Basis</TableHead>
-                                            <TableHead className="text-right">Amount (AED)</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        <TableRow>
-                                            <TableCell className="font-medium">Land Acquisition</TableCell>
-                                            <TableCell className="text-right text-xs text-muted-foreground">Market Appraised</TableCell>
-                                            <TableCell className="text-right font-mono">{fmtA(fs.landCost)}</TableCell>
-                                        </TableRow>
-                                        <TableRow>
-                                            <TableCell className="font-medium">Construction</TableCell>
-                                            <TableCell className="text-right text-xs text-muted-foreground">AED {effectiveOverrides.constructionPsf}/sqft</TableCell>
-                                            <TableCell className="text-right font-mono">{fmtA(fs.constructionCost)}</TableCell>
-                                        </TableRow>
-                                    </TableBody>
-                                    <TableFooter>
-                                        <TableRow>
-                                            <TableCell className="font-bold">Total Development Cost</TableCell>
-                                            <TableCell />
-                                            <TableCell className="text-right font-bold font-mono">{fmtA(fs.totalCost)}</TableCell>
-                                        </TableRow>
-                                    </TableFooter>
-                                </Table>
-                            </Section>
+                            {activeTab === 'plotCompare' && (
+                                <div className="space-y-6">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Metric</TableHead>
+                                                {allResults.map(r => (
+                                                    <TableHead key={r.id} className="text-right">{r.id}</TableHead>
+                                                ))}
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            <TableRow>
+                                                <TableCell className="font-medium">ROI</TableCell>
+                                                {allResults.map(r => (
+                                                    <TableCell key={r.id} className="text-right font-mono font-bold text-primary">{pct(r.result.roi)}</TableCell>
+                                                ))}
+                                            </TableRow>
+                                            <TableRow>
+                                                <TableCell className="font-medium">Gross Margin</TableCell>
+                                                {allResults.map(r => (
+                                                    <TableCell key={r.id} className="text-right font-mono">{pct(r.result.grossMargin)}</TableCell>
+                                                ))}
+                                            </TableRow>
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            )}
                         </div>
-                    )}
+                    </ScrollArea>
 
-                    {activeTab === 'plotCompare' && (
-                        <div className="space-y-6">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Metric</TableHead>
-                                        {allResults.map(r => (
-                                            <TableHead key={r.id} className="text-right">{r.id}</TableHead>
-                                        ))}
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    <TableRow>
-                                        <TableCell className="font-medium">ROI</TableCell>
-                                        {allResults.map(r => (
-                                            <TableCell key={r.id} className="text-right font-mono font-bold text-primary">{pct(r.result.roi)}</TableCell>
-                                        ))}
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell className="font-medium">Gross Margin</TableCell>
-                                        {allResults.map(r => (
-                                            <TableCell key={r.id} className="text-right font-mono">{pct(r.result.grossMargin)}</TableCell>
-                                        ))}
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
+                    <div className="shrink-0 border-t p-4 bg-muted/30">
+                        <div className="flex gap-4">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground self-center">Strategy:</span>
+                            {Object.entries(MIX_TEMPLATES).map(([k, v]) => (
+                                <button
+                                    key={k}
+                                    onClick={() => setActiveMix(k as any)}
+                                    className={`flex-1 p-3 rounded-xl border text-center transition-all ${activeMix === k ? 'bg-primary border-primary text-primary-foreground' : 'bg-background hover:bg-muted'
+                                        }`}
+                                >
+                                    <div className="text-lg">{v.icon}</div>
+                                    <div className="text-[10px] font-bold uppercase">{v.label}</div>
+                                </button>
+                            ))}
                         </div>
-                    )}
-                </div>
-            </ScrollArea>
+                    </div>
 
-            <div className="shrink-0 border-t p-4 bg-muted/30">
-                <div className="flex gap-4">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground self-center">Strategy:</span>
-                    {Object.entries(MIX_TEMPLATES).map(([k, v]) => (
-                        <button
-                            key={k}
-                            onClick={() => setActiveMix(k as any)}
-                            className={`flex-1 p-3 rounded-xl border text-center transition-all ${activeMix === k ? 'bg-primary border-primary text-primary-foreground' : 'bg-background hover:bg-muted'
-                                }`}
-                        >
-                            <div className="text-lg">{v.icon}</div>
-                            <div className="text-[10px] font-bold uppercase">{v.label}</div>
-                        </button>
-                    ))}
+                    <DCShareModal
+                        open={showShareModal}
+                        onClose={() => setShowShareModal(false)}
+                        plotId={activePlot.id}
+                        activeMix={activeMix}
+                        fs={fs}
+                        plotInput={dscInput}
+                        overrides={effectiveOverrides}
+                    />
                 </div>
             </div>
-
-            <DCShareModal
-                open={showShareModal}
-                onClose={() => setShowShareModal(false)}
-                plotId={activePlot.id}
-                activeMix={activeMix}
-                fs={fs}
-                plotInput={dscInput}
-                overrides={effectiveOverrides}
-            />
         </div>
     );
 }

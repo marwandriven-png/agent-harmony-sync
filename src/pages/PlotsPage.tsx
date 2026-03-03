@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
   MapPin, Plus, Search, Filter, RefreshCw, Brain,
   Building, TrendingUp, DollarSign, Users, Loader2,
-  Map, BarChart3, Target
+  Map, BarChart3, Target, Layers, X
 } from 'lucide-react';
 import { LandMatchingWizard } from '@/components/plots/LandMatchingWizard';
 import { PlotData } from '@/services/DDAGISService';
@@ -64,6 +64,7 @@ export default function PlotsPage() {
   const [runningPlotId, setRunningPlotId] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [reportPlot, setReportPlot] = useState<Plot | null>(null);
+  const [activeAnalysisPlot, setActiveAnalysisPlot] = useState<Plot | null>(null);
 
   // Feasibility data for selected plot
   const { data: feasibilityReports = [] } = usePlotFeasibility(feasibilityPlot?.id);
@@ -136,7 +137,12 @@ export default function PlotsPage() {
   };
 
   const handleViewDecisionConfidence = (plot: Plot) => {
-    setReportPlot(plot);
+    setActiveAnalysisPlot(plot);
+    // Scroll to analysis section if needed
+    const analysisSection = document.getElementById('ai-analysis-section');
+    if (analysisSection) {
+      analysisSection.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   return (
@@ -315,100 +321,136 @@ export default function PlotsPage() {
         </Card>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="flex flex-col gap-6">
           {/* Plot Table */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center justify-between">
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-3 bg-muted/30">
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-5 w-5 text-primary" />
                   <span>Plots ({filteredPlots.length})</span>
-                  {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                </CardTitle>
+                </div>
+                {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {isLoading ? (
+                <div className="space-y-2 p-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : filteredPlots.length === 0 ? (
+                <div className="text-center py-12 px-4">
+                  <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-foreground">No plots found</h3>
+                  <p className="text-muted-foreground mb-4">
+                    {searchQuery || statusFilter !== 'all' || zoningFilter !== 'all'
+                      ? 'Try adjusting your filters'
+                      : 'Add your first plot to get started'}
+                  </p>
+                  <CreatePlotDialog
+                    trigger={
+                      <Button>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Plot
+                      </Button>
+                    }
+                  />
+                </div>
+              ) : (
+                <PlotTable
+                  plots={filteredPlots}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onViewOffers={handleViewOffers}
+                  onViewInterested={handleViewInterested}
+                  onRunFeasibility={handleRunFeasibility}
+                  onViewDecisionConfidence={handleViewDecisionConfidence}
+                  isRunningFeasibility={runFeasibility.isPending}
+                  runningPlotId={runningPlotId}
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* AI Analysis Section (Full Width) */}
+          <div id="ai-analysis-section" className="scroll-mt-6">
+            <Card className={cn(
+              "transition-all duration-300 border-none shadow-lg overflow-hidden",
+              activeAnalysisPlot ? "ring-2 ring-primary/20" : "opacity-90"
+            )}>
+              <CardHeader className="pb-0 border-b bg-muted/20">
+                <div className="flex items-center justify-between py-2">
+                  <CardTitle className="flex items-center gap-2 text-xl font-bold">
+                    <Brain className="h-6 w-6 text-primary" />
+                    Plot Intelligence & AI Feasibility
+                  </CardTitle>
+                  {activeAnalysisPlot && (
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
+                        Analyzing: {activeAnalysisPlot.plot_number}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActiveAnalysisPlot(null)}
+                        className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-3.5 w-3.5 mr-1" />
+                        Clear Analysis
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </CardHeader>
-              <CardContent className="p-0">
-                {isLoading ? (
-                  <div className="space-y-2 p-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Skeleton key={i} className="h-12 w-full" />
-                    ))}
-                  </div>
-                ) : filteredPlots.length === 0 ? (
-                  <div className="text-center py-12 px-4">
-                    <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-foreground">No plots found</h3>
-                    <p className="text-muted-foreground mb-4">
-                      {searchQuery || statusFilter !== 'all' || zoningFilter !== 'all'
-                        ? 'Try adjusting your filters'
-                        : 'Add your first plot to get started'}
-                    </p>
-                    <CreatePlotDialog
-                      trigger={
-                        <Button>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Plot
-                        </Button>
-                      }
+              <CardContent className="p-0 min-h-[400px]">
+                {activeAnalysisPlot ? (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <DecisionConfidence
+                      plot={{
+                        id: activeAnalysisPlot.plot_number,
+                        area: activeAnalysisPlot.plot_size || 0,
+                        gfa: activeAnalysisPlot.gfa || 0,
+                        zoning: activeAnalysisPlot.zoning,
+                        status: activeAnalysisPlot.status,
+                        location: activeAnalysisPlot.area_name,
+                        project: activeAnalysisPlot.master_plan,
+                        floors: activeAnalysisPlot.floors_allowed
+                      } as any}
+                      isFullscreen={false}
+                      onToggleFullscreen={() => { }}
                     />
                   </div>
                 ) : (
-                  <PlotTable
-                    plots={filteredPlots}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onViewOffers={handleViewOffers}
-                    onViewInterested={handleViewInterested}
-                    onRunFeasibility={handleRunFeasibility}
-                    onViewDecisionConfidence={handleViewDecisionConfidence}
-                    isRunningFeasibility={runFeasibility.isPending}
-                    runningPlotId={runningPlotId}
-                  />
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Feasibility Sidebar */}
-          <div className="space-y-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2">
-                  <Brain className="h-5 w-5 text-primary" />
-                  AI Feasibility
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {feasibilityPlot ? (
-                  feasibilityReports.length > 0 ? (
-                    <PlotFeasibilityCard feasibility={feasibilityReports[0]} />
-                  ) : (
-                    <div className="text-center py-8">
-                      <BarChart3 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                      <p className="text-muted-foreground text-sm">
-                        Click the brain icon on any plot to run AI feasibility analysis
-                      </p>
+                  <div className="flex flex-col items-center justify-center py-24 text-center px-4 bg-muted/5">
+                    <div className="h-20 w-20 rounded-full bg-primary/5 flex items-center justify-center mb-6">
+                      <Brain className="h-10 w-10 text-primary/40" />
                     </div>
-                  )
-                ) : (
-                  <div className="text-center py-8">
-                    <Brain className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-muted-foreground text-sm">
-                      Select a plot and click the AI button to analyze development potential
+                    <h3 className="text-xl font-semibold text-foreground mb-2">Ready for Analysis</h3>
+                    <p className="text-muted-foreground max-w-sm mx-auto mb-8">
+                      Select any plot from the table and click the AI button to generate a detailed
+                      Decision Confidence report with financial feasibility, ROI, and risk analysis.
                     </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-2xl text-left">
+                      <div className="p-4 rounded-xl border bg-background/50">
+                        <DollarSign className="h-5 w-5 text-green-500 mb-2" />
+                        <h4 className="font-medium text-sm mb-1">Financial KPIs</h4>
+                        <p className="text-xs text-muted-foreground">Detailed ROI, profit margins, and peak investment requirements.</p>
+                      </div>
+                      <div className="p-4 rounded-xl border bg-background/50">
+                        <TrendingUp className="h-5 w-5 text-blue-500 mb-2" />
+                        <h4 className="font-medium text-sm mb-1">Market Strategy</h4>
+                        <p className="text-xs text-muted-foreground">Compare Balanced, Premium, and Investor unit mix strategies.</p>
+                      </div>
+                      <div className="p-4 rounded-xl border bg-background/50">
+                        <Target className="h-5 w-5 text-purple-500 mb-2" />
+                        <h4 className="font-medium text-sm mb-1">Risk Assessment</h4>
+                        <p className="text-xs text-muted-foreground">AI-driven SWOT analysis and mitigation strategies for every plot.</p>
+                      </div>
+                    </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* Quick Tips */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Quick Tips</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-muted-foreground">
-                <p>• Click on a row to expand details</p>
-                <p>• Use 🧠 to run AI feasibility analysis</p>
-                <p>• 💰 to view/add offers</p>
-                <p>• 👥 to track interested buyers (linked to leads)</p>
               </CardContent>
             </Card>
           </div>
