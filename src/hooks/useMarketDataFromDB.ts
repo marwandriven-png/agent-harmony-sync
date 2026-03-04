@@ -39,7 +39,7 @@ export function useDBComparables(areaCode: string | null) {
         queryFn: async (): Promise<DBProjectComparable[]> => {
             if (!areaCode) return [];
 
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from('v_project_unit_summary')
                 .select('*')
                 .eq('area_code', areaCode);
@@ -99,7 +99,7 @@ export function useDBMarketSnapshot(areaCode: string | null) {
         queryFn: async (): Promise<DBMarketSnapshot | null> => {
             if (!areaCode) return null;
 
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from('v_area_snapshot_latest')
                 .select('*')
                 .eq('area_code', areaCode)

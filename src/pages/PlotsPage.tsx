@@ -534,12 +534,12 @@ export default function PlotsPage() {
         onClose={() => setWizardOpen(false)}
         plots={plots.map(p => ({
           id: p.plot_number,
-          area: p.area_sqft ? p.area_sqft / 10.7639 : 0,
-          gfa: p.gfa_sqft ? p.gfa_sqft / 10.7639 : 0,
+          area: p.plot_size ? Number(p.plot_size) / 10.7639 : 0,
+          gfa: p.gfa ? Number(p.gfa) / 10.7639 : 0,
           zoning: p.zoning,
           status: p.status,
           location: p.area_name
-        }))}
+        })) as any}
         onHighlightPlots={(ids) => {
           console.log('Highlighting plots:', ids);
           setSearchQuery(ids.join(', '));
@@ -565,8 +565,8 @@ export default function PlotsPage() {
               <DecisionConfidence
                 plot={{
                   id: reportPlot.plot_number,
-                  area: reportPlot.area_sqft ? reportPlot.area_sqft / 10.7639 : 0,
-                  gfa: reportPlot.gfa_sqft ? reportPlot.gfa_sqft / 10.7639 : 0,
+                  area: reportPlot.plot_size ? Number(reportPlot.plot_size) / 10.7639 : 0,
+                  gfa: reportPlot.gfa ? Number(reportPlot.gfa) / 10.7639 : 0,
                   zoning: reportPlot.zoning,
                   status: reportPlot.status,
                   location: reportPlot.area_name,
