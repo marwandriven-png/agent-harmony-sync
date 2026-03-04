@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
   MapPin, Plus, Search, Filter, RefreshCw, Brain,
   Building, TrendingUp, DollarSign, Users, Loader2,
-  Map, BarChart3, Target, Layers, X
+  Map, BarChart3, Target, Layers, X, FolderKanban
 } from 'lucide-react';
 import { LandMatchingWizard } from '@/components/plots/LandMatchingWizard';
 import { PlotData } from '@/services/DDAGISService';
@@ -42,6 +42,8 @@ import {
   type Plot
 } from '@/hooks/usePlots';
 import { DecisionConfidence } from '@/components/plots/DecisionConfidence';
+import { ProjectsTab } from '@/components/plots/ProjectsTab';
+import { CreateProjectDialog } from '@/components/plots/CreateProjectDialog';
 import { cn } from '@/lib/utils';
 
 export default function PlotsPage() {
@@ -51,6 +53,7 @@ export default function PlotsPage() {
   const runFeasibility = useRunFeasibility();
 
   // UI State
+  const [activeTab, setActiveTab] = useState<'plots' | 'projects'>('plots');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [zoningFilter, setZoningFilter] = useState<string>('all');
@@ -164,18 +167,48 @@ export default function PlotsPage() {
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
-            <Button
-              variant="secondary"
-              className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
-              onClick={() => setWizardOpen(true)}
-            >
-              <Target className="h-4 w-4 mr-2" />
-              Matching Wizard
-            </Button>
-            <CreatePlotDialog />
+            {activeTab === 'plots' ? (
+              <>
+                <Button
+                  variant="secondary"
+                  className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
+                  onClick={() => setWizardOpen(true)}
+                >
+                  <Target className="h-4 w-4 mr-2" />
+                  Matching Wizard
+                </Button>
+                <CreatePlotDialog />
+              </>
+            ) : (
+              <CreateProjectDialog />
+            )}
           </div>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant={activeTab === 'plots' ? 'default' : 'outline'}
+            className={activeTab === 'plots' ? 'bg-foreground text-background hover:bg-foreground/90' : ''}
+            onClick={() => setActiveTab('plots')}
+          >
+            <Layers className="h-4 w-4 mr-2" />
+            Plots
+          </Button>
+          <Button
+            variant={activeTab === 'projects' ? 'default' : 'outline'}
+            className={activeTab === 'projects' ? 'bg-foreground text-background hover:bg-foreground/90' : ''}
+            onClick={() => setActiveTab('projects')}
+          >
+            <FolderKanban className="h-4 w-4 mr-2" />
+            Projects
+          </Button>
+        </div>
+
+        {activeTab === 'projects' ? (
+          <ProjectsTab />
+        ) : (
+          <>
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <motion.div
@@ -455,6 +488,8 @@ export default function PlotsPage() {
             </Card>
           </div>
         </div>
+          </>
+        )}
       </div>
 
       {/* Dialogs */}

@@ -1479,6 +1479,7 @@ export type Database = {
           plot_size: number
           price: number | null
           price_per_sqft: number | null
+          project_id: string | null
           status: string
           updated_at: string
           zoning: string | null
@@ -1501,6 +1502,7 @@ export type Database = {
           plot_size: number
           price?: number | null
           price_per_sqft?: number | null
+          project_id?: string | null
           status?: string
           updated_at?: string
           zoning?: string | null
@@ -1523,6 +1525,7 @@ export type Database = {
           plot_size?: number
           price?: number | null
           price_per_sqft?: number | null
+          project_id?: string | null
           status?: string
           updated_at?: string
           zoning?: string | null
@@ -1533,6 +1536,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1566,6 +1576,62 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      projects: {
+        Row: {
+          budget: number | null
+          completion_percentage: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          location: string | null
+          name: string
+          spent: number | null
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          budget?: number | null
+          completion_percentage?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          location?: string | null
+          name: string
+          spent?: number | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          budget?: number | null
+          completion_percentage?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          location?: string | null
+          name?: string
+          spent?: number | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       properties: {
         Row: {
