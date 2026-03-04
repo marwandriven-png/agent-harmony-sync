@@ -56,7 +56,7 @@ const CONTACTS_KEY = 'hyperplot_dc_contacts';
 const SHEETS_URL_KEY = 'hyperplot_sheets_url';
 
 export async function loadShareLinksFromDB(): Promise<DCShareLink[]> {
-    const { data, error } = await supabase.from('dc_share_links').select('*');
+    const { data, error } = await (supabase as any).from('dc_share_links').select('*');
     if (error || !data) return [];
     return data.map((r: any) => ({
         id: r.id,
@@ -79,7 +79,7 @@ function loadContacts(): PreApprovedContact[] {
 function saveContacts(c: PreApprovedContact[]) { localStorage.setItem(CONTACTS_KEY, JSON.stringify(c)); }
 
 async function loadLogsFromDB(): Promise<SecurityLog[]> {
-    const { data, error } = await supabase.from('dc_access_logs').select('*').order('created_at', { ascending: false }).limit(100);
+    const { data, error } = await (supabase as any).from('dc_access_logs').select('*').order('created_at', { ascending: false }).limit(100);
     if (error || !data) return [];
     return data.map((r: any) => ({
         id: r.id,
@@ -132,7 +132,7 @@ export function DCShareModal({ open, onClose, plotId, activeMix, fs, plotInput, 
             constraints: fs.plot.constraints,
         };
 
-        const { error } = await supabase.from('dc_share_links').insert({
+        const { error } = await (supabase as any).from('dc_share_links').insert({
             id,
             plot_id: plotId,
             mix_strategy: activeMix,
