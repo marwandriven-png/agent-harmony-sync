@@ -548,3 +548,4 @@ export default function PlotsPage() {
     </MainLayout>
   );
 }
+// Force sync update: Wed Mar  4 02:02:27 PST 2026
