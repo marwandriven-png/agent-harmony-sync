@@ -1,0 +1,491 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Real Estate CRM Design System - Premium White Executive Theme */
+
+@layer base {
+  :root {
+    /* Core Background & Foreground - Clean White */
+    --background: 0 0% 98%;
+    --foreground: 220 20% 10%;
+
+    /* Card Surfaces - Pure White with Subtle Depth */
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 10%;
+
+    /* Popover/Dropdown */
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 10%;
+
+    /* Primary Brand - Deep Slate Blue */
+    --primary: 220 70% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Light Gray */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 20% 20%;
+
+    /* Muted Surfaces */
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 10% 45%;
+
+    /* Accent - Vibrant Lime Green (matching reference) */
+    --accent: 82 84% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Success */
+    --success: 142 70% 40%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Border & Input */
+    --border: 220 14% 90%;
+    --input: 220 14% 92%;
+    --ring: 220 70% 50%;
+
+    --radius: 0.75rem;
+
+    /* Status Colors - Pipeline Stages */
+    --status-new: 220 70% 50%;
+    --status-contacted: 262 70% 55%;
+    --status-viewing: 38 92% 50%;
+    --status-viewed: 174 70% 40%;
+    --status-negotiation: 15 85% 55%;
+    --status-closed: 142 70% 40%;
+    --status-lost: 0 70% 55%;
+
+    /* Priority Colors */
+    --priority-hot: 0 84% 55%;
+    --priority-warm: 38 92% 50%;
+    --priority-cold: 199 85% 45%;
+
+    /* Pastel Backgrounds - Softer for light theme */
+    --pastel-blue: 220 70% 95%;
+    --pastel-purple: 262 60% 95%;
+    --pastel-orange: 38 80% 95%;
+    --pastel-green: 142 60% 94%;
+    --pastel-red: 0 70% 95%;
+    --pastel-cyan: 174 60% 94%;
+
+    /* Sidebar - Dark contrast sidebar */
+    --sidebar-background: 220 25% 12%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 82 84% 50%;
+    --sidebar-primary-foreground: 220 20% 10%;
+    --sidebar-accent: 220 25% 18%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 220 20% 20%;
+    --sidebar-ring: 82 84% 50%;
+
+    /* Kanban Column */
+    --kanban-bg: 0 0% 97%;
+    --kanban-header: 220 20% 15%;
+
+    /* Gradients - Light mode optimized */
+    --gradient-primary: linear-gradient(135deg, hsl(220 70% 50%) 0%, hsl(220 70% 60%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(82 84% 45%) 0%, hsl(82 75% 40%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(142 70% 40%) 0%, hsl(160 60% 40%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(220 70% 50%) 0%, hsl(262 60% 55%) 100%);
+    --gradient-glass: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(220 14% 98%) 100%);
+
+    /* Shadows - Refined for white theme */
+    --shadow-sm: 0 1px 2px 0 hsl(220 20% 10% / 0.04);
+    --shadow-md: 0 4px 8px -1px hsl(220 20% 10% / 0.06), 0 2px 4px -2px hsl(220 20% 10% / 0.04);
+    --shadow-lg: 0 12px 24px -4px hsl(220 20% 10% / 0.08), 0 4px 8px -4px hsl(220 20% 10% / 0.04);
+    --shadow-card: 0 1px 3px 0 hsl(220 20% 10% / 0.05), 0 1px 2px -1px hsl(220 20% 10% / 0.03);
+    --shadow-card-hover: 0 12px 28px -6px hsl(220 20% 10% / 0.12), 0 6px 12px -4px hsl(220 20% 10% / 0.06);
+  }
+
+  .dark {
+    /* Premium Dark Theme - Executive Dashboard */
+    --background: 220 20% 8%;
+    --foreground: 0 0% 98%;
+
+    /* Card Surfaces - Glassmorphism Effect */
+    --card: 220 20% 12%;
+    --card-foreground: 0 0% 98%;
+
+    /* Popover/Dropdown */
+    --popover: 220 20% 10%;
+    --popover-foreground: 0 0% 98%;
+
+    /* Primary Brand */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary */
+    --secondary: 220 20% 18%;
+    --secondary-foreground: 0 0% 98%;
+
+    /* Muted Surfaces */
+    --muted: 220 20% 16%;
+    --muted-foreground: 220 10% 60%;
+
+    /* Accent - Vibrant Lime Green */
+    --accent: 82 84% 50%;
+    --accent-foreground: 220 20% 8%;
+
+    /* Destructive */
+    --destructive: 0 63% 45%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* Success */
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 98%;
+
+    /* Warning */
+    --warning: 38 92% 50%;
+    --warning-foreground: 220 20% 8%;
+
+    /* Border & Input */
+    --border: 220 20% 20%;
+    --input: 220 20% 18%;
+    --ring: 217 91% 60%;
+
+    /* Sidebar - Ultra Dark */
+    --sidebar-background: 220 25% 6%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 82 84% 50%;
+    --sidebar-primary-foreground: 220 20% 8%;
+    --sidebar-accent: 220 20% 14%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 220 20% 16%;
+    --sidebar-ring: 82 84% 50%;
+
+    /* Kanban */
+    --kanban-bg: 220 20% 10%;
+    --kanban-header: 0 0% 98%;
+
+    /* Pastel (Darker variants for dark mode) */
+    --pastel-blue: 217 50% 20%;
+    --pastel-purple: 262 40% 20%;
+    --pastel-orange: 38 50% 20%;
+    --pastel-green: 142 40% 18%;
+    --pastel-red: 0 50% 20%;
+    --pastel-cyan: 174 40% 18%;
+
+    /* Dark mode shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.3);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.4), 0 2px 4px -2px hsl(0 0% 0% / 0.3);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.5), 0 4px 6px -4px hsl(0 0% 0% / 0.4);
+    --shadow-card: 0 2px 8px 0 hsl(0 0% 0% / 0.3);
+    --shadow-card-hover: 0 12px 30px -5px hsl(0 0% 0% / 0.5);
+
+    /* Premium Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(220 20% 14%) 0%, hsl(220 20% 18%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(82 84% 50%) 0%, hsl(82 70% 45%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(142 70% 45%) 0%, hsl(160 60% 40%) 100%);
+    --gradient-hero: linear-gradient(145deg, hsl(220 20% 10%) 0%, hsl(220 20% 15%) 50%, hsl(220 20% 12%) 100%);
+    --gradient-glass: linear-gradient(145deg, hsl(220 20% 14% / 0.6) 0%, hsl(220 20% 10% / 0.4) 100%);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-muted rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full hover:bg-muted-foreground/50 transition-colors;
+  }
+}
+
+@layer components {
+  /* Premium Glass Card - White Theme */
+  .glass-card {
+    @apply bg-card rounded-2xl border border-border/60 relative overflow-hidden;
+    box-shadow: var(--shadow-card);
+  }
+
+  .glass-card:hover {
+    box-shadow: var(--shadow-card-hover);
+    border-color: hsl(var(--border));
+  }
+
+  /* Premium Metric Card - White Theme */
+  .premium-metric-card {
+    @apply bg-card rounded-2xl p-5 relative overflow-hidden border border-border/50;
+    box-shadow: var(--shadow-card);
+  }
+
+  .premium-metric-card:hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .premium-metric-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, hsl(0 0% 100% / 0.03) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  /* Kanban Card */
+  .kanban-card {
+    @apply bg-card rounded-lg p-4 cursor-grab active:cursor-grabbing transition-all duration-200;
+    box-shadow: var(--shadow-card);
+  }
+
+  .kanban-card:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-2px);
+  }
+
+  .kanban-card.dragging {
+    @apply opacity-50 rotate-2;
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Status Badge Variants */
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .status-badge-new {
+    @apply bg-pastel-blue text-status-new;
+  }
+
+  .status-badge-contacted {
+    @apply bg-pastel-purple text-status-contacted;
+  }
+
+  .status-badge-viewing {
+    @apply bg-pastel-orange text-status-viewing;
+  }
+
+  .status-badge-viewed {
+    @apply bg-pastel-cyan text-status-viewed;
+  }
+
+  .status-badge-negotiation {
+    @apply bg-pastel-orange text-status-negotiation;
+  }
+
+  .status-badge-closed {
+    @apply bg-pastel-green text-status-closed;
+  }
+
+  .status-badge-lost {
+    @apply bg-pastel-red text-status-lost;
+  }
+
+  /* Premium Status Badges */
+  .premium-badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold;
+  }
+
+  .premium-badge-success {
+    @apply bg-success/20 text-success border border-success/30;
+  }
+
+  .premium-badge-warning {
+    @apply bg-warning/20 text-warning border border-warning/30;
+  }
+
+  .premium-badge-accent {
+    @apply bg-accent/20 text-accent border border-accent/30;
+  }
+
+  .premium-badge-muted {
+    @apply bg-muted text-muted-foreground border border-border;
+  }
+
+  /* Priority Indicators */
+  .priority-hot {
+    @apply text-priority-hot;
+  }
+
+  .priority-warm {
+    @apply text-priority-warm;
+  }
+
+  .priority-cold {
+    @apply text-priority-cold;
+  }
+
+  /* Metric Card */
+  .metric-card {
+    @apply bg-card rounded-xl p-6 relative overflow-hidden;
+    box-shadow: var(--shadow-card);
+  }
+
+  .metric-card::before {
+    content: '';
+    @apply absolute top-0 left-0 right-0 h-1 rounded-t-xl;
+  }
+
+  .metric-card-primary::before {
+    background: var(--gradient-primary);
+  }
+
+  .metric-card-accent::before {
+    background: var(--gradient-accent);
+  }
+
+  .metric-card-success::before {
+    background: var(--gradient-success);
+  }
+
+  /* Glass Effect */
+  .glass {
+    @apply bg-card/80 backdrop-blur-sm;
+  }
+
+  /* Premium Table Row */
+  .premium-table-row {
+    @apply transition-all duration-200 cursor-pointer;
+  }
+
+  .premium-table-row:hover {
+    @apply bg-muted/50;
+  }
+
+  .premium-table-row.selected {
+    @apply bg-accent/10 border-l-2 border-l-accent;
+  }
+
+  /* Smooth Number Display */
+  .number-display {
+    @apply font-bold tracking-tight;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Animation Classes */
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@layer utilities {
+  /* Text Gradient */
+  .text-gradient {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-accent {
+    background: var(--gradient-accent);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Background Utilities */
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .bg-gradient-accent {
+    background: var(--gradient-accent);
+  }
+
+  .bg-gradient-success {
+    background: var(--gradient-success);
+  }
+
+  .bg-gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  /* Shadow Utilities */
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-card-hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* Land OS Map Tooltips */
+  .plot-tooltip-premium {
+    background: hsl(220, 25%, 10%) !important;
+    border: 1px solid hsl(220, 20%, 20%) !important;
+    border-radius: 8px !important;
+    color: white !important;
+    padding: 8px 10px !important;
+    box-shadow: 0 8px 24px hsl(0, 0%, 0%, 0.4) !important;
+    backdrop-filter: blur(8px);
+  }
+  .plot-tooltip-premium::before {
+    border-top-color: hsl(220, 25%, 10%) !important;
+  }
+}

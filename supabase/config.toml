@@ -1,0 +1,49 @@
+project_id = "kapakvcxzqrhknxnwdhe"
+
+[functions.parse-sheet]
+verify_jwt = false
+
+[functions.parse-file]
+verify_jwt = false
+
+[functions.sync-data]
+verify_jwt = false
+
+[functions.test-integration]
+verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = false
+
+[functions.sheets-sync]
+verify_jwt = false
+
+[functions.google-calendar]
+verify_jwt = false
+
+[functions.plot-feasibility]
+verify_jwt = false
+
+[functions.send-whatsapp]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.campaign-engine]
+verify_jwt = false
+
+[functions.kimi-gateway]
+verify_jwt = false
+
+[functions.call-evaluate]
+verify_jwt = false
+
+[functions.call-kpis]
+verify_jwt = false
+
+[functions.call-transcribe]
+verify_jwt = false
