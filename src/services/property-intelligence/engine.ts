@@ -2,8 +2,12 @@
  * Core Property Intelligence Engine — classifies villas/townhouses
  * based on GIS plot layout, nearby amenities, and surrounding plots.
  * 
- * Ported from the standalone HTML PIEngine with polygon boundary-sharing logic.
- * Normalizable across all areas and communities.
+ * Features:
+ * - Polygon boundary-sharing analysis for layout/position/back-facing
+ * - Entrance direction inference from nearest road
+ * - Community amenity registry fallback
+ * - Internal caching with batch analyzeAll()
+ * - Composite scoring via filter module
  */
 
 import type { PlotData } from '../DDAGISService';
@@ -15,6 +19,7 @@ import type {
 import { DEFAULT_THRESHOLDS, AMENITY_CONFIG } from './types';
 import { classifyDistance, classifyVastu, classifyLandUse } from './classifiers';
 import { Geo, type Polygon, type Edge } from './geometry';
+import { detectCommunityAmenities } from './amenity-registry';
 
 // ─── Helpers to extract polygon from GIS PlotData ───
 
@@ -41,7 +46,6 @@ function extractPolygon(plot: PlotData): Polygon | null {
   const geom = (plot.rawAttributes as Record<string, unknown>)?.geometry as
     { rings?: number[][][] } | undefined;
   if (!geom?.rings?.[0] || geom.rings[0].length < 3) return null;
-  // GIS rings are in projected or WGS84 [x, y] = [lng, lat]
   return geom.rings[0].map(c => [c[0], c[1]] as [number, number]);
 }
 
@@ -50,7 +54,6 @@ function plotCentroid(plot: PlotData): [number, number] | null {
   const poly = extractPolygon(plot);
   if (poly) return Geo.centroid(poly);
   if (plot.x && plot.y) {
-    // Normalize UAE coordinate swap
     let lat = plot.y, lng = plot.x;
     if (lat > 50 && lng < 30) [lat, lng] = [lng, lat];
     return [lng, lat];
@@ -58,41 +61,72 @@ function plotCentroid(plot: PlotData): [number, number] | null {
   return null;
 }
 
+/**
+ * Infer entrance direction from nearest road polygon when facingDirection is not set.
+ */
+function inferEntranceFromRoads(
+  villaCentroid: [number, number],
+  roads: ClassifiedPlot[],
+): number | null {
+  if (roads.length === 0) return null;
+
+  let bestDist = Infinity;
+  let bestBearing = 0;
+
+  for (const road of roads) {
+    const d = Geo.distanceM(villaCentroid, road.centroid);
+    if (d < bestDist) {
+      bestDist = d;
+      bestBearing = Geo.bearingFrom(villaCentroid, road.centroid);
+    }
+  }
+
+  // Only infer if there's a road reasonably close (< 80m)
+  return bestDist < 80 ? bestBearing : null;
+}
+
 interface ClassifiedPlot {
   plot: PlotData;
-  kind: string; // 'residential' | 'road' | 'park' | 'open_space' | amenity type
+  kind: string;
   polygon: Polygon | null;
   edges: Edge[];
   centroid: [number, number];
 }
 
+// ─── Analysis Cache Entry ───
+
+interface CachedAnalysis {
+  layout: LayoutAnalysis;
+  amenities: DetectedAmenity[];
+  tags: string[];
+}
+
 export class PropertyIntelligenceEngine {
 
-  // Boundary-sharing tolerance in meters
   private boundaryTolerance = 12;
+  private cache = new Map<string, CachedAnalysis>();
 
-  // ─── Full Analysis (polygon-aware, matching HTML PIEngine) ───
+  /** Clear the analysis cache (call when community/GIS data changes) */
+  clearCache(): void {
+    this.cache.clear();
+  }
 
-  /**
-   * Analyze a villa's position using the HTML PIEngine boundary-sharing approach.
-   * This is the primary method for accurate corner/layout/back-facing detection.
-   */
+  // ─── Full Analysis (polygon-aware) ───
+
   analyzeWithPolygons(
     villaPlot: PlotData,
     nearbyPlots: PlotData[],
     facingDirection?: string | null,
-  ): {
-    layout: LayoutAnalysis;
-    amenities: DetectedAmenity[];
-    tags: string[];
-  } {
+  ): CachedAnalysis {
+    // Check cache
+    const cacheKey = villaPlot.id;
+    if (this.cache.has(cacheKey)) return this.cache.get(cacheKey)!;
+
     const villaPolygon = extractPolygon(villaPlot);
     const villaCentroid = plotCentroid(villaPlot);
     if (!villaCentroid) {
       return { layout: this._emptyLayout(), amenities: [], tags: [] };
     }
-
-    const fb = parseFrontBearing(facingDirection);
 
     // Classify all nearby plots
     const classified = this._classifyPlots(nearbyPlots);
@@ -101,14 +135,18 @@ export class PropertyIntelligenceEngine {
     const openSpaces = classified.filter(c => ['open_space', 'community_center'].includes(c.kind));
     const residential = classified.filter(c => c.kind === 'residential');
 
-    // Villa edges
+    // Entrance bearing: explicit > inferred from roads > null
+    let fb = parseFrontBearing(facingDirection);
+    if (fb === null) {
+      fb = inferEntranceFromRoads(villaCentroid, roads);
+    }
+
     const villaEdges = villaPolygon ? Geo.edges(villaPolygon) : [];
 
-    // --- POSITION: Corner detection (HTML logic) ---
+    // --- POSITION: Corner detection ---
     let positionType: PositionType = 'middle';
 
     if (villaPolygon && villaEdges.length > 0) {
-      // Method A: boundary-sharing with roads on 2+ different sides
       const roadSides = new Set<string>();
       for (const road of roads) {
         if (road.edges.length === 0) continue;
@@ -118,7 +156,6 @@ export class PropertyIntelligenceEngine {
               if (fb !== null) {
                 roadSides.add(Geo.sideFB(Geo.bearingFrom(villaCentroid, vEdge.mid), fb));
               } else {
-                // Without facing direction, use raw bearing quadrants
                 const bearing = Geo.bearingFrom(villaCentroid, vEdge.mid);
                 roadSides.add(String(Math.floor(((bearing + 45) % 360) / 90)));
               }
@@ -129,15 +166,12 @@ export class PropertyIntelligenceEngine {
       if (roadSides.size >= 2) {
         positionType = 'corner';
       } else {
-        // Method B: count residential neighbors sharing boundary
         const resBoundaryCount = residential.filter(r =>
           r.edges.length > 0 && Geo.sharesBoundary(villaEdges, r.edges, this.boundaryTolerance)
         ).length;
-        // The user definition requires adjacent plots <= 1 to be classified as 'Corner'
         positionType = resBoundaryCount <= 1 ? 'corner' : 'middle';
       }
     } else {
-      // Fallback: centroid-distance based (less accurate)
       positionType = this._positionByCentroid(villaCentroid, classified, fb);
     }
 
@@ -148,7 +182,6 @@ export class PropertyIntelligenceEngine {
     if (villaPolygon && villaEdges.length > 0) {
       const backEdges = this._getBackEdges(villaEdges, villaCentroid, fb);
 
-      // Check what the back boundary touches
       const backsResidential = residential.some(r =>
         r.edges.length > 0 && Geo.sharesBoundary(backEdges, r.edges, this.boundaryTolerance)
       );
@@ -171,14 +204,21 @@ export class PropertyIntelligenceEngine {
       else if (backsResidential) backFacing = 'villa';
       else backFacing = 'community_edge';
     } else {
-      // Fallback: centroid-distance based
       const fallback = this._layoutByCentroid(villaCentroid, classified, fb);
       layoutType = fallback.layoutType;
       backFacing = fallback.backFacing;
     }
 
-    // --- AMENITIES ---
-    const amenities = this.detectAmenities(villaCentroid[1], villaCentroid[0], nearbyPlots);
+    // --- AMENITIES: GIS plots + community registry fallback ---
+    const gisAmenities = this.detectAmenities(villaCentroid[1], villaCentroid[0], nearbyPlots);
+    const registryAmenities = detectCommunityAmenities(villaCentroid[1], villaCentroid[0]);
+
+    // Merge: prefer GIS amenities by type, add registry ones that aren't covered
+    const coveredTypes = new Set(gisAmenities.map(a => a.type));
+    const mergedAmenities = [
+      ...gisAmenities,
+      ...registryAmenities.filter(a => !coveredTypes.has(a.type)),
+    ].sort((a, b) => a.distanceMeters - b.distanceMeters);
 
     // --- SMART TAGS ---
     const tags: string[] = [];
@@ -207,7 +247,9 @@ export class PropertyIntelligenceEngine {
       ).length,
     };
 
-    return { layout, amenities, tags };
+    const result: CachedAnalysis = { layout, amenities: mergedAmenities, tags };
+    this.cache.set(cacheKey, result);
+    return result;
   }
 
   // ─── Classify nearby plots ───
@@ -229,7 +271,7 @@ export class PropertyIntelligenceEngine {
   // ─── Get back edges of a polygon ───
 
   private _getBackEdges(villaEdges: Edge[], centroid: [number, number], fb: number | null): Edge[] {
-    if (fb === null) return villaEdges; // without facing, use all edges
+    if (fb === null) return villaEdges;
     const backEdges = villaEdges.filter(e =>
       Geo.sideFB(Geo.bearingFrom(centroid, e.mid), fb) === 'back'
     );
@@ -246,7 +288,6 @@ export class PropertyIntelligenceEngine {
     const roads = classified.filter(c => c.kind === 'road' && Geo.distanceM(villaCentroid, c.centroid) < 75);
     const residential = classified.filter(c => c.kind === 'residential' && Geo.distanceM(villaCentroid, c.centroid) < 38);
 
-    // Check if roads are on 2+ different sides
     const roadBearings = roads.map(r => Geo.bearingFrom(villaCentroid, r.centroid));
     const hasSeparatedRoads = roadBearings.some((b1, i) =>
       roadBearings.slice(i + 1).some(b2 => {
@@ -257,7 +298,6 @@ export class PropertyIntelligenceEngine {
 
     if (hasSeparatedRoads && roads.length >= 2) return 'corner';
 
-    // Also check: few residential neighbors + edge plots on multiple sides
     const edgePlots = classified.filter(c =>
       ['road', 'park', 'open_space'].includes(c.kind) && Geo.distanceM(villaCentroid, c.centroid) < 80
     );
@@ -283,7 +323,6 @@ export class PropertyIntelligenceEngine {
     classified: ClassifiedPlot[],
     fb: number | null,
   ): { layoutType: LayoutType; backFacing: BackFacingType } {
-    // Filter rear plots
     const rearPlots = fb === null
       ? classified.filter(c => {
           const d = Geo.distanceM(villaCentroid, c.centroid);
@@ -325,7 +364,7 @@ export class PropertyIntelligenceEngine {
     };
   }
 
-  // ─── Amenity Detection ───
+  // ─── Amenity Detection (GIS-based) ───
 
   detectAmenities(
     villaLat: number, villaLng: number,
@@ -343,7 +382,7 @@ export class PropertyIntelligenceEngine {
 
       if (plot.y && plot.x) {
         let lat = plot.y, lng = plot.x;
-        if (lat > 50 && lng < 30) [lat, lng] = [lng, lat]; // UAE coordinate swap
+        if (lat > 50 && lng < 30) [lat, lng] = [lng, lat];
 
         const dist = Geo.haversineDistance(villaLat, villaLng, lat, lng);
         const proximity = classifyDistance(dist, thresholds);
@@ -368,7 +407,7 @@ export class PropertyIntelligenceEngine {
   analyzeLayout(villaLat: number, villaLng: number, nearbyPlots: PlotData[]): LayoutAnalysis {
     const villaCentroid: [number, number] = [villaLng, villaLat];
     const classified = this._classifyPlots(nearbyPlots);
-    const fb = null; // no facing direction in legacy method
+    const fb = null;
     const positionType = this._positionByCentroid(villaCentroid, classified, fb);
     const { layoutType, backFacing } = this._layoutByCentroid(villaCentroid, classified, fb);
 
@@ -440,7 +479,7 @@ export class PropertyIntelligenceEngine {
       tags.push({ label: 'Vastu ✓', category: 'vastu', emoji: '🧭', color: 'bg-pink-500/10 text-pink-400' });
     }
 
-    // Amenity proximity tags (near and closer only)
+    // Amenity proximity tags
     if (amenities) {
       const bestByType = new Map<AmenityType, DetectedAmenity>();
       for (const a of amenities) {
@@ -461,7 +500,6 @@ export class PropertyIntelligenceEngine {
         });
       }
     } else {
-      // Fallback to DB flags
       if (villa.near_pool) tags.push({ label: 'Near Pool', category: 'amenity', emoji: '🏊', color: 'bg-cyan-500/10 text-cyan-400' });
       if (villa.near_school) tags.push({ label: 'Near School', category: 'amenity', emoji: '🏫', color: 'bg-indigo-500/10 text-indigo-400' });
       if (villa.near_entrance) tags.push({ label: 'Near Entrance', category: 'amenity', emoji: '🚪', color: 'bg-rose-500/10 text-rose-400' });

@@ -31,3 +31,11 @@ export { parseNaturalLanguageQuery, describeFilters } from './nl-parser';
 
 // Re-export engine
 export { PropertyIntelligenceEngine, propertyIntelligence } from './engine';
+
+// Re-export amenity registry
+export { resolveAmenityDefs, detectCommunityAmenities, COMMUNITY_AMENITIES } from './amenity-registry';
+export type { AmenityDef } from './amenity-registry';
+
+// Re-export filter/scoring
+export { computeVillaScore, applyIntelligenceFilters } from './filter';
+export type { ScoredVilla } from './filter';

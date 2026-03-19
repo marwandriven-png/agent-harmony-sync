@@ -19,4 +19,10 @@ export {
   parseNaturalLanguageQuery, describeFilters,
   // Engine
   PropertyIntelligenceEngine, propertyIntelligence,
+  // Amenity Registry
+  resolveAmenityDefs, detectCommunityAmenities, COMMUNITY_AMENITIES,
+  type AmenityDef,
+  // Filter/Scoring
+  computeVillaScore, applyIntelligenceFilters,
+  type ScoredVilla,
 } from './property-intelligence';
