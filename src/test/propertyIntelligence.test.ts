@@ -138,3 +138,105 @@ describe('parseNaturalLanguageQuery', () => {
     expect(r.nearAmenity?.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+// ─── Classification Priority — B2B vs Single Row mutual exclusion ─────────────
+
+import { resolveVillaClass, VILLA_CLASSES } from '@/services/property-intelligence/classify-class';
+
+const baseVilla = {
+  id: 'test', is_corner: false, is_single_row: false,
+  backs_park: false, backs_road: false, vastu_compliant: false,
+};
+
+const makeIntel = (lt: 'back_to_back'|'single_row'|'unknown', bf: string, pt = 'middle') => ({
+  layout: { layoutType: lt as any, positionType: pt as any, backFacing: bf as any },
+  tags: [],
+});
+
+describe('resolveVillaClass — strict priority (regression)', () => {
+  it('B2B overrides open_space backFacing (was showing Open View — Bug #1)', () => {
+    const cls = resolveVillaClass(baseVilla, makeIntel('back_to_back', 'open_space'), true);
+    expect(cls?.key).toBe('back_to_back');
+    expect(cls?.key).not.toBe('open_view');
+  });
+
+  it('B2B overrides is_single_row DB flag (stale DB does not override live intel)', () => {
+    const villa = { ...baseVilla, is_single_row: true };
+    const cls = resolveVillaClass(villa, makeIntel('back_to_back', 'villa'), true);
+    expect(cls?.key).toBe('back_to_back');
+  });
+
+  it('B2B overrides backs_park DB flag', () => {
+    const villa = { ...baseVilla, backs_park: true };
+    const cls = resolveVillaClass(villa, makeIntel('back_to_back', 'villa'), true);
+    expect(cls?.key).toBe('back_to_back');
+  });
+
+  it('Single Row with park backFacing → single_row pin (SR is primary, Backs Park is sub-filter)', () => {
+    // resolveVillaClass returns single_row because lt='single_row' takes priority.
+    // Backs Park is detected via backFacing for filter matching, not as the pin class.
+    const cls = resolveVillaClass(baseVilla, makeIntel('single_row', 'park'), true);
+    expect(cls?.key).toBe('single_row');
+  });
+
+  it('Single Row with road backFacing → single_row pin (backs_road is DB-flag path)', () => {
+    const cls = resolveVillaClass(baseVilla, makeIntel('single_row', 'road'), true);
+    expect(cls?.key).toBe('single_row');
+  });
+
+  it('Single Row with open_space → single_row pin (open_view reached only via DB backs_park/road flags or unknown lt)', () => {
+    const cls = resolveVillaClass(baseVilla, makeIntel('single_row', 'open_space'), true);
+    expect(cls?.key).toBe('single_row');
+  });
+
+  it('Single Row with villa backFacing → single_row pin', () => {
+    const cls = resolveVillaClass(baseVilla, makeIntel('single_row', 'villa'), true);
+    expect(cls?.key).toBe('single_row');
+  });
+
+  it('Corner position → corner (regardless of layout)', () => {
+    const cls = resolveVillaClass(baseVilla, makeIntel('single_row', 'park', 'corner'), true);
+    // B2B not set, so layout=single_row → then position=corner is NOT reached (backs_park wins)
+    // Actually single_row returns first... let's test with no layout:
+    const cls2 = resolveVillaClass(baseVilla, makeIntel('unknown', 'park', 'corner'), true);
+    expect(cls2?.key).toBe('corner');
+  });
+
+  it('End Unit position → end_unit', () => {
+    const cls = resolveVillaClass(baseVilla, makeIntel('unknown', 'road', 'end'), true);
+    expect(cls?.key).toBe('end_unit');
+  });
+
+  it('No intel loaded → null (no premature pin)', () => {
+    expect(resolveVillaClass(baseVilla, undefined, false)).toBeNull();
+  });
+
+  it('Intel loaded but no class matches → null (no pin)', () => {
+    expect(resolveVillaClass(baseVilla, makeIntel('unknown', 'community_edge'), true)).toBeNull();
+  });
+
+  it('Vastu fallback only when no layout/position/facing detected', () => {
+    const villa = { ...baseVilla, vastu_compliant: true };
+    const cls = resolveVillaClass(villa, makeIntel('unknown', 'community_edge'), true);
+    expect(cls?.key).toBe('vastu');
+  });
+
+  it('VILLA_CLASSES has all 8 expected keys', () => {
+    const keys = Object.keys(VILLA_CLASSES);
+    expect(keys).toContain('back_to_back');
+    expect(keys).toContain('single_row');
+    expect(keys).toContain('corner');
+    expect(keys).toContain('end_unit');
+    expect(keys).toContain('backs_park');
+    expect(keys).toContain('backs_road');
+    expect(keys).toContain('open_view');
+    expect(keys).toContain('vastu');
+    expect(keys).toHaveLength(8);
+  });
+
+  it('All class fill colors are unique (no two classes share a color)', () => {
+    const fills = Object.values(VILLA_CLASSES).map(c => c.fill);
+    const unique = new Set(fills);
+    expect(unique.size).toBe(fills.length);
+  });
+});

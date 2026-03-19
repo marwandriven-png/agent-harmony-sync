@@ -29,6 +29,7 @@ import type { GISSearchResult } from '@/hooks/useVillaGISSearch';
 import { normalizeCoordinatesForSearch } from '@/services/DDAGISService';
 import { AMENITY_CONFIG, type DetectedAmenity } from '@/services/PropertyIntelligenceService';
 import { haversineDistance } from '@/lib/geo';
+import { VILLA_CLASSES as _VILLA_CLASSES, resolveVillaClass as _resolveVillaClass } from '@/services/property-intelligence/classify-class';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -49,80 +50,16 @@ interface VillaMapViewProps {
 // ─── Classification palette ───────────────────────────────────────────────────
 // Single source of truth — ALL colors defined here, nowhere else
 
-export interface VillaClass {
-  key:    string;
-  fill:   string;
-  ring:   string;    // lighter version for text/border
-  badge:  string;    // 2-3 char text label inside pin
-  label:  string;    // full legend label
-}
+export type { VillaClass } from '@/services/property-intelligence/classify-class';
 
-export const VILLA_CLASSES: Record<string, VillaClass> = {
-  corner:       { key:'corner',       fill:'#3b82f6', ring:'#93c5fd', badge:'C',   label:'Corner'         },
-  end_unit:     { key:'end_unit',     fill:'#7c3aed', ring:'#c4b5fd', badge:'EU',  label:'End Unit'       },
-  single_row:   { key:'single_row',   fill:'#10b981', ring:'#6ee7b7', badge:'SR',  label:'Single Row'     },
-  back_to_back: { key:'back_to_back', fill:'#ef4444', ring:'#fca5a5', badge:'B2B', label:'Back-to-Back'   },
-  backs_park:   { key:'backs_park',   fill:'#059669', ring:'#a7f3d0', badge:'PK',  label:'Backs Park'     },
-  backs_road:   { key:'backs_road',   fill:'#d97706', ring:'#fde68a', badge:'RD',  label:'Backs Road'     },
-  open_view:    { key:'open_view',    fill:'#0284c7', ring:'#7dd3fc', badge:'OV',  label:'Open View'      },
-  vastu:        { key:'vastu',        fill:'#db2777', ring:'#fbcfe8', badge:'V\u2713', label:'Vastu Compliant' },
-};
+export const VILLA_CLASSES = _VILLA_CLASSES;
 
 /**
  * Resolve classification for a villa. Returns null when:
  *  - intel is loaded (intelLoaded=true) AND no class matched
  *  - Caller should SKIP the pin entirely
  */
-export function resolveVillaClass(
-  villa: CommunityVilla,
-  intel: VillaIntelligence | undefined,
-  intelLoaded: boolean,
-): VillaClass | null {
-  const lt  = intel?.layout.layoutType;
-  const pt  = intel?.layout.positionType;
-  const bf  = intel?.layout.backFacing;
-  const hasVastu = intel?.tags.some(t => t.label.includes('Vastu')) || villa.vastu_compliant;
-
-  // ── STRICT PRIORITY ORDER ─────────────────────────────────────────────────
-  // Rule: B2B and Single Row CANNOT coexist. B2B = absolute highest priority.
-  // If intel says back_to_back, NOTHING else overrides it.
-
-  // 1. Layout type (HIGHEST PRIORITY — must be checked before position/facing)
-  if (lt === 'back_to_back')                       return VILLA_CLASSES.back_to_back;
-  if (lt === 'single_row')                         return VILLA_CLASSES.single_row;
-
-  // 2. Position (only applies when layout is not B2B or SR from intel)
-  if (pt === 'corner'      || villa.is_corner)    return VILLA_CLASSES.corner;
-  if (pt === 'end')                                return VILLA_CLASSES.end_unit;
-
-  // 3. Back-facing sub-classification (only for single-row villas or DB flags)
-  if (bf === 'park'        || villa.backs_park)    return VILLA_CLASSES.backs_park;
-  if (bf === 'road'        || villa.backs_road)    return VILLA_CLASSES.backs_road;
-  if (bf === 'open_space')                         return VILLA_CLASSES.open_view;
-
-  // 4. DB flags fallback (when intel isn't available yet for this villa)
-  if (villa.is_single_row)                         return VILLA_CLASSES.single_row;
-
-  // 5. Vastu (lowest non-default priority)
-  if (hasVastu)                                    return VILLA_CLASSES.vastu;
-
-  if (!intelLoaded) return null; // still processing — skip pin
-  return null;                   // loaded, no class → skip pin
-}
-
-/**
- * Does the currently active filter set select a specific classification?
- * When true, ONLY pins matching that class should show (GIS diamonds hidden too).
- */
-function hasActiveClassFilter(f?: VillaSearchFilters): boolean {
-  if (!f) return false;
-  return !!(
-    f.isCorner || f.isEndUnit || f.isSingleRow || f.isBackToBack ||
-    f.backsPark || f.backsRoad || f.backsOpenSpace || f.vastuCompliant ||
-    f.nearPool || f.nearSchool || f.nearEntrance ||
-    (f.nearAmenity && f.nearAmenity.length > 0)
-  );
-}
+export const resolveVillaClass = _resolveVillaClass;
 
 /**
  * Does the given villa's class match the active filter?
