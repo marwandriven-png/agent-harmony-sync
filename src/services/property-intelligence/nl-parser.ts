@@ -34,8 +34,18 @@ export function parseNaturalLanguageQuery(query: string): PISearchFilters {
   if (/backs?\s*road|road\s*back|back\s*road/.test(s)) filters.backFacing = 'road';
   if (/open\s*(view|space|land)/.test(s)) filters.backFacing = 'open_space';
 
-  // Vastu
-  if (/vastu|east\s*fac/.test(s)) filters.vastuCompliant = true;
+  // Vastu compliance
+  if (/vastu/.test(s)) filters.vastuCompliant = true;
+
+  // Vastu direction detection
+  if (/east[\s-]*fac/i.test(s)) { filters.vastuDirection = 'E'; filters.vastuCompliant = true; }
+  else if (/north[\s-]*east[\s-]*fac|ne[\s-]*fac/i.test(s)) { filters.vastuDirection = 'NE'; }
+  else if (/north[\s-]*west[\s-]*fac|nw[\s-]*fac/i.test(s)) { filters.vastuDirection = 'NW'; }
+  else if (/south[\s-]*east[\s-]*fac|se[\s-]*fac/i.test(s)) { filters.vastuDirection = 'SE'; }
+  else if (/south[\s-]*west[\s-]*fac|sw[\s-]*fac/i.test(s)) { filters.vastuDirection = 'SW'; }
+  else if (/north[\s-]*fac/i.test(s)) { filters.vastuDirection = 'N'; }
+  else if (/west[\s-]*fac/i.test(s)) { filters.vastuDirection = 'W'; }
+  else if (/south[\s-]*fac/i.test(s)) { filters.vastuDirection = 'S'; }
 
   // Amenity detection
   const detectedAmenities: AmenityType[] = [];

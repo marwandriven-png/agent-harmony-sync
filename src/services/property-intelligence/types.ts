@@ -101,6 +101,7 @@ export interface PISearchFilters {
   position?: 'corner' | 'end';
   backFacing?: BackFacingType;
   vastuCompliant?: boolean;
+  vastuDirection?: string; // Cardinal: 'E' | 'N' | 'W' | 'S' | 'NE' | 'NW' | 'SE' | 'SW'
   nearAmenity?: AmenityType[];
   maxDistance?: number;
   naturalQuery?: string;

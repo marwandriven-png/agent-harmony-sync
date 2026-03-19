@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { CommunityVilla } from './useVillas';
 import type { PlotData } from '@/services/DDAGISService';
-import { villaGISService } from '@/services/VillaGISService';
-import { propertyIntelligence } from '@/services/PropertyIntelligenceService';
+import { propertyIntelligence } from '@/services/property-intelligence/engine';
+import { computeVillaScore } from '@/services/property-intelligence/filter';
 import type { DetectedAmenity, LayoutAnalysis, SmartTag } from '@/services/property-intelligence/types';
 
 export interface VillaIntelligence {
@@ -10,6 +10,7 @@ export interface VillaIntelligence {
   layout: LayoutAnalysis;
   amenities: DetectedAmenity[];
   tags: SmartTag[];
+  score: number;
   isProcessing: boolean;
 }
 
@@ -20,6 +21,9 @@ export function usePropertyIntelligence(villas: CommunityVilla[], nearbyPlots: P
   useEffect(() => {
     let isMounted = true;
     let cancelProcessing = false;
+
+    // Clear cache when data changes to avoid stale results
+    propertyIntelligence.clearCache();
 
     async function processVillas() {
       if (!villas.length || !nearbyPlots.length) {
@@ -41,10 +45,8 @@ export function usePropertyIntelligence(villas: CommunityVilla[], nearbyPlots: P
         for (const villa of chunk) {
           if (!villa.latitude || !villa.longitude) continue;
 
-          // Find the villa's plot if possible
           const villaPlot = nearbyPlots.find(p => p.id === villa.plot_number) || null;
           
-          // Get full analysis
           let layout: LayoutAnalysis;
           let amenities: DetectedAmenity[];
           
@@ -63,32 +65,33 @@ export function usePropertyIntelligence(villas: CommunityVilla[], nearbyPlots: P
 
           const tags = propertyIntelligence.generateSmartTags(villa, amenities, layout);
 
-          newMap.set(villa.id, {
+          const intel: VillaIntelligence = {
             villaId: villa.id,
             layout,
             amenities,
             tags,
+            score: 0,
             isProcessing: false
-          });
+          };
+          // Compute score after constructing the intelligence object
+          intel.score = computeVillaScore(intel);
+
+          newMap.set(villa.id, intel);
         }
 
         currentIndex += chunkSize;
 
-        // Emit incremental update after every chunk so filters work as soon as
-        // each villa's PI data is ready — don't wait for all chunks to finish.
         if (isMounted) {
           setIntelligenceMap(new Map(newMap));
         }
 
         if (currentIndex < villas.length) {
-          // Schedule next chunk — yield to browser to keep UI responsive
           requestAnimationFrame(processChunk);
         } else if (isMounted) {
           setIsProcessing(false);
         }
       };
 
-      // Start processing first chunk
       requestAnimationFrame(processChunk);
     }
 
@@ -104,14 +107,11 @@ export function usePropertyIntelligence(villas: CommunityVilla[], nearbyPlots: P
   const allAmenities = useMemo(() => {
     const amenityMap = new Map<string, DetectedAmenity>();
     
-    // Process all amenities from intelligence map prioritizing closest
     Array.from(intelligenceMap.values()).forEach(intel => {
       intel.amenities.forEach(amenity => {
-        // Use plotId as unique key for the amenity itself, or coordinates
         const key = amenity.plotId || `${amenity.coordinates[0]},${amenity.coordinates[1]}`;
         const existing = amenityMap.get(key);
         
-        // Keep the one with shortest distance (if multiple villas see it differently)
         if (!existing || amenity.distanceMeters < existing.distanceMeters) {
           amenityMap.set(key, amenity);
         }
