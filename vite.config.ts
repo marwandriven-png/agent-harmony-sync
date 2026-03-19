@@ -14,37 +14,21 @@ export default defineConfig(({ mode }) => ({
     alias: { "@": path.resolve(__dirname, "./src") },
   },
   build: {
-    // Raise chunk warning to 800KB to stop noise; actual chunks are now much smaller
-    chunkSizeWarningLimit: 800,
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
-        // Manual chunks: split the biggest dependencies into separate cacheable files
-        manualChunks: {
-          // React core — tiny, changes almost never
-          "vendor-react":   ["react", "react-dom", "react-router-dom"],
-          // Tanstack query — medium, changes rarely
-          "vendor-query":   ["@tanstack/react-query"],
-          // Leaflet + proj4 — large, always same version
-          "vendor-leaflet": ["leaflet", "react-leaflet", "proj4"],
-          // Recharts — only used on reports/analytics pages
-          "vendor-charts":  ["recharts"],
-          // DnD — only used on leads page
-          "vendor-dnd":     ["@hello-pangea/dnd"],
-          // Radix UI components
-          "vendor-radix":   [
-            "@radix-ui/react-dialog",
-            "@radix-ui/react-dropdown-menu",
-            "@radix-ui/react-select",
-            "@radix-ui/react-tabs",
-            "@radix-ui/react-tooltip",
-            "@radix-ui/react-scroll-area",
-            "@radix-ui/react-slider",
-            "@radix-ui/react-switch",
-          ],
-          // Supabase client
-          "vendor-supabase": ["@supabase/supabase-js"],
-          // PDF/Excel export — only used on demand
-          "vendor-export":   ["jspdf", "xlsx", "jspdf-autotable"],
+        // Use function form — compatible with both rollup and rolldown
+        manualChunks(id: string) {
+          if (id.includes("node_modules")) {
+            if (id.includes("leaflet") || id.includes("proj4")) return "vendor-leaflet";
+            if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
+            if (id.includes("jspdf") || id.includes("xlsx")) return "vendor-export";
+            if (id.includes("@supabase")) return "vendor-supabase";
+            if (id.includes("@hello-pangea")) return "vendor-dnd";
+            if (id.includes("@radix-ui")) return "vendor-radix";
+            if (id.includes("@tanstack")) return "vendor-query";
+            if (id.includes("react-dom") || id.includes("react-router") || (id.includes("/react/") && !id.includes("react-"))) return "vendor-react";
+          }
         },
       },
     },
