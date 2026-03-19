@@ -23,6 +23,7 @@ import {
 import { useVillas, useCommunities, useVillaListingCounts, useVillasByIds, type VillaSearchFilters, type CommunityVilla } from '@/hooks/useVillas';
 import { useVillaGISSearch } from '@/hooks/useVillaGISSearch';
 import type { PlotData } from '@/services/DDAGISService';
+import { normalizeCoordinatesForSearch } from '@/services/DDAGISService';
 import { parseNaturalLanguageQuery } from '@/services/PropertyIntelligenceService';
 import { usePropertyIntelligence } from '@/hooks/usePropertyIntelligence';
 import { MOCK_COMMUNITIES, convertMockCommunityToPlots } from '@/data/mock/communities';
@@ -149,15 +150,17 @@ export default function PlotsPage() {
     return gisResults
       .map(r => {
         const plot = r.plot;
-        const coords = toWgs84FromDda(plot.x, plot.y);
+        // Use normalizeCoordinatesForSearch — handles all DDA/WGS84 coordinate cases
+        // This is the same function used by VillaMapView to place GIS pins correctly
+        const coords = normalizeCoordinatesForSearch(plot.y, plot.x);
         if (!coords) return null;
         return {
           id:                    `gis:${plot.id}`,
           community_name:        plot.location || plot.project || 'GIS Plot',
           sub_community:         null,
           cluster_name:          null,
-          villa_number:          plot.id,
-          plot_number:           plot.id,   // ← lets engine find the polygon in nearbyPlots
+          villa_number:          `gis:${plot.id}`,
+          plot_number:           plot.id,   // ← matches nearbyPlots so engine finds polygon
           plot_id:               plot.id,
           orientation:           null,
           facing_direction:      null,
@@ -496,6 +499,7 @@ export default function PlotsPage() {
             gisResults={gisResults}
             amenities={allAmenities}
             intelligenceMap={intelligenceMap}
+            activeFilters={villaFilters}
           />
         </div>
       </>

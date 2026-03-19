@@ -16,42 +16,9 @@ import { cn } from '@/lib/utils';
 import type { CommunityVilla, VillaSearchFilters } from '@/hooks/useVillas';
 import type { GISSearchResult } from '@/hooks/useVillaGISSearch';
 import { normalizeCoordinatesForSearch } from '@/services/DDAGISService';
+import { resolveVillaClass, VILLA_CLASSES, type VillaClass } from '@/components/villas/VillaMapView';
 import { SQFT_TO_SQM, SQM_TO_SQFT } from '@/lib/units';
 import type { VillaIntelligence } from '@/hooks/usePropertyIntelligence';
-
-// ─── Classification resolver (mirrors VillaMapView logic) ───────────────────
-interface VillaClass { key: string; fill: string; stroke: string; emoji: string; label: string; }
-const CARD_CLASSES: Record<string, VillaClass> = {
-  corner:       { key:'corner',       fill:'#3b82f6', stroke:'#93c5fd', emoji:'📐', label:'Corner' },
-  end_unit:     { key:'end_unit',     fill:'#7c3aed', stroke:'#c4b5fd', emoji:'↔️', label:'End Unit' },
-  single_row:   { key:'single_row',   fill:'#10b981', stroke:'#6ee7b7', emoji:'🏡', label:'Single Row' },
-  back_to_back: { key:'back_to_back', fill:'#ef4444', stroke:'#fca5a5', emoji:'🏘️', label:'Back-to-Back' },
-  backs_park:   { key:'backs_park',   fill:'#059669', stroke:'#a7f3d0', emoji:'🌳', label:'Backs Park' },
-  backs_road:   { key:'backs_road',   fill:'#d97706', stroke:'#fde68a', emoji:'🛣️', label:'Backs Road' },
-  backs_open:   { key:'backs_open',   fill:'#0284c7', stroke:'#bae6fd', emoji:'🏞️', label:'Open View' },
-  vastu:        { key:'vastu',        fill:'#db2777', stroke:'#fbcfe8', emoji:'🧭', label:'Vastu Compliant' },
-};
-
-function resolveVillaClass(
-  villa: CommunityVilla,
-  intel: VillaIntelligence | undefined,
-  intelLoaded: boolean,
-): VillaClass | null {
-  const lt = intel?.layout.layoutType;
-  const pt = intel?.layout.positionType;
-  const bf = intel?.layout.backFacing;
-  const hasVastu = intel?.tags.some(t => t.label.includes('Vastu ✓')) || villa.vastu_compliant;
-  if (pt === 'corner'     || villa.is_corner)     return CARD_CLASSES.corner;
-  if (pt === 'end')                                return CARD_CLASSES.end_unit;
-  if (bf === 'park'       || villa.backs_park)     return CARD_CLASSES.backs_park;
-  if (bf === 'road'       || villa.backs_road)     return CARD_CLASSES.backs_road;
-  if (bf === 'open_space')                         return CARD_CLASSES.backs_open;
-  if (lt === 'single_row' || villa.is_single_row)  return CARD_CLASSES.single_row;
-  if (lt === 'back_to_back')                       return CARD_CLASSES.back_to_back;
-  if (hasVastu)                                    return CARD_CLASSES.vastu;
-  if (!intelLoaded) return null; // still loading
-  return null; // no class
-}
 
 interface VillaRightPanelProps {
   villas: CommunityVilla[];
