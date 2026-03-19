@@ -20,7 +20,7 @@ import { VillaDetailPanel } from '@/components/villas/VillaDetailPanel';
 import {
   usePlots, useDeletePlot, useRunFeasibility, type Plot,
 } from '@/hooks/usePlots';
-import { useVillas, useCommunities, useVillaListingCounts, useVillasByIds, type VillaSearchFilters } from '@/hooks/useVillas';
+import { useVillas, useCommunities, useVillaListingCounts, useVillasByIds, type VillaSearchFilters, type CommunityVilla } from '@/hooks/useVillas';
 import { useVillaGISSearch } from '@/hooks/useVillaGISSearch';
 import type { PlotData } from '@/services/DDAGISService';
 import { parseNaturalLanguageQuery } from '@/services/PropertyIntelligenceService';
@@ -80,7 +80,6 @@ function mapGisPlotToSidebarPlot(plot: PlotData): Plot {
     owner_name: null, owner_mobile: null,
     location_coordinates: (() => {
       const coords = toWgs84FromDda(plot.x, plot.y);
-      console.log('[GIS→WGS84]', { x: plot.x, y: plot.y, result: coords });
       return coords ? { lng: coords.lng, lat: coords.lat } : null;
     })(),
     google_sheet_row_id: null, created_by: null,
@@ -136,7 +135,71 @@ export default function PlotsPage() {
     return [...gisPlots, ...mockCommunityPlots.filter(p => !ids.has(p.id))];
   }, [gisResults, mockCommunityPlots]);
 
-  const { intelligenceMap, allAmenities, isProcessing: piIsProcessing } = usePropertyIntelligence(villas, nearbyPlots);
+  /**
+   * Convert GIS result plots (PlotData) → synthetic CommunityVilla objects so the
+   * Property Intelligence Engine can classify and color-code them on the map.
+   *
+   * WHY: The Supabase `community_villas` table may be empty. GIS searches return
+   * PlotData[], but the intel engine operates on CommunityVilla[]. Without this
+   * conversion the engine has nothing to classify and `intelligenceMap` stays empty,
+   * leaving all pins the same red color and "0 villas" shown in the panel.
+   */
+  const syntheticVillasFromGIS = useMemo<CommunityVilla[]>(() => {
+    if (gisResults.length === 0) return [];
+    return gisResults
+      .map(r => {
+        const plot = r.plot;
+        const coords = toWgs84FromDda(plot.x, plot.y);
+        if (!coords) return null;
+        return {
+          id:                    `gis:${plot.id}`,
+          community_name:        plot.location || plot.project || 'GIS Plot',
+          sub_community:         null,
+          cluster_name:          null,
+          villa_number:          plot.id,
+          plot_number:           plot.id,   // ← lets engine find the polygon in nearbyPlots
+          plot_id:               plot.id,
+          orientation:           null,
+          facing_direction:      null,
+          position_type:         null,
+          is_corner:             false,
+          is_single_row:         false,
+          backs_park:            false,
+          backs_road:            false,
+          near_pool:             false,
+          near_entrance:         false,
+          near_school:           false,
+          near_community_center: false,
+          vastu_compliant:       null,
+          vastu_details:         null,
+          latitude:              coords.lat,
+          longitude:             coords.lng,
+          land_usage:            plot.zoning || null,
+          plot_size_sqft:        plot.area ? Math.round(plot.area * SQM_TO_SQFT) : null,
+          built_up_area_sqft:    plot.gfa  ? Math.round(plot.gfa  * SQM_TO_SQFT) : null,
+          bedrooms:              null,
+          floors:                null,
+          year_built:            null,
+          notes:                 null,
+          metadata:              { gisPlot: true, confidenceScore: r.confidenceScore, source: r.source } as Record<string, unknown>,
+          created_by:            null,
+          created_at:            new Date().toISOString(),
+          updated_at:            new Date().toISOString(),
+        } satisfies CommunityVilla;
+      })
+      .filter((v): v is CommunityVilla => v !== null);
+  }, [gisResults]);
+
+  /**
+   * Merge Supabase villas with synthetic GIS villas (deduped by id).
+   * This is what the intelligence engine and all filters operate on.
+   */
+  const allVillasForIntel = useMemo<CommunityVilla[]>(() => {
+    const supabaseIds = new Set(villas.map(v => v.id));
+    return [...villas, ...syntheticVillasFromGIS.filter(v => !supabaseIds.has(v.id))];
+  }, [villas, syntheticVillasFromGIS]);
+
+  const { intelligenceMap, allAmenities, isProcessing: piIsProcessing } = usePropertyIntelligence(allVillasForIntel, nearbyPlots);
 
   // When a mock community is selected: clear stale filters and load that community's villas
   const handleMockCommunityChange = useCallback((communityId: string) => {
@@ -236,23 +299,23 @@ export default function PlotsPage() {
   // Filter GIS-matched villas through active filters before marking as "matched"
   const filteredGisMatchedVillas = useMemo(() => gisMatchedVillas.filter(applyVillaFilters), [gisMatchedVillas, applyVillaFilters]);
   const matchedVillaIds = useMemo(() => new Set(filteredGisMatchedVillas.map(v => v.id)), [filteredGisMatchedVillas]);
-  const filteredVillas = useMemo(() => villas.filter(applyVillaFilters), [villas, applyVillaFilters]);
+  // Filter ALL villas (Supabase + synthetic GIS) through active filters
+  const filteredAllVillas = useMemo(() => allVillasForIntel.filter(applyVillaFilters), [allVillasForIntel, applyVillaFilters]);
 
   const mergedVillas = useMemo(() => {
     const matchedSet = matchedVillaIds;
-    // GIS-matched that pass filters come first, then DB results (deduped)
+    // GIS-matched Supabase villas first, then all filtered villas (Supabase + synthetic), deduped
     const ordered = [
       ...filteredGisMatchedVillas,
-      ...filteredVillas.filter(v => !matchedSet.has(v.id)),
+      ...filteredAllVillas.filter(v => !matchedSet.has(v.id)),
     ];
-
     const seen = new Set<string>();
     return ordered.filter(v => {
       if (seen.has(v.id)) return false;
       seen.add(v.id);
       return true;
     });
-  }, [filteredVillas, filteredGisMatchedVillas, matchedVillaIds]);
+  }, [filteredAllVillas, filteredGisMatchedVillas, matchedVillaIds]);
 
   const villaIds = useMemo(() => mergedVillas.map(v => v.id), [mergedVillas]);
   const { data: listingCounts = {} } = useVillaListingCounts(villaIds);
@@ -398,11 +461,14 @@ export default function PlotsPage() {
   const handleRadiusSearch = useCallback((lat: number, lng: number, radiusM: number) => {
     setVillaManualCenter({ lat, lng });
     setVillaSearchRadius(radiusM);
-    // Radius search = area-based: clear any plot-specific or conflicting filters so results aren't blocked
-    setVillaFilters(prev => ({
-      community: prev.community, // keep community filter
-      // intentionally drop: plotNumber, isSingleRow, isCorner, etc. — re-apply after PI computes
-    }));
+    // Keep all classification filters (Corner, SingleRow, etc.) — they re-apply once
+    // the intelligence engine finishes classifying the new radius results.
+    // Only clear location-specific identifiers that don't apply to a new center.
+    setVillaFilters(prev => {
+      const { plotNumber, googleLocation, ...rest } = prev;
+      void plotNumber; void googleLocation;
+      return rest;
+    });
     searchVillaGIS({ googleLocation: `${lat}, ${lng}`, radiusMeters: radiusM });
   }, [searchVillaGIS]);
 

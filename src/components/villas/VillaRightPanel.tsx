@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, memo } from 'react';
-import { haversineDistance } from '@/lib/geo';
+import { haversineDistance, formatDistance } from '@/lib/geo';
 import { Search, MapPin, Compass, CornerDownRight, TreePine, Eye, Hash, Sparkles, X, ChevronDown, ChevronUp, Home, Radar, Loader2, Target, Navigation, Ruler, MapPinned, FileText, ShoppingBag } from 'lucide-react';
 import { ReviewLandMatchesModal } from './ReviewLandMatchesModal';
 import { propertyIntelligence, parseNaturalLanguageQuery, describeFilters } from '@/services/PropertyIntelligenceService';
@@ -16,14 +16,41 @@ import { cn } from '@/lib/utils';
 import type { CommunityVilla, VillaSearchFilters } from '@/hooks/useVillas';
 import type { GISSearchResult } from '@/hooks/useVillaGISSearch';
 import { normalizeCoordinatesForSearch } from '@/services/DDAGISService';
+import { SQFT_TO_SQM, SQM_TO_SQFT } from '@/lib/units';
+import type { VillaIntelligence } from '@/hooks/usePropertyIntelligence';
 
-const SQFT_TO_SQM = 0.092903;
-const SQM_TO_SQFT = 10.7639;
+// ─── Classification resolver (mirrors VillaMapView logic) ───────────────────
+interface VillaClass { key: string; fill: string; stroke: string; emoji: string; label: string; }
+const CARD_CLASSES: Record<string, VillaClass> = {
+  corner:       { key:'corner',       fill:'#3b82f6', stroke:'#93c5fd', emoji:'📐', label:'Corner' },
+  end_unit:     { key:'end_unit',     fill:'#7c3aed', stroke:'#c4b5fd', emoji:'↔️', label:'End Unit' },
+  single_row:   { key:'single_row',   fill:'#10b981', stroke:'#6ee7b7', emoji:'🏡', label:'Single Row' },
+  back_to_back: { key:'back_to_back', fill:'#ef4444', stroke:'#fca5a5', emoji:'🏘️', label:'Back-to-Back' },
+  backs_park:   { key:'backs_park',   fill:'#059669', stroke:'#a7f3d0', emoji:'🌳', label:'Backs Park' },
+  backs_road:   { key:'backs_road',   fill:'#d97706', stroke:'#fde68a', emoji:'🛣️', label:'Backs Road' },
+  backs_open:   { key:'backs_open',   fill:'#0284c7', stroke:'#bae6fd', emoji:'🏞️', label:'Open View' },
+  vastu:        { key:'vastu',        fill:'#db2777', stroke:'#fbcfe8', emoji:'🧭', label:'Vastu Compliant' },
+};
 
-
-function formatDistance(meters: number): string {
-  if (meters < 1000) return `${Math.round(meters)}m`;
-  return `${(meters / 1000).toFixed(1)}km`;
+function resolveVillaClass(
+  villa: CommunityVilla,
+  intel: VillaIntelligence | undefined,
+  intelLoaded: boolean,
+): VillaClass | null {
+  const lt = intel?.layout.layoutType;
+  const pt = intel?.layout.positionType;
+  const bf = intel?.layout.backFacing;
+  const hasVastu = intel?.tags.some(t => t.label.includes('Vastu ✓')) || villa.vastu_compliant;
+  if (pt === 'corner'     || villa.is_corner)     return CARD_CLASSES.corner;
+  if (pt === 'end')                                return CARD_CLASSES.end_unit;
+  if (bf === 'park'       || villa.backs_park)     return CARD_CLASSES.backs_park;
+  if (bf === 'road'       || villa.backs_road)     return CARD_CLASSES.backs_road;
+  if (bf === 'open_space')                         return CARD_CLASSES.backs_open;
+  if (lt === 'single_row' || villa.is_single_row)  return CARD_CLASSES.single_row;
+  if (lt === 'back_to_back')                       return CARD_CLASSES.back_to_back;
+  if (hasVastu)                                    return CARD_CLASSES.vastu;
+  if (!intelLoaded) return null; // still loading
+  return null; // no class
 }
 
 interface VillaRightPanelProps {
@@ -674,63 +701,91 @@ export const VillaRightPanel = memo(function VillaRightPanel({
                   {rankedVillas.map(({ villa, distance, isMatched }) => {
                     const isSelected = villa.id === selectedVillaId;
                     const listings = listingCounts[villa.id] || 0;
-                    
                     const intel = intelligenceMap?.get(villa.id);
+                    const intelLoaded = (intelligenceMap?.size ?? 0) > 0;
+                    const primaryClass = resolveVillaClass(villa, intel, intelLoaded);
                     const indicators = intel ? getIndicatorsFromIntel(intel) : getIndicators(villa);
+                    const classTags   = indicators.filter(i => !i.label.match(/\d+m\)/));
+                    const amenityTags = indicators.filter(i => i.label.match(/\d+m\)/) || i.label.toLowerCase().startsWith('near'));
 
                     return (
                       <button key={villa.id} onClick={() => onSelectVilla(villa.id)}
+                        style={primaryClass && !isSelected ? { borderLeftColor: primaryClass.fill, borderLeftWidth: '3px' } : undefined}
                         className={cn(
-                          'w-full text-left rounded-lg p-3 transition-all duration-150 border group',
+                          'w-full text-left rounded-xl p-3 transition-all duration-150 border group',
                           isSelected
                             ? 'bg-[hsl(220,25%,14%)] border-[hsl(82,84%,45%,0.3)] shadow-[0_0_16px_hsl(82,84%,45%,0.06)]'
                             : isMatched
                               ? 'bg-[hsl(190,30%,10%)] border-cyan-500/20 hover:border-cyan-500/30'
                               : 'bg-[hsl(220,22%,10%)] border-[hsl(220,20%,14%)] hover:bg-[hsl(220,22%,12%)] hover:border-[hsl(220,20%,18%)]'
                         )}>
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-white text-[13px] tabular-nums">Villa {villa.villa_number}</span>
-                            {villa.plot_number && <span className="text-[9px] text-[hsl(220,10%,40%)] font-mono">#{villa.plot_number}</span>}
-                            {isMatched && (
-                              <span className="text-[8px] px-1 py-0.5 rounded bg-cyan-500/15 text-cyan-400 font-semibold">MATCH</span>
+                        {/* Header: villa number + class badge + listing status */}
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                            <span className="font-bold text-white text-[13px] tabular-nums leading-none">
+                              {villa.villa_number.startsWith('gis:') ? `Plot ${villa.plot_number}` : `Villa ${villa.villa_number}`}
+                            </span>
+                            {villa.plot_number && !villa.villa_number.startsWith('gis:') && (
+                              <span className="text-[9px] text-[hsl(220,10%,38%)] font-mono">#{villa.plot_number}</span>
                             )}
+                            {primaryClass && (
+                              <span className="text-[8px] px-1.5 py-0.5 rounded font-black leading-none shrink-0"
+                                style={{ background:`${primaryClass.fill}22`, color:primaryClass.stroke, border:`1px solid ${primaryClass.fill}44` }}>
+                                {primaryClass.emoji} {primaryClass.label}
+                              </span>
+                            )}
+                            {isMatched && <span className="text-[8px] px-1 py-0.5 rounded bg-cyan-500/15 text-cyan-400 font-semibold shrink-0">MATCH</span>}
                           </div>
                           {listings > 0 ? (
-                            <Badge className="text-[8px] h-[18px] px-1.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                            <Badge className="text-[8px] h-[18px] px-1.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shrink-0">
                               <Eye className="h-2.5 w-2.5 mr-0.5" />{listings}
                             </Badge>
                           ) : (
-                            <Badge className="text-[8px] h-[18px] px-1.5 bg-[hsl(220,20%,16%)] text-[hsl(220,10%,40%)] border-[hsl(220,20%,20%)]">Off-market</Badge>
+                            <Badge className="text-[8px] h-[18px] px-1.5 bg-[hsl(220,20%,15%)] text-[hsl(220,10%,38%)] border-[hsl(220,20%,20%)] shrink-0">Off-mkt</Badge>
                           )}
                         </div>
-
                         <div className="flex items-center justify-between mb-1.5">
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="h-2.5 w-2.5 text-[hsl(220,10%,40%)]" />
-                            <span className="text-[10px] text-[hsl(220,10%,55%)] truncate">{villa.community_name}</span>
-                            {villa.cluster_name && <span className="text-[9px] text-[hsl(220,10%,40%)]">• {villa.cluster_name}</span>}
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <MapPin className="h-2.5 w-2.5 text-[hsl(220,10%,38%)] shrink-0" />
+                            <span className="text-[10px] text-[hsl(220,10%,52%)] truncate">{villa.community_name}</span>
+                            {villa.cluster_name && <span className="text-[9px] text-[hsl(220,10%,38%)] shrink-0">· {villa.cluster_name}</span>}
                           </div>
                           {distance != null && (
                             <span className="text-[9px] text-cyan-400 font-medium flex items-center gap-0.5 shrink-0">
-                              <Navigation className="h-2.5 w-2.5" />
-                              {formatDistance(distance)}
+                              <Navigation className="h-2.5 w-2.5" />{formatDistance(distance)}
                             </span>
                           )}
                         </div>
-
-                        {indicators.length > 0 && (
+                        {classTags.length > 0 && (
                           <div className="flex flex-wrap gap-1 mb-1.5">
-                            {indicators.slice(0, 4).map((ind, i) => (
-                              <span key={i} className={cn('text-[8px] px-1.5 py-0.5 rounded-full font-medium', ind.color)}>
+                            {classTags.slice(0, 4).map((ind, i) => (
+                              <span key={i} className={cn('text-[8px] px-1.5 py-0.5 rounded-full font-semibold', ind.color)}>
                                 {ind.icon} {ind.label}
                               </span>
                             ))}
-                            {indicators.length > 4 && <span className="text-[8px] text-[hsl(220,10%,45%)]">+{indicators.length - 4}</span>}
                           </div>
                         )}
-
-                        <div className="grid grid-cols-4 gap-1.5 pt-1.5 border-t border-[hsl(220,20%,14%)]">
+                        {amenityTags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-1.5">
+                            {amenityTags.slice(0, 3).map((ind, i) => (
+                              <span key={i} className={cn('text-[8px] px-1.5 py-0.5 rounded-full font-semibold', ind.color)}>
+                                {ind.icon} {ind.label}
+                              </span>
+                            ))}
+                            {amenityTags.length > 3 && <span className="text-[8px] text-[hsl(220,10%,42%)]">+{amenityTags.length-3}</span>}
+                          </div>
+                        )}
+                        {intel && intel.score > 0 && (
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <span className="text-[8px] text-[hsl(220,10%,38%)]">Score</span>
+                            <div className="flex-1 h-1 bg-[hsl(220,20%,16%)] rounded-full overflow-hidden">
+                              <div className="h-full rounded-full transition-all duration-500"
+                                style={{ width:`${Math.min(100,intel.score)}%`, background: primaryClass?.fill ?? '#4ade80' }} />
+                            </div>
+                            <span className="text-[8px] font-bold tabular-nums" style={{ color: primaryClass?.fill ?? '#4ade80' }}>{intel.score}</span>
+                          </div>
+                        )}
+                        <div className="grid grid-cols-4 gap-1.5 pt-1.5 border-t border-[hsl(220,20%,13%)]">
                           <MiniMetric label={`Plot ${sizeUnit}`} value={formatSizeDisplay(villa.plot_size_sqft)} />
                           <MiniMetric label={`BUA ${sizeUnit}`} value={formatSizeDisplay(villa.built_up_area_sqft)} />
                           <MiniMetric label="BR" value={villa.bedrooms?.toString() || '—'} />
@@ -809,9 +864,9 @@ function getIndicators(villa: CommunityVilla): Indicator[] {
   }));
 }
 
-function getIndicatorsFromIntel(intel: any): Indicator[] {
-  if (!intel || !intel.tags) return [];
-  return intel.tags.map((tag: any) => ({
+function getIndicatorsFromIntel(intel: import('@/hooks/usePropertyIntelligence').VillaIntelligence): Indicator[] {
+  if (!intel?.tags) return [];
+  return intel.tags.map(tag => ({
     label: tag.detail ? `${tag.label} (${tag.detail})` : tag.label,
     icon: tag.emoji,
     color: tag.color,
