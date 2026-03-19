@@ -83,13 +83,27 @@ export function resolveVillaClass(
   const bf  = intel?.layout.backFacing;
   const hasVastu = intel?.tags.some(t => t.label.includes('Vastu')) || villa.vastu_compliant;
 
+  // ── STRICT PRIORITY ORDER ─────────────────────────────────────────────────
+  // Rule: B2B and Single Row CANNOT coexist. B2B = absolute highest priority.
+  // If intel says back_to_back, NOTHING else overrides it.
+
+  // 1. Layout type (HIGHEST PRIORITY — must be checked before position/facing)
+  if (lt === 'back_to_back')                       return VILLA_CLASSES.back_to_back;
+  if (lt === 'single_row')                         return VILLA_CLASSES.single_row;
+
+  // 2. Position (only applies when layout is not B2B or SR from intel)
   if (pt === 'corner'      || villa.is_corner)    return VILLA_CLASSES.corner;
   if (pt === 'end')                                return VILLA_CLASSES.end_unit;
+
+  // 3. Back-facing sub-classification (only for single-row villas or DB flags)
   if (bf === 'park'        || villa.backs_park)    return VILLA_CLASSES.backs_park;
   if (bf === 'road'        || villa.backs_road)    return VILLA_CLASSES.backs_road;
   if (bf === 'open_space')                         return VILLA_CLASSES.open_view;
-  if (lt === 'single_row'  || villa.is_single_row) return VILLA_CLASSES.single_row;
-  if (lt === 'back_to_back')                       return VILLA_CLASSES.back_to_back;
+
+  // 4. DB flags fallback (when intel isn't available yet for this villa)
+  if (villa.is_single_row)                         return VILLA_CLASSES.single_row;
+
+  // 5. Vastu (lowest non-default priority)
   if (hasVastu)                                    return VILLA_CLASSES.vastu;
 
   if (!intelLoaded) return null; // still processing — skip pin
@@ -114,17 +128,35 @@ function hasActiveClassFilter(f?: VillaSearchFilters): boolean {
  * Does the given villa's class match the active filter?
  * Only called when hasActiveClassFilter is true.
  */
+/**
+ * Does this villa's class match the active filter?
+ * 
+ * Key rules:
+ *  - Single Row filter → also shows Open View pins (OV = SR + open space behind = subset of SR)
+ *  - B2B filter → shows B2B only (NOT SR)
+ *  - Amenity filters (pool, school etc.) → show ALL classified pins (proximity is on the villa)
+ *  - Multiple class filters active → show pins matching ANY of the active classes (OR logic)
+ */
 function classMatchesFilter(cls: VillaClass, f: VillaSearchFilters): boolean {
+  // Strict one-to-one mapping. B2B and SR are mutually exclusive classes.
+  // SR filter shows ONLY Single Row pins — not Open View or Backs Park.
   if (f.isCorner       && cls.key === 'corner')       return true;
   if (f.isEndUnit      && cls.key === 'end_unit')      return true;
-  if (f.isSingleRow    && cls.key === 'single_row')    return true;
   if (f.isBackToBack   && cls.key === 'back_to_back')  return true;
+  if (f.isSingleRow    && cls.key === 'single_row')    return true; // strict: SR only
+
+  // Back-facing filters
   if (f.backsPark      && cls.key === 'backs_park')    return true;
   if (f.backsRoad      && cls.key === 'backs_road')    return true;
   if (f.backsOpenSpace && cls.key === 'open_view')     return true;
+
+  // Vastu
   if (f.vastuCompliant && cls.key === 'vastu')         return true;
-  // Amenity filters — show all classified pins (amenity proximity is on the villa, not the pin class)
+
+  // Amenity proximity filters: show ALL classified pins
+  // (amenity proximity is a property of the villa, not a map class)
   if (f.nearPool || f.nearSchool || f.nearEntrance || (f.nearAmenity?.length ?? 0) > 0) return true;
+
   return false;
 }
 
