@@ -345,6 +345,10 @@ export default function PlotsPage() {
     if (piFilters.backFacing === 'open_space') newFilters.backsOpenSpace = true;
     if (piFilters.nearAmenity) newFilters.nearAmenity = piFilters.nearAmenity;
     if (piFilters.maxDistance) newFilters.maxDistance = piFilters.maxDistance;
+    // Vastu direction from NL parser (e.g. "east facing" → vastuDirection: 'E')
+    if (piFilters.vastuDirection) {
+      newFilters.vastuCompliant = true; // direction implies vastu filter
+    }
 
     const communityPatterns = ['arabian ranches', 'meadows', 'springs', 'lakes', 'al barari', 'damac hills', 'dubai hills', 'palm jumeirah', 'jumeirah golf', 'victory heights', 'mudon', 'villanova'];
     for (const comm of communityPatterns) { if (q.includes(comm)) { newFilters.community = comm; break; } }
