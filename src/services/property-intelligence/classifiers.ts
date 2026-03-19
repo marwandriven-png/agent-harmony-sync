@@ -43,15 +43,16 @@ export function proximityCssClass(cls: ProximityClass): string {
 
 // ─── Vastu Classification ───
 
+// Standard Vastu Shastra ratings. E=Excellent, N/NE=Good, NW/SE/W=Neutral, S/SW=Less Preferred.
 const VASTU_MAP: Record<string, { rating: VastuRating; score: number }> = {
-  'E':  { rating: 'excellent', score: 4 },
-  'NE': { rating: 'excellent', score: 4 },
-  'N':  { rating: 'good',      score: 3 },
-  'NW': { rating: 'good',      score: 3 },
-  'SE': { rating: 'neutral',   score: 2 },
-  'W':  { rating: 'neutral',   score: 2 },
-  'S':  { rating: 'less_preferred', score: 1 },
-  'SW': { rating: 'less_preferred', score: 1 },
+  'E':  { rating: 'excellent',      score: 4 }, // Best — morning sun, prosperity
+  'N':  { rating: 'good',           score: 3 }, // Wealth & career direction
+  'NE': { rating: 'good',           score: 3 }, // Divine corner — auspicious
+  'NW': { rating: 'neutral',        score: 2 }, // Air direction — acceptable
+  'SE': { rating: 'neutral',        score: 2 }, // Fire corner — neutral
+  'W':  { rating: 'neutral',        score: 2 }, // Acceptable for most families
+  'S':  { rating: 'less_preferred', score: 1 }, // Yama direction
+  'SW': { rating: 'less_preferred', score: 1 }, // Negative energy accumulation
 };
 
 export function classifyVastu(facingDirection: string | null | undefined): VastuAnalysis {

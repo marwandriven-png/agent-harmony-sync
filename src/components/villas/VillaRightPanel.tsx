@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, memo } from 'react';
+import { haversineDistance } from '@/lib/geo';
 import { Search, MapPin, Compass, CornerDownRight, TreePine, Eye, Hash, Sparkles, X, ChevronDown, ChevronUp, Home, Radar, Loader2, Target, Navigation, Ruler, MapPinned, FileText, ShoppingBag } from 'lucide-react';
 import { ReviewLandMatchesModal } from './ReviewLandMatchesModal';
 import { propertyIntelligence, parseNaturalLanguageQuery, describeFilters } from '@/services/PropertyIntelligenceService';
@@ -19,13 +20,6 @@ import { normalizeCoordinatesForSearch } from '@/services/DDAGISService';
 const SQFT_TO_SQM = 0.092903;
 const SQM_TO_SQFT = 10.7639;
 
-function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 function formatDistance(meters: number): string {
   if (meters < 1000) return `${Math.round(meters)}m`;
@@ -51,7 +45,7 @@ interface VillaRightPanelProps {
   searchRadius?: number;
   onSearchRadiusChange?: (radius: number) => void;
   onGoToPlotLocation?: (lat: number, lng: number, plotId: string) => void;
-  intelligenceMap?: Map<string, any>;
+  intelligenceMap?: Map<string, import('@/hooks/usePropertyIntelligence').VillaIntelligence>;
 }
 
 export const VillaRightPanel = memo(function VillaRightPanel({
@@ -127,16 +121,15 @@ export const VillaRightPanel = memo(function VillaRightPanel({
         distance = haversineDistance(searchCenter.lat, searchCenter.lng, villa.latitude, villa.longitude);
       }
       const isMatched = matchedVillaIds?.has(villa.id) ?? false;
+      const intel = intelligenceMap?.get(villa.id);
+      // Composite score: match status + intel score + proximity bonus
       let matchScore = 0;
-      if (isMatched) matchScore += 100;
-      if (distance != null) matchScore -= distance / 100;
-      return { villa, distance, isMatched, matchScore };
-    }).sort((a, b) => {
-      if (a.isMatched !== b.isMatched) return a.isMatched ? -1 : 1;
-      if (a.distance != null && b.distance != null) return a.distance - b.distance;
-      return 0;
-    });
-  }, [villas, searchCenter, matchedVillaIds]);
+      if (isMatched)   matchScore += 1000;           // Matched villas always first
+      if (intel)       matchScore += intel.score;     // Intelligence ranking score
+      if (distance != null) matchScore -= distance / 50; // Closer = better
+      return { villa, distance, isMatched, matchScore, intel };
+    }).sort((a, b) => b.matchScore - a.matchScore);
+  }, [villas, searchCenter, matchedVillaIds, intelligenceMap]);
 
   const rankedPlots = useMemo(() => {
     const unique = new Map<string, GISSearchResult>();

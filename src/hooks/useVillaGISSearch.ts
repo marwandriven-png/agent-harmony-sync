@@ -1,3 +1,4 @@
+import { haversineDistance as haversineM } from '@/lib/geo';
 // Villa GIS Search Hook - v2
 import { useState, useCallback } from 'react';
 import { gisService, normalizeCoordinatesForSearch } from '@/services/DDAGISService';
@@ -127,13 +128,6 @@ async function resolveGoogleLocation(input: string): Promise<{ lat: number; lng:
 
 const TOLERANCE = 0.06; // ±6%
 
-function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 function isWithinTolerance(actual: number, target: number, tolerance: number): { match: boolean; deviation: number } {
   if (target === 0) return { match: true, deviation: 0 };

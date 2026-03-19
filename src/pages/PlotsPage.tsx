@@ -30,7 +30,7 @@ import { cn } from '@/lib/utils';
 
 type LandOSView = 'map' | 'villas';
 
-const SQM_TO_SQFT = 10.7639;
+import { SQM_TO_SQFT } from '@/lib/units';
 const GIS_PLOT_ID_PREFIX = 'gis:';
 
 proj4.defs('EPSG:3997', '+proj=tmerc +lat_0=0 +lon_0=55.33333333333334 +k=1 +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
@@ -429,6 +429,7 @@ export default function PlotsPage() {
             matchedVillaIds={matchedVillaIds}
             gisResults={gisResults}
             amenities={allAmenities}
+            intelligenceMap={intelligenceMap}
           />
         </div>
       </>

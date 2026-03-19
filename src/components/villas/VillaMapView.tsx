@@ -1,3 +1,4 @@
+import { haversineDistance as _haversineDistance, offsetLatLng as _offsetLatLng } from "@/lib/geo";
 import { useEffect, useRef, memo, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -16,6 +17,7 @@ interface VillaMapViewProps {
   matchedVillaIds?: Set<string>;
   gisResults?: GISSearchResult[];
   amenities?: DetectedAmenity[];
+  intelligenceMap?: Map<string, import('@/hooks/usePropertyIntelligence').VillaIntelligence>;
 }
 
 const DUBAI_CENTER: [number, number] = [25.2048, 55.2708];
@@ -53,17 +55,30 @@ export function getVillaPosition(villa: CommunityVilla, index: number): [number,
   return [DUBAI_CENTER[0] + ((index % 50) - 25) * 0.001, DUBAI_CENTER[1] + (Math.floor(index / 50) - 5) * 0.001];
 }
 
-// Status-based pin colors
-function getVillaPinColor(villa: CommunityVilla, isMatched: boolean, listingStatus?: string): { fill: string; border: string } {
-  if (listingStatus === 'sold') return { fill: '#6b7280', border: '#9ca3af' }; // Grey
-  if (listingStatus === 'under_offer') return { fill: '#f97316', border: '#fb923c' }; // Orange
-  if (listingStatus === 'internal') return { fill: '#3b82f6', border: '#60a5fa' }; // Blue
-  if (isMatched) return { fill: '#ef4444', border: '#fff' }; // Red Google-style pin
-  if (villa.vastu_compliant) return { fill: '#f97316', border: '#fb923c' };
-  if (villa.is_corner) return { fill: '#3b82f6', border: '#60a5fa' };
-  if (villa.backs_park) return { fill: '#10b981', border: '#34d399' };
-  if (villa.is_single_row) return { fill: '#a855f7', border: '#c084fc' };
-  return { fill: '#22c55e', border: '#4ade80' };
+// Intelligence + status-based pin colors.
+// Priority: sold/under_offer/internal → matched → GIS-classified → DB flags → default
+function getVillaPinColor(
+  villa: CommunityVilla,
+  isMatched: boolean,
+  listingStatus?: string,
+  layoutType?: string,
+  positionType?: string,
+  backFacing?: string,
+): { fill: string; border: string } {
+  // Listing status overrides everything
+  if (listingStatus === 'sold')        return { fill: '#6b7280', border: '#9ca3af' };
+  if (listingStatus === 'under_offer') return { fill: '#f97316', border: '#fb923c' };
+  if (listingStatus === 'internal')    return { fill: '#3b82f6', border: '#60a5fa' };
+  // Search match highlight
+  if (isMatched) return { fill: '#ef4444', border: '#fff' };
+  // GIS-classified layout (live data wins over DB flags)
+  if (positionType === 'corner'     || villa.is_corner)     return { fill: '#3b82f6', border: '#60a5fa' }; // Blue — Corner
+  if (backFacing  === 'park'        || villa.backs_park)    return { fill: '#10b981', border: '#34d399' }; // Green — Backs Park
+  if (backFacing  === 'road'        || villa.backs_road)    return { fill: '#f59e0b', border: '#fcd34d' }; // Amber — Backs Road
+  if (layoutType  === 'single_row'  || villa.is_single_row) return { fill: '#a855f7', border: '#c084fc' }; // Purple — Single Row
+  if (layoutType  === 'back_to_back')                       return { fill: '#ef4444', border: '#fca5a5' }; // Red — Back-to-Back
+  if (villa.vastu_compliant)                                return { fill: '#ec4899', border: '#f9a8d4' }; // Pink — Vastu
+  return { fill: '#22c55e', border: '#4ade80' }; // Default green — Available
 }
 
 // Build a Google Maps–style drop pin SVG
@@ -125,6 +140,7 @@ function buildPopupContent(villa: CommunityVilla, distance?: number): string {
 }
 
 // Haversine distance in meters
+// haversineDistance moved to @/lib/geo
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -159,7 +175,7 @@ function offsetLatLngByMeters(lat: number, lng: number, distanceMeters: number, 
 export const VillaMapView = memo(function VillaMapView({
   villas, selectedVillaId, onSelectVilla, onRadiusSearch,
   searchCenter, searchRadius = 1000, matchedVillaIds, gisResults = [],
-  amenities = [],
+  amenities = [], intelligenceMap,
 }: VillaMapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -288,7 +304,15 @@ export const VillaMapView = memo(function VillaMapView({
     villas.forEach((villa, idx) => {
       const pos = getVillaPosition(villa, idx);
       const isMatched = matched.has(villa.id);
-      const { fill, border } = getVillaPinColor(villa, isMatched);
+      // Extract live intelligence classification if available
+      const intel = intelligenceMap?.get(villa.id);
+      const { fill, border } = getVillaPinColor(
+        villa, isMatched,
+        undefined, // listingStatus resolved below
+        intel?.layout.layoutType,
+        intel?.layout.positionType,
+        intel?.layout.backFacing,
+      );
 
       // Calculate distance from search center
       let distance: number | undefined;
@@ -350,7 +374,7 @@ export const VillaMapView = memo(function VillaMapView({
       lg.addLayer(marker);
       markerMapRef.current.set(villa.id, marker);
     });
-  }, [villas, searchCenter, matchedVillaIds]);
+  }, [villas, searchCenter, matchedVillaIds, intelligenceMap]);
 
   // GIS plot match pins
   useEffect(() => {
@@ -579,11 +603,14 @@ export const VillaMapView = memo(function VillaMapView({
           {[
             { color: '#ea4335', label: 'GIS Plot Match' },
             { color: '#ef4444', label: 'Matched Villa' },
-            { color: '#10b981', label: 'Available' },
-            { color: '#f97316', label: 'Under Offer / Vastu' },
-            { color: '#3b82f6', label: 'Internal / Corner' },
-            { color: '#6b7280', label: 'Sold' },
+            { color: '#3b82f6', label: 'Corner' },
+            { color: '#10b981', label: 'Backs Park' },
+            { color: '#f59e0b', label: 'Backs Road' },
             { color: '#a855f7', label: 'Single Row' },
+            { color: '#ef4444', label: 'Back-to-Back', opacity: '0.6' },
+            { color: '#ec4899', label: 'Vastu Compliant' },
+            { color: '#22c55e', label: 'Available' },
+            { color: '#6b7280', label: 'Sold' },
           ].map(item => (
             <div key={item.label} className="flex items-center gap-1.5">
               <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />

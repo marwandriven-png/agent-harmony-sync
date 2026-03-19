@@ -17,7 +17,7 @@ interface ReviewLandMatchesModalProps {
   gisResults: GISSearchResult[];
 }
 
-const SQM_TO_SQFT = 10.7639;
+import { SQM_TO_SQFT } from '@/lib/units';
 
 export function ReviewLandMatchesModal({ open, onClose, gisResults }: ReviewLandMatchesModalProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
