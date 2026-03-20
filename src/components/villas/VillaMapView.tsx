@@ -61,6 +61,18 @@ export const VILLA_CLASSES = _VILLA_CLASSES;
  */
 export const resolveVillaClass = _resolveVillaClass;
 
+/** Returns true when at least one villa-class filter toggle is active */
+function hasActiveClassFilter(f: VillaSearchFilters | undefined): boolean {
+  if (!f) return false;
+  return !!(
+    f.isCorner || f.isEndUnit || f.isBackToBack || f.isSingleRow ||
+    f.backsPark || f.backsRoad || f.backsOpenSpace ||
+    f.vastuCompliant ||
+    f.nearPool || f.nearSchool || f.nearEntrance ||
+    (f.nearAmenity?.length ?? 0) > 0
+  );
+}
+
 /**
  * Does the given villa's class match the active filter?
  * Only called when hasActiveClassFilter is true.
