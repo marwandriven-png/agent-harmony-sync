@@ -61,7 +61,7 @@ export const VILLA_CLASSES = _VILLA_CLASSES;
  */
 export const resolveVillaClass = _resolveVillaClass;
 
-/** Returns true when at least one villa-class filter toggle is active */
+/** Returns true when at least one intelligence-related filter is active */
 function hasActiveClassFilter(f: VillaSearchFilters | undefined): boolean {
   if (!f) return false;
   return !!(
@@ -73,40 +73,71 @@ function hasActiveClassFilter(f: VillaSearchFilters | undefined): boolean {
   );
 }
 
-/**
- * Does the given villa's class match the active filter?
- * Only called when hasActiveClassFilter is true.
- */
-/**
- * Does this villa's class match the active filter?
- * 
- * Key rules:
- *  - Single Row filter → also shows Open View pins (OV = SR + open space behind = subset of SR)
- *  - B2B filter → shows B2B only (NOT SR)
- *  - Amenity filters (pool, school etc.) → show ALL classified pins (proximity is on the villa)
- *  - Multiple class filters active → show pins matching ANY of the active classes (OR logic)
- */
-function classMatchesFilter(cls: VillaClass, f: VillaSearchFilters): boolean {
-  // Strict one-to-one mapping. B2B and SR are mutually exclusive classes.
-  // SR filter shows ONLY Single Row pins — not Open View or Backs Park.
-  if (f.isCorner       && cls.key === 'corner')       return true;
-  if (f.isEndUnit      && cls.key === 'end_unit')      return true;
-  if (f.isBackToBack   && cls.key === 'back_to_back')  return true;
-  if (f.isSingleRow    && cls.key === 'single_row')    return true; // strict: SR only
+function hasVastu(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {
+  return !!(intel?.tags.some(t => t.label.includes('Vastu')) || villa.vastu_compliant);
+}
 
-  // Back-facing filters
-  if (f.backsPark      && cls.key === 'backs_park')    return true;
-  if (f.backsRoad      && cls.key === 'backs_road')    return true;
-  if (f.backsOpenSpace && cls.key === 'open_view')     return true;
+function matchesCorner(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {
+  return intel?.layout.positionType === 'corner' || villa.is_corner;
+}
 
-  // Vastu
-  if (f.vastuCompliant && cls.key === 'vastu')         return true;
+function matchesEndUnit(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {
+  return intel?.layout.positionType === 'end' || villa.position_type === 'end';
+}
 
-  // Amenity proximity filters: show ALL classified pins
-  // (amenity proximity is a property of the villa, not a map class)
-  if (f.nearPool || f.nearSchool || f.nearEntrance || (f.nearAmenity?.length ?? 0) > 0) return true;
+function matchesBackToBack(intel: VillaIntelligence | undefined): boolean {
+  return intel?.layout.layoutType === 'back_to_back';
+}
 
-  return false;
+function matchesSingleRow(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {
+  if (intel?.layout.layoutType === 'back_to_back') return false;
+  return intel?.layout.layoutType === 'single_row' || villa.is_single_row;
+}
+
+function matchesBacksPark(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {
+  if (intel?.layout.layoutType === 'back_to_back') return false;
+  return intel?.layout.backFacing === 'park' || villa.backs_park;
+}
+
+function matchesBacksRoad(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {
+  if (intel?.layout.layoutType === 'back_to_back') return false;
+  return intel?.layout.backFacing === 'road' || villa.backs_road;
+}
+
+function matchesOpenView(intel: VillaIntelligence | undefined): boolean {
+  return intel?.layout.backFacing === 'open_space';
+}
+
+function resolveDisplayedClass(
+  villa: CommunityVilla,
+  intel: VillaIntelligence | undefined,
+  intelLoaded: boolean,
+  filters: VillaSearchFilters | undefined,
+): VillaClass | null {
+  const primary = resolveVillaClass(villa, intel, intelLoaded);
+  if (!filters || !hasActiveClassFilter(filters)) return primary;
+
+  const matchedFilteredClass: VillaClass[] = [];
+
+  if (filters.backsPark && matchesBacksPark(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.backs_park);
+  if (filters.backsRoad && matchesBacksRoad(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.backs_road);
+  if (filters.backsOpenSpace && matchesOpenView(intel)) matchedFilteredClass.push(VILLA_CLASSES.open_view);
+  if (filters.isCorner && matchesCorner(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.corner);
+  if (filters.isEndUnit && matchesEndUnit(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.end_unit);
+  if (filters.isBackToBack && matchesBackToBack(intel)) matchedFilteredClass.push(VILLA_CLASSES.back_to_back);
+  if (filters.isSingleRow && matchesSingleRow(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.single_row);
+  if (filters.vastuCompliant && hasVastu(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.vastu);
+
+  if (matchedFilteredClass.length > 0) return matchedFilteredClass[0];
+
+  const hasExplicitClassToggle = !!(
+    filters.isCorner || filters.isEndUnit || filters.isBackToBack || filters.isSingleRow ||
+    filters.backsPark || filters.backsRoad || filters.backsOpenSpace || filters.vastuCompliant
+  );
+
+  if (hasExplicitClassToggle) return null;
+
+  return primary;
 }
 
 // ─── Pin SVG builders ─────────────────────────────────────────────────────────
@@ -344,17 +375,13 @@ export const VillaMapView = memo(function VillaMapView({
     markerMapRef.current.clear();
 
     const intelLoaded = (intelligenceMap?.size ?? 0) > 0;
-    const filterActive = hasActiveClassFilter(activeFilters);
 
     villas.forEach((villa, idx) => {
       const intel = intelligenceMap?.get(villa.id);
-      const cls   = resolveVillaClass(villa, intel, intelLoaded);
+      const cls   = resolveDisplayedClass(villa, intel, intelLoaded, activeFilters);
 
       // Rule 1: no classification → no pin
       if (!cls) return;
-
-      // Rule 2: filter is active → only show pins matching the filter
-      if (filterActive && activeFilters && !classMatchesFilter(cls, activeFilters)) return;
 
       const pos      = getVillaPosition(villa, idx);
       const isMatch  = matchedVillaIds?.has(villa.id) ?? false;
@@ -497,9 +524,8 @@ export const VillaMapView = memo(function VillaMapView({
     const intelLoaded = intelligenceMap.size > 0;
     for (const villa of villas) {
       const intel = intelligenceMap.get(villa.id);
-      const cls   = resolveVillaClass(villa, intel, intelLoaded);
+      const cls   = resolveDisplayedClass(villa, intel, intelLoaded, activeFilters);
       if (!cls) continue;
-      if (filterOn && activeFilters && !classMatchesFilter(cls, activeFilters)) continue;
       classCounts[cls.key] = (classCounts[cls.key] ?? 0) + 1;
     }
   }
