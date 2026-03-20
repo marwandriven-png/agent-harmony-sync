@@ -375,17 +375,13 @@ export const VillaMapView = memo(function VillaMapView({
     markerMapRef.current.clear();
 
     const intelLoaded = (intelligenceMap?.size ?? 0) > 0;
-    const filterActive = hasActiveClassFilter(activeFilters);
 
     villas.forEach((villa, idx) => {
       const intel = intelligenceMap?.get(villa.id);
-      const cls   = resolveVillaClass(villa, intel, intelLoaded);
+      const cls   = resolveDisplayedClass(villa, intel, intelLoaded, activeFilters);
 
       // Rule 1: no classification → no pin
       if (!cls) return;
-
-      // Rule 2: filter is active → only show pins matching the filter
-      if (filterActive && activeFilters && !classMatchesFilter(cls, activeFilters)) return;
 
       const pos      = getVillaPosition(villa, idx);
       const isMatch  = matchedVillaIds?.has(villa.id) ?? false;
