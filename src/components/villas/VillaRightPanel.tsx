@@ -697,8 +697,8 @@ export const VillaRightPanel = memo(function VillaRightPanel({
                             )}
                             {primaryClass && (
                               <span className="text-[8px] px-1.5 py-0.5 rounded font-black leading-none shrink-0"
-                                style={{ background:`${primaryClass.fill}22`, color:primaryClass.stroke, border:`1px solid ${primaryClass.fill}44` }}>
-                                {primaryClass.emoji} {primaryClass.label}
+                                style={{ background:`${primaryClass.fill}22`, color:primaryClass.fill, border:`1px solid ${primaryClass.fill}44` }}>
+                                {primaryClass.badge} {primaryClass.label}
                               </span>
                             )}
                             {isMatched && <span className="text-[8px] px-1 py-0.5 rounded bg-cyan-500/15 text-cyan-400 font-semibold shrink-0">MATCH</span>}

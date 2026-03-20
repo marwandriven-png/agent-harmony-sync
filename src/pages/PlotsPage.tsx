@@ -190,7 +190,7 @@ export default function PlotsPage() {
           updated_at:            new Date().toISOString(),
         } satisfies CommunityVilla;
       })
-      .filter((v): v is CommunityVilla => v !== null);
+      .filter((v): v is NonNullable<typeof v> => v !== null) as CommunityVilla[];
   }, [gisResults]);
 
   /**
