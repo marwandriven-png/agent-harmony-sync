@@ -524,9 +524,8 @@ export const VillaMapView = memo(function VillaMapView({
     const intelLoaded = intelligenceMap.size > 0;
     for (const villa of villas) {
       const intel = intelligenceMap.get(villa.id);
-      const cls   = resolveVillaClass(villa, intel, intelLoaded);
+      const cls   = resolveDisplayedClass(villa, intel, intelLoaded, activeFilters);
       if (!cls) continue;
-      if (filterOn && activeFilters && !classMatchesFilter(cls, activeFilters)) continue;
       classCounts[cls.key] = (classCounts[cls.key] ?? 0) + 1;
     }
   }
