@@ -29,7 +29,7 @@ import type { GISSearchResult } from '@/hooks/useVillaGISSearch';
 import { normalizeCoordinatesForSearch } from '@/services/DDAGISService';
 import { AMENITY_CONFIG, type DetectedAmenity } from '@/services/PropertyIntelligenceService';
 import { haversineDistance } from '@/lib/geo';
-import { VILLA_CLASSES as _VILLA_CLASSES, resolveVillaClass as _resolveVillaClass } from '@/services/property-intelligence/classify-class';
+import { VILLA_CLASSES as _VILLA_CLASSES, resolveVillaClass as _resolveVillaClass, type VillaClass } from '@/services/property-intelligence/classify-class';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
