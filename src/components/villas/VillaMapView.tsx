@@ -29,7 +29,7 @@ import type { GISSearchResult } from '@/hooks/useVillaGISSearch';
 import { normalizeCoordinatesForSearch } from '@/services/DDAGISService';
 import { AMENITY_CONFIG, type DetectedAmenity } from '@/services/PropertyIntelligenceService';
 import { haversineDistance } from '@/lib/geo';
-import { VILLA_CLASSES as _VILLA_CLASSES, resolveVillaClass as _resolveVillaClass } from '@/services/property-intelligence/classify-class';
+import { VILLA_CLASSES as _VILLA_CLASSES, resolveVillaClass as _resolveVillaClass, type VillaClass } from '@/services/property-intelligence/classify-class';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -60,6 +60,18 @@ export const VILLA_CLASSES = _VILLA_CLASSES;
  *  - Caller should SKIP the pin entirely
  */
 export const resolveVillaClass = _resolveVillaClass;
+
+/** Returns true when at least one villa-class filter toggle is active */
+function hasActiveClassFilter(f: VillaSearchFilters | undefined): boolean {
+  if (!f) return false;
+  return !!(
+    f.isCorner || f.isEndUnit || f.isBackToBack || f.isSingleRow ||
+    f.backsPark || f.backsRoad || f.backsOpenSpace ||
+    f.vastuCompliant ||
+    f.nearPool || f.nearSchool || f.nearEntrance ||
+    (f.nearAmenity?.length ?? 0) > 0
+  );
+}
 
 /**
  * Does the given villa's class match the active filter?
