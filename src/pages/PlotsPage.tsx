@@ -388,10 +388,10 @@ export default function PlotsPage() {
     setWizardOpen(false); setSearchQuery(plot.id); void handleSidebarSearchSubmit(plot.id);
   }, [handleSidebarSearchSubmit]);
 
-  const handleEdit = (plot: Plot) => { if (!plot.id.startsWith(GIS_PLOT_ID_PREFIX)) console.log('Edit:', plot); };
+  const handleEdit = (_plot: Plot) => { /* TODO: open edit dialog */ };
   const handleDelete = (plot: Plot) => { if (plot.id.startsWith(GIS_PLOT_ID_PREFIX)) return; setSelectedPlot(plot); setDeleteOpen(true); };
   const handleConfirmDelete = async () => { if (selectedPlot) { await deletePlot.mutateAsync(selectedPlot.id); setDeleteOpen(false); setSelectedPlot(null); } };
-  const handleList = (plot: Plot) => { if (!plot.id.startsWith(GIS_PLOT_ID_PREFIX)) console.log('List:', plot); };
+  const handleList = (_plot: Plot) => { /* TODO: open listing dialog */ };
 
   // Villa logic
   const handleSelectVilla = useCallback((villaId: string) => {

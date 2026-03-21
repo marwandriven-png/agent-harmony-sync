@@ -191,6 +191,8 @@ export function useVillaWithDetails(villaId: string | undefined) {
     queryKey: ['villa-details', villaId],
     queryFn: async () => {
       if (!villaId) return null;
+      // GIS synthetic villas (id starts with 'gis:') don't exist in Supabase
+      if (villaId.startsWith('gis:')) return null;
 
       const [villaRes, ownerRes, listingsRes] = await Promise.all([
         supabase.from('community_villas').select('*').eq('id', villaId).single(),
@@ -263,17 +265,20 @@ export function useVillasByIds(villaIds: string[]) {
     queryKey: ['villas-by-ids', villaIds],
     queryFn: async () => {
       if (villaIds.length === 0) return [] as CommunityVilla[];
+      // Filter out synthetic GIS IDs — they're not in Supabase
+      const realIds = villaIds.filter(id => !id.startsWith('gis:'));
+      if (realIds.length === 0) return [] as CommunityVilla[];
 
       const { data, error } = await supabase
         .from('community_villas')
         .select('*')
-        .in('id', villaIds)
+        .in('id', realIds)
         .limit(1000);
 
       if (error) throw error;
 
       const byId = new Map((data || []).map((villa: any) => [villa.id, villa as CommunityVilla]));
-      return villaIds.map(id => byId.get(id)).filter(Boolean) as CommunityVilla[];
+      return realIds.map(id => byId.get(id)).filter(Boolean) as CommunityVilla[];
     },
     enabled: !!user && villaIds.length > 0,
   });
