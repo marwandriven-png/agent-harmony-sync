@@ -1,6 +1,6 @@
 import { haversineDistance as haversineM } from '@/lib/geo';
 // Villa GIS Search Hook - v2
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { gisService, normalizeCoordinatesForSearch } from '@/services/DDAGISService';
 import { villaGISService } from '@/services/VillaGISService';
 import type { PlotData } from '@/services/DDAGISService';
@@ -140,6 +140,7 @@ export function useVillaGISSearch() {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [gisVillaIds, setGisVillaIds] = useState<string[]>([]);
   const [resolvedCenter, setResolvedCenter] = useState<{ lat: number; lng: number } | null>(null);
+  const requestIdRef = useRef(0);
 
 
   const searchGIS = useCallback(async (params: {
@@ -153,11 +154,13 @@ export function useVillaGISSearch() {
     const { community, plotNumber, googleLocation, plotAreaSqm, gfaSqm, radiusMeters = 1000 } = params;
     if (!community && !plotNumber && !googleLocation) return;
 
+    const requestId = ++requestIdRef.current;
     const contextRadiusMeters = Math.max(radiusMeters + 200, 250);
 
     setIsSearching(true);
     const results: GISSearchResult[] = [];
-    const villaIds: string[] = [];
+    const resultIds = new Set<string>();
+    const villaIdSet = new Set<string>();
     let center: { lat: number; lng: number } | null = null;
 
     try {
@@ -166,11 +169,8 @@ export function useVillaGISSearch() {
         try {
           const plot = await gisService.fetchPlotById(plotNumber.trim());
           if (plot) {
-            results.push({
-              plot,
-              source: 'gis-direct',
-              confidenceScore: 100,
-            });
+            resultIds.add(plot.id);
+            results.push({ plot, source: 'gis-direct', confidenceScore: 100 });
 
             // Use plot coordinates as search center for radius mode
             if (plot.y && plot.x) {
@@ -187,7 +187,7 @@ export function useVillaGISSearch() {
                   radiusMeters,
                 );
                 for (const id of nearbyVillaIds) {
-                  if (!villaIds.includes(id)) villaIds.push(id);
+                  villaIdSet.add(id);
                 }
 
                 // Fetch broader surrounding GIS context for classification accuracy
@@ -198,7 +198,8 @@ export function useVillaGISSearch() {
                     contextRadiusMeters,
                   );
                   for (const np of nearbyPlots) {
-                    if (!results.some((r) => r.plot.id === np.id)) {
+                    if (!resultIds.has(np.id)) {
+                      resultIds.add(np.id);
                       results.push({
                         plot: np,
                         source: 'gis-location',
@@ -239,6 +240,7 @@ export function useVillaGISSearch() {
             }
 
             if (!results.some((r) => r.plot.id === ap.id)) {
+              resultIds.add(ap.id);
               results.push({
                 plot: ap,
                 source: 'gis-area',
@@ -265,7 +267,8 @@ export function useVillaGISSearch() {
             );
 
             for (const np of nearbyPlots) {
-              if (!results.some((r) => r.plot.id === np.id)) {
+              if (!resultIds.has(np.id)) {
+                resultIds.add(np.id);
                 results.push({
                   plot: np,
                   source: 'gis-location',
@@ -281,7 +284,7 @@ export function useVillaGISSearch() {
             );
 
             for (const id of nearbyVillaIds) {
-              if (!villaIds.includes(id)) villaIds.push(id);
+              villaIdSet.add(id);
             }
           } else {
             toast.error('Could not parse coordinates from location input');
@@ -325,6 +328,9 @@ export function useVillaGISSearch() {
         }
       }
 
+      if (requestId !== requestIdRef.current) return;
+
+      const villaIds = Array.from(villaIdSet);
       setGisResults(results);
       setGisVillaIds(villaIds);
       setResolvedCenter(center);
@@ -335,10 +341,11 @@ export function useVillaGISSearch() {
         toast.info('No GIS/DDA matches found for this search');
       }
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       console.error('GIS search error:', err);
       toast.error('GIS search failed');
     } finally {
-      setIsSearching(false);
+      if (requestId === requestIdRef.current) setIsSearching(false);
     }
   }, []);
 

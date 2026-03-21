@@ -105,9 +105,21 @@ export interface VillaSearchFilters {
 
 export function useVillas(filters?: VillaSearchFilters) {
   const { user } = useAuth();
+  const serverFilters = {
+    community: filters?.community ?? '',
+    plotNumber: filters?.plotNumber ?? '',
+    villaNumber: filters?.villaNumber ?? '',
+    cluster: filters?.cluster ?? '',
+    bedrooms: filters?.bedrooms ?? null,
+    minSize: filters?.minSize ?? null,
+    maxSize: filters?.maxSize ?? null,
+    searchText: filters?.searchText ?? '',
+    oddEven: filters?.oddEven ?? 'all',
+    villaNumberRange: filters?.villaNumberRange ?? null,
+  };
 
   return useQuery({
-    queryKey: ['villas', filters],
+    queryKey: ['villas', serverFilters],
     queryFn: async () => {
       let query = supabase
         .from('community_villas')
@@ -115,31 +127,26 @@ export function useVillas(filters?: VillaSearchFilters) {
         .order('community_name')
         .order('villa_number');
 
-      if (filters?.community) {
-        query = query.ilike('community_name', `%${filters.community}%`);
+      if (serverFilters.community) {
+        query = query.ilike('community_name', `%${serverFilters.community}%`);
       }
-      if (filters?.plotNumber) {
-        query = query.ilike('plot_number', `%${filters.plotNumber}%`);
+      if (serverFilters.plotNumber) {
+        query = query.ilike('plot_number', `%${serverFilters.plotNumber}%`);
       }
-      if (filters?.villaNumber) {
-        query = query.eq('villa_number', filters.villaNumber);
+      if (serverFilters.villaNumber) {
+        query = query.eq('villa_number', serverFilters.villaNumber);
       }
-      if (filters?.cluster) {
-        query = query.ilike('cluster_name', `%${filters.cluster}%`);
+      if (serverFilters.cluster) {
+        query = query.ilike('cluster_name', `%${serverFilters.cluster}%`);
       }
-      // Spatial / intelligence flags are filtered client-side so runtime GIS enrichment
-      // can promote villas even when database flags are stale or missing.
-      if (filters?.vastuCompliant) {
-        query = query.eq('vastu_compliant', true);
+      if (serverFilters.bedrooms) {
+        query = query.eq('bedrooms', serverFilters.bedrooms);
       }
-      if (filters?.bedrooms) {
-        query = query.eq('bedrooms', filters.bedrooms);
+      if (serverFilters.minSize) {
+        query = query.gte('plot_size_sqft', serverFilters.minSize);
       }
-      if (filters?.minSize) {
-        query = query.gte('plot_size_sqft', filters.minSize);
-      }
-      if (filters?.maxSize) {
-        query = query.lte('plot_size_sqft', filters.maxSize);
+      if (serverFilters.maxSize) {
+        query = query.lte('plot_size_sqft', serverFilters.maxSize);
       }
 
       const { data, error } = await query.limit(500);
@@ -148,28 +155,28 @@ export function useVillas(filters?: VillaSearchFilters) {
       let villas = (data || []) as unknown as CommunityVilla[];
 
       // Client-side filters
-      if (filters?.oddEven === 'odd') {
+      if (serverFilters.oddEven === 'odd') {
         villas = villas.filter(v => {
           const num = parseInt(v.villa_number, 10);
           return !isNaN(num) && num % 2 !== 0;
         });
-      } else if (filters?.oddEven === 'even') {
+      } else if (serverFilters.oddEven === 'even') {
         villas = villas.filter(v => {
           const num = parseInt(v.villa_number, 10);
           return !isNaN(num) && num % 2 === 0;
         });
       }
 
-      if (filters?.villaNumberRange) {
-        const { from, to } = filters.villaNumberRange;
+      if (serverFilters.villaNumberRange) {
+        const { from, to } = serverFilters.villaNumberRange;
         villas = villas.filter(v => {
           const num = parseInt(v.villa_number, 10);
           return !isNaN(num) && num >= from && num <= to;
         });
       }
 
-      if (filters?.searchText) {
-        const text = filters.searchText.toLowerCase();
+      if (serverFilters.searchText) {
+        const text = serverFilters.searchText.toLowerCase();
         villas = villas.filter(v =>
           v.villa_number.toLowerCase().includes(text) ||
           v.community_name.toLowerCase().includes(text) ||
@@ -181,6 +188,7 @@ export function useVillas(filters?: VillaSearchFilters) {
       return villas;
     },
     enabled: !!user,
+    staleTime: 60 * 1000,
   });
 }
 
@@ -260,13 +268,11 @@ export function useCommunities() {
 
 export function useVillasByIds(villaIds: string[]) {
   const { user } = useAuth();
+  const realIds = villaIds.filter(id => !id.startsWith('gis:')).sort();
 
   return useQuery({
-    queryKey: ['villas-by-ids', villaIds],
+    queryKey: ['villas-by-ids', realIds],
     queryFn: async () => {
-      if (villaIds.length === 0) return [] as CommunityVilla[];
-      // Filter out synthetic GIS IDs — they're not in Supabase
-      const realIds = villaIds.filter(id => !id.startsWith('gis:'));
       if (realIds.length === 0) return [] as CommunityVilla[];
 
       const { data, error } = await supabase
@@ -280,6 +286,7 @@ export function useVillasByIds(villaIds: string[]) {
       const byId = new Map((data || []).map((villa: any) => [villa.id, villa as CommunityVilla]));
       return realIds.map(id => byId.get(id)).filter(Boolean) as CommunityVilla[];
     },
-    enabled: !!user && villaIds.length > 0,
+    enabled: !!user && realIds.length > 0,
+    staleTime: 60 * 1000,
   });
 }

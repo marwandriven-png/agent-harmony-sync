@@ -97,6 +97,45 @@ function getFrontBearing(facingDirection?: string | null): number | null {
 }
 
 class VillaGISService {
+  private villaCoordinateCache: Array<{ id: string; latitude: number; longitude: number }> | null = null;
+  private villaCoordinateCacheExpiresAt = 0;
+  private villaCoordinateInFlight: Promise<Array<{ id: string; latitude: number; longitude: number }>> | null = null;
+
+  private async getVillaCoordinates() {
+    const now = Date.now();
+    if (this.villaCoordinateCache && this.villaCoordinateCacheExpiresAt > now) {
+      return this.villaCoordinateCache;
+    }
+
+    if (this.villaCoordinateInFlight) {
+      return this.villaCoordinateInFlight;
+    }
+
+    this.villaCoordinateInFlight = (async () => {
+      try {
+        const { data } = await supabase
+          .from('community_villas')
+          .select('id, latitude, longitude')
+          .not('latitude', 'is', null)
+          .not('longitude', 'is', null)
+          .limit(1000);
+
+        const rows = (data ?? []).filter(
+          (villa): villa is { id: string; latitude: number; longitude: number } =>
+            typeof villa.id === 'string' && typeof villa.latitude === 'number' && typeof villa.longitude === 'number'
+        );
+
+        this.villaCoordinateCache = rows;
+        this.villaCoordinateCacheExpiresAt = Date.now() + 60 * 1000;
+        return rows;
+      } finally {
+        this.villaCoordinateInFlight = null;
+      }
+    })();
+
+    return this.villaCoordinateInFlight;
+  }
+
   /**
    * Fetch GIS plot data for a villa's plot number
    */
@@ -126,14 +165,7 @@ class VillaGISService {
    * Search villas within a radius of given coordinates
    */
   async searchVillasNearLocation(lat: number, lng: number, radiusMeters: number = 500): Promise<string[]> {
-    const { data: villas } = await supabase
-      .from('community_villas')
-      .select('id, villa_number, latitude, longitude')
-      .not('latitude', 'is', null)
-      .not('longitude', 'is', null)
-      .limit(1000);
-
-    if (!villas) return [];
+    const villas = await this.getVillaCoordinates();
 
     return villas
       .filter((villa) => {
