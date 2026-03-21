@@ -115,7 +115,7 @@ export default function PlotsPage() {
   const [villaManualCenter, setVillaManualCenter] = useState<{ lat: number; lng: number } | null>(null);
   const { data: villas = [], isLoading: villasLoading, refetch: refetchVillas } = useVillas(villaFilters);
   const { data: communities = [] } = useCommunities();
-  const { gisResults, gisVillaIds, isSearching: isVillaGISSearching, searchGIS: searchVillaGIS, clearGISResults: clearVillaGIS, resolvedCenter } = useVillaGISSearch();
+  const { gisResults, gisContextPlots, gisVillaIds, isSearching: isVillaGISSearching, searchGIS: searchVillaGIS, clearGISResults: clearVillaGIS, resolvedCenter } = useVillaGISSearch();
   const { data: gisMatchedVillas = [] } = useVillasByIds(gisVillaIds);
   
   // Property Intelligence Layer logic
@@ -129,12 +129,12 @@ export default function PlotsPage() {
   }, [selectedMockCommunityId]);
 
   const nearbyPlots = useMemo<PlotData[]>(() => {
-    const gisPlots = gisResults.map(r => r.plot);
+    const gisPlots = gisContextPlots.length > 0 ? gisContextPlots : gisResults.map(r => r.plot);
     if (mockCommunityPlots.length === 0) return gisPlots;
     // Merge, preferring real GIS plots where IDs collide
     const ids = new Set(gisPlots.map(p => p.id));
     return [...gisPlots, ...mockCommunityPlots.filter(p => !ids.has(p.id))];
-  }, [gisResults, mockCommunityPlots]);
+  }, [gisContextPlots, gisResults, mockCommunityPlots]);
 
   /**
    * Convert GIS result plots (PlotData) → synthetic CommunityVilla objects so the

@@ -137,6 +137,7 @@ function isWithinTolerance(actual: number, target: number, tolerance: number): {
 
 export function useVillaGISSearch() {
   const [gisResults, setGisResults] = useState<GISSearchResult[]>([]);
+  const [gisContextPlots, setGisContextPlots] = useState<PlotData[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [gisVillaIds, setGisVillaIds] = useState<string[]>([]);
   const [resolvedCenter, setResolvedCenter] = useState<{ lat: number; lng: number } | null>(null);
@@ -160,8 +161,15 @@ export function useVillaGISSearch() {
     setIsSearching(true);
     const results: GISSearchResult[] = [];
     const resultIds = new Set<string>();
+    const contextPlotMap = new Map<string, PlotData>();
     const villaIdSet = new Set<string>();
     let center: { lat: number; lng: number } | null = null;
+
+    const addContextPlot = (plot: PlotData) => {
+      if (!contextPlotMap.has(plot.id)) {
+        contextPlotMap.set(plot.id, plot);
+      }
+    };
 
     try {
       // 1. Direct plot number lookup + use as radius center
@@ -169,6 +177,7 @@ export function useVillaGISSearch() {
         try {
           const plot = await gisService.fetchPlotById(plotNumber.trim());
           if (plot) {
+            addContextPlot(plot);
             resultIds.add(plot.id);
             results.push({ plot, source: 'gis-direct', confidenceScore: 100 });
 
@@ -198,6 +207,7 @@ export function useVillaGISSearch() {
                     contextRadiusMeters,
                   );
                   for (const np of nearbyPlots) {
+                    addContextPlot(np);
                     if (!resultIds.has(np.id)) {
                       resultIds.add(np.id);
                       results.push({
@@ -222,6 +232,7 @@ export function useVillaGISSearch() {
           const apiPlots = await gisService.searchByArea(minArea, maxArea, community.trim());
 
           for (const ap of apiPlots) {
+            addContextPlot(ap);
             let confidenceScore = 60;
             let areaDev = 0;
             let gfaDev = 0;
@@ -267,6 +278,7 @@ export function useVillaGISSearch() {
             );
 
             for (const np of nearbyPlots) {
+              addContextPlot(np);
               if (!resultIds.has(np.id)) {
                 resultIds.add(np.id);
                 results.push({
@@ -332,6 +344,7 @@ export function useVillaGISSearch() {
 
       const villaIds = Array.from(villaIdSet);
       setGisResults(results);
+      setGisContextPlots(Array.from(contextPlotMap.values()));
       setGisVillaIds(villaIds);
       setResolvedCenter(center);
 
@@ -351,12 +364,14 @@ export function useVillaGISSearch() {
 
   const clearGISResults = useCallback(() => {
     setGisResults([]);
+    setGisContextPlots([]);
     setGisVillaIds([]);
     setResolvedCenter(null);
   }, []);
 
   return {
     gisResults,
+    gisContextPlots,
     gisVillaIds,
     isSearching,
     searchGIS,
