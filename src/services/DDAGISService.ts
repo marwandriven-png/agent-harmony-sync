@@ -1,6 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import proj4 from 'proj4';
 
+interface CacheEntry<T> {
+  expiresAt: number;
+  value: T;
+}
+
 export type VerificationSource = 'DDA' | 'DLD' | 'Demo' | 'Manual';
 
 export interface PlotData {
@@ -127,6 +132,46 @@ export function normalizeCoordinatesForSearch(lat: number, lng: number): { lat: 
 }
 
 class DDAGISService {
+  private cache = new Map<string, CacheEntry<unknown>>();
+  private inFlight = new Map<string, Promise<unknown>>();
+
+  private getCached<T>(key: string): T | null {
+    const cached = this.cache.get(key) as CacheEntry<T> | undefined;
+    if (!cached) return null;
+    if (cached.expiresAt <= Date.now()) {
+      this.cache.delete(key);
+      return null;
+    }
+    return cached.value;
+  }
+
+  private setCached<T>(key: string, value: T, ttlMs: number) {
+    this.cache.set(key, {
+      value,
+      expiresAt: Date.now() + ttlMs,
+    });
+  }
+
+  private async withCache<T>(key: string, fetcher: () => Promise<T>, ttlMs: number): Promise<T> {
+    const cached = this.getCached<T>(key);
+    if (cached !== null) return cached;
+
+    const existing = this.inFlight.get(key) as Promise<T> | undefined;
+    if (existing) return existing;
+
+    const promise = fetcher()
+      .then((result) => {
+        this.setCached(key, result, ttlMs);
+        return result;
+      })
+      .finally(() => {
+        this.inFlight.delete(key);
+      });
+
+    this.inFlight.set(key, promise);
+    return promise;
+  }
+
   async testConnection(): Promise<boolean> {
     try {
 
@@ -190,32 +235,35 @@ class DDAGISService {
   }
 
   async fetchPlotById(plotId: string): Promise<PlotData | null> {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dda-gis-proxy?action=plot&plotId=${encodeURIComponent(plotId)}`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            'Content-Type': 'application/json'
+    const normalizedPlotId = plotId.trim();
+    return this.withCache(`plot:${normalizedPlotId}`, async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dda-gis-proxy?action=plot&plotId=${encodeURIComponent(normalizedPlotId)}`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              'Content-Type': 'application/json'
+            }
           }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Edge function returned ${response.status}`);
         }
-      );
 
-      if (!response.ok) {
-        throw new Error(`Edge function returned ${response.status}`);
+        const data = await response.json();
+
+        if (data.features && data.features.length > 0) {
+          return this.transformGISData(data.features)[0];
+        }
+        return null;
+      } catch (error) {
+        console.error('Error fetching plot by ID:', error);
+        return null;
       }
-
-      const data = await response.json();
-
-      if (data.features && data.features.length > 0) {
-        return this.transformGISData(data.features)[0];
-      }
-      return null;
-    } catch (error) {
-      console.error('Error fetching plot by ID:', error);
-      return null;
-    }
+    }, 5 * 60 * 1000);
   }
 
   async fetchAffectionPlan(plotId: string): Promise<AffectionPlanData | null> {
@@ -438,76 +486,82 @@ class DDAGISService {
   }
 
   async searchByArea(minArea?: number, maxArea?: number, projectName?: string): Promise<PlotData[]> {
-    try {
-      const params = new URLSearchParams({ action: 'search' });
-      if (minArea !== undefined) params.set('minArea', String(minArea));
-      if (maxArea !== undefined) params.set('maxArea', String(maxArea));
-      if (projectName) params.set('project', projectName);
-      params.set('limit', '100');
+    const cacheKey = `area:${projectName ?? ''}:${minArea ?? ''}:${maxArea ?? ''}`;
+    return this.withCache(cacheKey, async () => {
+      try {
+        const params = new URLSearchParams({ action: 'search' });
+        if (minArea !== undefined) params.set('minArea', String(minArea));
+        if (maxArea !== undefined) params.set('maxArea', String(maxArea));
+        if (projectName) params.set('project', projectName);
+        params.set('limit', '100');
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dda-gis-proxy?${params.toString()}`,
-        {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dda-gis-proxy?${params.toString()}`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        if (!response.ok) throw new Error(`Edge function returned ${response.status}`);
+
+        const data = await response.json();
+        if (data.features && data.features.length > 0) {
+          return this.transformGISData(data.features);
+        }
+        return [];
+      } catch (error) {
+        console.error('Error searching by area:', error);
+        return [];
+      }
+    }, 30 * 1000);
+  }
+
+  async searchByLocation(lat: number, lng: number, radiusMeters: number = 1000): Promise<PlotData[]> {
+    const normalized = normalizeCoordinatesForSearch(lat, lng);
+    if (!normalized) {
+      console.error('Invalid spatial coordinates for searchByLocation:', { lat, lng });
+      return [];
+    }
+
+    const cacheKey = `location:${normalized.lat.toFixed(6)}:${normalized.lng.toFixed(6)}:${radiusMeters}`;
+    return this.withCache(cacheKey, async () => {
+      try {
+        const params = new URLSearchParams({
+          action: 'spatial',
+          lat: normalized.lat.toString(),
+          lng: normalized.lng.toString(),
+          radius: radiusMeters.toString()
+        });
+
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dda-gis-proxy?${params}`;
+
+        const response = await fetch(url, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
             'Content-Type': 'application/json'
           }
+        });
+
+        if (!response.ok) {
+          console.error(`Edge function returned ${response.status}`);
+          return [];
         }
-      );
 
-      if (!response.ok) throw new Error(`Edge function returned ${response.status}`);
+        const data = await response.json();
 
-      const data = await response.json();
-      if (data.features && data.features.length > 0) {
+        if (!data.features || data.features.length === 0) return [];
+
         return this.transformGISData(data.features);
-      }
-      return [];
-    } catch (error) {
-      console.error('Error searching by area:', error);
-      return [];
-    }
-  }
-
-  async searchByLocation(lat: number, lng: number, radiusMeters: number = 1000): Promise<PlotData[]> {
-    try {
-      const normalized = normalizeCoordinatesForSearch(lat, lng);
-      if (!normalized) {
-        console.error('Invalid spatial coordinates for searchByLocation:', { lat, lng });
+      } catch (error) {
+        console.error('Error searching by location:', error);
         return [];
       }
-
-      const params = new URLSearchParams({
-        action: 'spatial',
-        lat: normalized.lat.toString(),
-        lng: normalized.lng.toString(),
-        radius: radiusMeters.toString()
-      });
-
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dda-gis-proxy?${params}`;
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        console.error(`Edge function returned ${response.status}`);
-        return [];
-      }
-
-      const data = await response.json();
-
-      if (!data.features || data.features.length === 0) return [];
-
-      return this.transformGISData(data.features);
-    } catch (error) {
-      console.error('Error searching by location:', error);
-      return [];
-    }
+    }, 20 * 1000);
   }
 
   /**
@@ -548,100 +602,101 @@ class DDAGISService {
       console.info('[GIS] Normalized search coordinates', { input: { lat, lng }, normalized });
     }
 
-    try {
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/land-matching-wizard`;
+    const cacheKey = `consolidated:${safeLat.toFixed(6)}:${safeLng.toFixed(6)}:${radiusMeters}`;
+    return this.withCache(cacheKey, async () => {
+      try {
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/land-matching-wizard`;
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          latitude: safeLat,
-          longitude: safeLng,
-          radius_meters: radiusMeters,
-        }),
-      });
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            latitude: safeLat,
+            longitude: safeLng,
+            radius_meters: radiusMeters,
+          }),
+        });
 
-      if (!response.ok) {
-        const errBody = await response.json().catch(() => ({}));
-        throw new Error(errBody.error || `HTTP ${response.status}`);
+        if (!response.ok) {
+          const errBody = await response.json().catch(() => ({}));
+          throw new Error(errBody.error || `HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.error || 'Unknown error');
+        }
+
+        const rawPlots: any[] = result.data?.plots ?? [];
+
+        const plots: PlotData[] = rawPlots.map((p: any, index: number) => ({
+          id: p.land_number || p.plot_id || `PLOT_${index}`,
+          area: p.area_sqm || 0,
+          gfa: p.gfa_sqm || 0,
+          floors: p.max_height_floors || 'N/A',
+          zoning: this.getZoningCategory(p.main_landuse, p.sub_landuse),
+          location: p.project_name || p.entity_name || p.area || 'Dubai',
+          x: p.longitude || 0,
+          y: p.latitude || 0,
+          color: this.getZoningColor(p.main_landuse, p.sub_landuse),
+          status: p.land_status || (p.is_frozen ? 'Frozen' : 'Available'),
+          constructionCost: this.getConstructionCost(p.main_landuse),
+          salePrice: this.getSalePrice(p.main_landuse, p.area_sqm),
+          developer: undefined,
+          project: p.project_name,
+          entity: p.entity_name,
+          landUseDetails: undefined,
+          maxHeight: undefined,
+          plotCoverage: p.plot_coverage,
+          isFrozen: p.is_frozen || false,
+          freezeReason: p.freeze_reason,
+          constructionStatus: p.construction_status,
+          siteStatus: p.site_status,
+          rawAttributes: {
+            data_source_master: p.data_source_master,
+            confidence_score: p.confidence_score,
+            is_fallback: p.is_fallback,
+            land_status_source: p.land_status_source,
+            distance_from_center_m: p.distance_from_center_m,
+            geometry: p.geometry,
+          },
+          verificationSource: (p.data_source_master === 'GIS/DDA' ? 'DDA' : 'DLD') as VerificationSource,
+          verificationDate: new Date().toISOString(),
+        }));
+
+        return {
+          plots,
+          metadata: {
+            total_count: result.metadata?.total_count ?? plots.length,
+            gis_dda_count: result.metadata?.gis_dda_count ?? 0,
+            property_status_count: result.metadata?.property_status_count ?? 0,
+            fallback_count: result.metadata?.fallback_count ?? 0,
+            freehold_enriched_count: result.metadata?.freehold_enriched_count ?? 0,
+            gis_dda_available: result.metadata?.data_sources?.gis_dda_available ?? false,
+            property_status_available: result.metadata?.data_sources?.property_status_available ?? false,
+          },
+        };
+      } catch (error) {
+        console.error('Consolidated location search error:', error);
+        const plots = await this.searchByLocation(safeLat, safeLng, radiusMeters);
+        return {
+          plots,
+          metadata: {
+            total_count: plots.length,
+            gis_dda_count: plots.length,
+            property_status_count: 0,
+            fallback_count: 0,
+            freehold_enriched_count: 0,
+            gis_dda_available: true,
+            property_status_available: false,
+          },
+        };
       }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Unknown error');
-      }
-
-      const rawPlots: any[] = result.data?.plots ?? [];
-
-      // Transform consolidated plots into PlotData format
-      const plots: PlotData[] = rawPlots.map((p: any, index: number) => ({
-        id: p.land_number || p.plot_id || `PLOT_${index}`,
-        area: p.area_sqm || 0,
-        gfa: p.gfa_sqm || 0,
-        floors: p.max_height_floors || 'N/A',
-        zoning: this.getZoningCategory(p.main_landuse, p.sub_landuse),
-        location: p.project_name || p.entity_name || p.area || 'Dubai',
-        x: p.longitude || 0,
-        y: p.latitude || 0,
-        color: this.getZoningColor(p.main_landuse, p.sub_landuse),
-        status: p.land_status || (p.is_frozen ? 'Frozen' : 'Available'),
-        constructionCost: this.getConstructionCost(p.main_landuse),
-        salePrice: this.getSalePrice(p.main_landuse, p.area_sqm),
-        developer: undefined,
-        project: p.project_name,
-        entity: p.entity_name,
-        landUseDetails: undefined,
-        maxHeight: undefined,
-        plotCoverage: p.plot_coverage,
-        isFrozen: p.is_frozen || false,
-        freezeReason: p.freeze_reason,
-        constructionStatus: p.construction_status,
-        siteStatus: p.site_status,
-        rawAttributes: {
-          data_source_master: p.data_source_master,
-          confidence_score: p.confidence_score,
-          is_fallback: p.is_fallback,
-          land_status_source: p.land_status_source,
-          distance_from_center_m: p.distance_from_center_m,
-          geometry: p.geometry,
-        },
-        verificationSource: (p.data_source_master === 'GIS/DDA' ? 'DDA' : 'DLD') as VerificationSource,
-        verificationDate: new Date().toISOString(),
-      }));
-
-      return {
-        plots,
-        metadata: {
-          total_count: result.metadata?.total_count ?? plots.length,
-          gis_dda_count: result.metadata?.gis_dda_count ?? 0,
-          property_status_count: result.metadata?.property_status_count ?? 0,
-          fallback_count: result.metadata?.fallback_count ?? 0,
-          freehold_enriched_count: result.metadata?.freehold_enriched_count ?? 0,
-          gis_dda_available: result.metadata?.data_sources?.gis_dda_available ?? false,
-          property_status_available: result.metadata?.data_sources?.property_status_available ?? false,
-        },
-      };
-    } catch (error) {
-      console.error('Consolidated location search error:', error);
-      // Fallback to legacy spatial search
-      const plots = await this.searchByLocation(safeLat, safeLng, radiusMeters);
-      return {
-        plots,
-        metadata: {
-          total_count: plots.length,
-          gis_dda_count: plots.length,
-          property_status_count: 0,
-          fallback_count: 0,
-          freehold_enriched_count: 0,
-          gis_dda_available: true,
-          property_status_available: false,
-        },
-      };
-    }
+    }, 20 * 1000);
   }
 
   private transformGISData(features: Array<{ attributes: Record<string, unknown>; geometry?: { rings?: number[][][]; x?: number; y?: number } }>): PlotData[] {
