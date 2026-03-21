@@ -41,7 +41,7 @@ export function UpcomingTasks() {
   const { tasks, updateTask } = useCRMStore();
   const navigate = useNavigate();
 
-  const upcomingTasks = tasks
+  const upcomingTasks = [...tasks]
     .filter(t => t.status !== 'completed')
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
     .slice(0, 5);

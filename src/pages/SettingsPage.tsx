@@ -20,6 +20,14 @@ import {
 
 export default function SettingsPage() {
   const { currentAgent } = useCRMStore();
+  const displayName = currentAgent?.name || 'User';
+  const initials = displayName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((name) => name[0])
+    .join('')
+    .toUpperCase() || 'U';
 
   const settingSections = [
     {
@@ -103,7 +111,7 @@ export default function SettingsPage() {
 
               <div className="flex items-center gap-6 mb-6">
                 <div className="w-20 h-20 rounded-full bg-gradient-hero flex items-center justify-center text-white text-2xl font-bold">
-                  {currentAgent.name.split(' ').map(n => n[0]).join('')}
+                  {initials}
                 </div>
                 <div>
                   <Button variant="outline" size="sm">Change Photo</Button>
@@ -114,7 +122,7 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" defaultValue={currentAgent.name} />
+                  <Input id="name" defaultValue={displayName} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>

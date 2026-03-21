@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
@@ -32,9 +31,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!isMounted) return;
+
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -53,6 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!isMounted) return;
+
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -63,23 +68,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchUserData = async (userId: string) => {
     try {
-      // Fetch profile and role in parallel
-      const [profileResult, roleResult] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', userId).single(),
+      const [profileResult, roleResult] = await Promise.allSettled([
+        supabase.from('profiles').select('id, email, full_name, phone, avatar_url').eq('id', userId).maybeSingle(),
         supabase.rpc('get_user_role')
       ]);
 
-      if (profileResult.data) {
-        setProfile(profileResult.data);
+      if (profileResult.status === 'fulfilled') {
+        if (profileResult.value.error) {
+          console.warn('Profile lookup failed:', profileResult.value.error.message);
+        } else {
+          setProfile(profileResult.value.data ?? null);
+        }
+      } else {
+        console.warn('Profile lookup failed:', profileResult.reason);
       }
       
-      if (roleResult.data) {
-        setUserRole(roleResult.data as 'admin' | 'agent');
+      if (roleResult.status === 'fulfilled') {
+        if (roleResult.value.error) {
+          console.warn('Role lookup failed:', roleResult.value.error.message);
+          setUserRole(null);
+        } else {
+          setUserRole((roleResult.value.data as 'admin' | 'agent' | null) ?? null);
+        }
+      } else {
+        console.warn('Role lookup failed:', roleResult.reason);
+        setUserRole(null);
       }
     } catch (error) {
       console.error('Error fetching user data:', error);

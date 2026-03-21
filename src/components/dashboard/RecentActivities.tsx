@@ -38,7 +38,7 @@ const activityColors: Record<ActivityType, string> = {
 export function RecentActivities() {
   const { activities, leads, agents } = useCRMStore();
   
-  const recentActivities = activities
+  const recentActivities = [...activities]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5);
 

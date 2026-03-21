@@ -1,21 +1,15 @@
 import { MainLayout, PageHeader, PageContent } from '@/components/layout/MainLayout';
 import { useCRMStore } from '@/store/crmStore';
-import { formatCurrency, formatCompactNumber } from '@/lib/formatters';
+import { formatCurrency } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { 
   UserPlus, 
-  Phone, 
   Eye, 
   CheckCircle, 
-  TrendingUp, 
   Clock,
   ArrowUpRight,
   ArrowDownRight,
-  Users,
-  Calendar,
-  Target,
-  DollarSign,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -40,9 +34,10 @@ const itemVariants = {
 };
 
 export default function DashboardPage() {
-  const { getMetrics, leads } = useCRMStore();
+  const { getMetrics, currentAgent } = useCRMStore();
   const metrics = getMetrics();
   const navigate = useNavigate();
+  const firstName = currentAgent?.name?.trim().split(/\s+/)[0] || 'there';
 
   const metricCards = [
     {
@@ -87,7 +82,7 @@ export default function DashboardPage() {
     <MainLayout>
       <PageHeader 
         title="Dashboard" 
-        subtitle={`Welcome back, ${useCRMStore.getState().currentAgent.name.split(' ')[0]}!`}
+        subtitle={`Welcome back, ${firstName}!`}
         actions={
           <Button onClick={() => navigate('/leads')} className="bg-gradient-primary hover:opacity-90">
             <UserPlus className="w-4 h-4 mr-2" />
