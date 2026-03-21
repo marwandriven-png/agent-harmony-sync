@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Community Unit Types — Interactive Site Plan</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f1eb;padding:20px;color:#222}
+  h1{font-size:18px;font-weight:600;margin-bottom:4px;color:#1a1a1a}
+  p.sub{font-size:13px;color:#666;margin-bottom:14px}
+  .wrap{max-width:1000px;margin:0 auto}
+  .controls{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+  .btn{display:flex;align-items:center;gap:7px;padding:7px 16px 7px 10px;border-radius:20px;border:2px solid;font-size:13px;cursor:pointer;background:#fff;font-family:inherit;color:#222;font-weight:500;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,.12)}
+  .btn.off{opacity:.28;transform:none;box-shadow:none}
+  .swatch{width:15px;height:15px;border-radius:3px;flex-shrink:0}
+  .svgwrap{width:100%;border:1px solid #ccc;border-radius:12px;overflow:hidden;position:relative;background:#F5F0E8;box-shadow:0 2px 12px rgba(0,0,0,.1)}
+  .svgwrap svg{display:block;width:100%}
+  .info{padding:10px 16px;font-size:13px;color:#555;min-height:38px;border-top:1px solid #ddd;background:#faf8f4;border-radius:0 0 12px 12px;line-height:1.5}
+  .reset{margin-left:auto;padding:7px 16px;border-radius:20px;border:1.5px solid #aaa;font-size:12px;cursor:pointer;background:#fff;color:#555;font-family:inherit;transition:.15s}
+  .reset:hover{background:#f0f0f0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Community Unit Types — Interactive Site Plan</h1>
+  <p class="sub">Click any unit type to highlight it on the plan. Stack multiple types to compare.</p>
+  <div class="controls" id="ctrl">
+    <button class="reset" onclick="resetAll()">Reset</button>
+  </div>
+  <div class="svgwrap">
+    <svg id="sv" viewBox="0 0 860 640" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- Ground -->
+      <rect width="860" height="640" fill="#F5F0E8"/>
+      <rect x="20" y="20" width="820" height="600" rx="14" fill="#EDE6D6" stroke="#C8BE9E" stroke-width="1.5"/>
+      <!-- Community boundary -->
+      <rect x="44" y="44" width="772" height="552" rx="10" fill="none" stroke="#5A8A3A" stroke-width="1.5" stroke-dasharray="10,6" opacity=".5"/>
+
+      <!-- Roads -->
+      <g fill="#B0AA90">
+        <rect x="20" y="44"  width="820" height="22"/>
+        <rect x="20" y="574" width="820" height="22"/>
+        <rect x="20" y="44"  width="22"  height="552"/>
+        <rect x="818" y="44" width="22"  height="552"/>
+        <rect x="42" y="192" width="776" height="18"/>
+        <rect x="42" y="422" width="776" height="18"/>
+        <rect x="290" y="210" width="18" height="212"/>
+        <rect x="500" y="210" width="18" height="212"/>
+        <rect x="710" y="210" width="18" height="212"/>
+      </g>
+      <!-- Road centre-lines -->
+      <line x1="42" x2="818" y1="201" y2="201" stroke="#9A9480" stroke-width="1" stroke-dasharray="16,8" opacity=".5"/>
+      <line x1="42" x2="818" y1="431" y2="431" stroke="#9A9480" stroke-width="1" stroke-dasharray="16,8" opacity=".5"/>
+      <line x1="299" x2="299" y1="210" y2="422" stroke="#9A9480" stroke-width="1" stroke-dasharray="10,6" opacity=".5"/>
+      <line x1="509" x2="509" y1="210" y2="422" stroke="#9A9480" stroke-width="1" stroke-dasharray="10,6" opacity=".5"/>
+      <line x1="719" x2="719" y1="210" y2="422" stroke="#9A9480" stroke-width="1" stroke-dasharray="10,6" opacity=".5"/>
+
+      <!-- Park A (left mid) -->
+      <rect x="64" y="238" width="226" height="172" rx="6" fill="#7BBD60" stroke="#4A9030" stroke-width="1"/>
+      <circle cx="110" cy="272" r="14" fill="#4A9030" opacity=".55"/>
+      <circle cx="160" cy="254" r="11" fill="#4A9030" opacity=".5"/>
+      <circle cx="212" cy="276" r="15" fill="#4A9030" opacity=".55"/>
+      <circle cx="252" cy="260" r="10" fill="#4A9030" opacity=".5"/>
+      <circle cx="132" cy="314" r="13" fill="#4A9030" opacity=".55"/>
+      <circle cx="186" cy="334" r="16" fill="#4A9030" opacity=".5"/>
+      <circle cx="242" cy="318" r="11" fill="#4A9030" opacity=".55"/>
+      <circle cx="103" cy="362" r="12" fill="#4A9030" opacity=".5"/>
+      <circle cx="158" cy="375" r="10" fill="#4A9030" opacity=".55"/>
+      <circle cx="222" cy="368" r="14" fill="#4A9030" opacity=".5"/>
+      <text x="177" y="402" text-anchor="middle" font-size="11" fill="#3A6028" font-weight="700" font-family="sans-serif" opacity=".8">PARK A</text>
+
+      <!-- Park B (bottom) -->
+      <rect x="42" y="440" width="776" height="134" rx="6" fill="#85C46A" stroke="#4A9030" stroke-width="1"/>
+      <circle cx="90"  cy="475" r="13" fill="#4A9030" opacity=".5"/>
+      <circle cx="145" cy="460" r="10" fill="#4A9030" opacity=".45"/>
+      <circle cx="202" cy="478" r="15" fill="#4A9030" opacity=".5"/>
+      <circle cx="270" cy="462" r="11" fill="#4A9030" opacity=".45"/>
+      <circle cx="332" cy="476" r="14" fill="#4A9030" opacity=".5"/>
+      <circle cx="402" cy="458" r="12" fill="#4A9030" opacity=".45"/>
+      <circle cx="462" cy="478" r="16" fill="#4A9030" opacity=".5"/>
+      <circle cx="532" cy="462" r="11" fill="#4A9030" opacity=".45"/>
+      <circle cx="594" cy="476" r="13" fill="#4A9030" opacity=".5"/>
+      <circle cx="652" cy="460" r="10" fill="#4A9030" opacity=".45"/>
+      <circle cx="714" cy="476" r="14" fill="#4A9030" opacity=".5"/>
+      <circle cx="778" cy="462" r="11" fill="#4A9030" opacity=".45"/>
+      <text x="430" y="528" text-anchor="middle" font-size="11" fill="#3A6028" font-weight="700" font-family="sans-serif" opacity=".8">PARK B — BACKS PARK VILLAS FRONT THIS GREEN</text>
+
+      <!-- Unit rectangles (filled by JS) -->
+      <g id="units"></g>
+
+      <!-- Dim backdrop (shown when filtering) -->
+      <rect id="backdrop" x="0" y="0" width="860" height="640" fill="#F5F0E8" opacity="0" pointer-events="none"/>
+
+      <!-- Highlight overlays (labels drawn by JS) -->
+      <g id="overlays" pointer-events="none"></g>
+
+    </svg>
+  </div>
+  <div class="info" id="info">Click a unit type above to highlight it on the plan.</div>
+</div>
+
+<script>
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const sv = document.getElementById('sv');
+const unitsG = document.getElementById('units');
+const overlaysG = document.getElementById('overlays');
+const backdrop = document.getElementById('backdrop');
+
+const TYPES = {
+  b2b:{ label:'Back to back',  col:'#1A6EC4', fill:'#4B9FE8', desc:'Two mirror rows share a single rear boundary wall — no gap or road between their backs.' },
+  sr: { label:'Single row',    col:'#7B3DC8', fill:'#A870F0', desc:'One row only — open park or land sits directly behind with no opposing row.' },
+  bp: { label:'Backs park',    col:'#0E8A5A', fill:'#2DB87A', desc:'Rear boundary directly faces the community park / green belt.' },
+  br: { label:'Back road',     col:'#9A5010', fill:'#D4802A', desc:'Rear of units faces a service or secondary road allowing rear vehicle access.' },
+  eu: { label:'End unit',      col:'#B02020', fill:'#E84040', desc:'Terminating unit of any row — has one free/exposed side wall with no shared party wall.' },
+  cu: { label:'Corner unit',   col:'#9A2060', fill:'#E0409A', desc:'Unit at a road intersection — two street frontages, larger plot, extra windows on both facades.' },
+};
+
+const allUnits = [];
+
+function placeRow(x1, x2, y, h, type) {
+  const uw = 18, gap = 3;
+  let x = x1 + 2;
+  const arr = [];
+  while (x + uw <= x2 - 2) { arr.push({ x, y, w: uw, h, type, eu: false, cu: false }); x += uw + gap; }
+  return arr;
+}
+
+function markEnds(arr) {
+  if (arr.length > 1) { arr[0].eu = true; arr[arr.length - 1].eu = true; }
+}
+
+// --- Define all rows ---
+const topA  = placeRow(64, 818, 66, 58, 'b2b');
+const topB  = placeRow(64, 818,130, 48, 'b2b');
+markEnds(topA); markEnds(topB);
+topA.forEach(u => { if (u.eu) u.cu = true; });
+
+const midL1 = placeRow(308, 500, 214, 32, 'b2b');
+const midL2 = placeRow(308, 500, 252, 32, 'b2b');
+markEnds(midL1); markEnds(midL2);
+
+const midL3 = placeRow(308, 500, 306, 32, 'br');
+const midL4 = placeRow(308, 500, 344, 32, 'br');
+markEnds(midL3); markEnds(midL4);
+[midL3, midL4].forEach(r => r.forEach(u => { if (u.eu) u.cu = true; }));
+
+const midM1 = placeRow(518, 710, 214, 32, 'b2b');
+const midM2 = placeRow(518, 710, 252, 32, 'b2b');
+markEnds(midM1); markEnds(midM2);
+
+const midM3 = placeRow(518, 710, 306, 32, 'br');
+const midM4 = placeRow(518, 710, 344, 32, 'br');
+markEnds(midM3); markEnds(midM4);
+[midM3, midM4].forEach(r => r.forEach(u => { if (u.eu) u.cu = true; }));
+
+const midR1 = placeRow(728, 818, 214, 32, 'b2b');
+const midR2 = placeRow(728, 818, 252, 32, 'b2b');
+markEnds(midR1); markEnds(midR2);
+
+const midR3 = placeRow(728, 818, 306, 32, 'br');
+const midR4 = placeRow(728, 818, 344, 32, 'br');
+markEnds(midR3); markEnds(midR4);
+
+const srRow = placeRow(64, 290, 214, 32, 'sr');
+markEnds(srRow);
+srRow.forEach(u => { if (u.eu) u.cu = true; });
+
+const bpR1  = placeRow(64, 818, 394, 28, 'bp');
+const bpR2  = placeRow(64, 818, 432, 28, 'bp');
+markEnds(bpR1); markEnds(bpR2);
+[bpR1, bpR2].forEach(r => r.forEach(u => { if (u.eu) u.cu = true; }));
+
+const allRows = [topA, topB, midL1, midL2, midL3, midL4, midM1, midM2, midM3, midM4,
+                 midR1, midR2, midR3, midR4, srRow, bpR1, bpR2];
+allRows.forEach(row => row.forEach(u => allUnits.push(u)));
+
+// Draw unit rectangles
+allUnits.forEach((u, i) => {
+  const r = document.createElementNS(SVG_NS, 'rect');
+  r.setAttribute('x', u.x); r.setAttribute('y', u.y);
+  r.setAttribute('width', u.w); r.setAttribute('height', u.h);
+  r.setAttribute('rx', '2');
+  r.setAttribute('fill', '#E8DECC');
+  r.setAttribute('stroke', '#A8987A');
+  r.setAttribute('stroke-width', '0.5');
+  u.el = r;
+  unitsG.appendChild(r);
+});
+
+// Map labels
+const mapLabelDefs = [
+  { text: 'Back to back', x: 430, y:  97, type: 'b2b' },
+  { text: 'Back road',    x: 614, y: 330, type: 'br'  },
+  { text: 'Single row',   x: 177, y: 228, type: 'sr'  },
+  { text: 'Backs park',   x: 430, y: 409, type: 'bp'  },
+];
+const mapLabels = mapLabelDefs.map(d => {
+  const bg = document.createElementNS(SVG_NS, 'rect');
+  bg.setAttribute('rx', '4'); bg.setAttribute('opacity', '0');
+  overlaysG.appendChild(bg);
+  const t = document.createElementNS(SVG_NS, 'text');
+  t.setAttribute('x', d.x); t.setAttribute('y', d.y);
+  t.setAttribute('text-anchor', 'middle');
+  t.setAttribute('font-family', 'sans-serif');
+  t.setAttribute('font-size', '11');
+  t.setAttribute('font-weight', '700');
+  t.setAttribute('opacity', '0');
+  t.textContent = d.text;
+  overlaysG.appendChild(t);
+  return { el: t, bg, type: d.type };
+});
+
+const activeTypes = { b2b: false, sr: false, bp: false, br: false, eu: false, cu: false };
+
+function render() {
+  const any = Object.values(activeTypes).some(Boolean);
+  backdrop.setAttribute('opacity', any ? '0.52' : '0');
+
+  allUnits.forEach(u => {
+    let match = false, t;
+    if      (activeTypes.cu && u.cu)                  { match = true; t = TYPES.cu; }
+    else if (activeTypes.eu && u.eu && !u.cu)         { match = true; t = TYPES.eu; }
+    else if (activeTypes[u.type] && !u.cu && !u.eu)   { match = true; t = TYPES[u.type]; }
+    else if (activeTypes[u.type] && !activeTypes.cu && u.cu)  { match = true; t = TYPES[u.type]; }
+    else if (activeTypes[u.type] && !activeTypes.eu && u.eu)  { match = true; t = TYPES[u.type]; }
+
+    if (!any) {
+      u.el.setAttribute('fill', '#E8DECC');
+      u.el.setAttribute('stroke', '#A8987A');
+      u.el.setAttribute('stroke-width', '0.5');
+      u.el.setAttribute('opacity', '1');
+    } else if (match && t) {
+      u.el.setAttribute('fill', t.fill);
+      u.el.setAttribute('stroke', t.col);
+      u.el.setAttribute('stroke-width', '2');
+      u.el.setAttribute('opacity', '1');
+    } else {
+      u.el.setAttribute('fill', '#D8D0C0');
+      u.el.setAttribute('stroke', '#B0A890');
+      u.el.setAttribute('stroke-width', '0.5');
+      u.el.setAttribute('opacity', '0.2');
+    }
+  });
+
+  mapLabels.forEach(lb => {
+    const on = activeTypes[lb.type];
+    const ty = TYPES[lb.type];
+    lb.el.setAttribute('opacity', on ? '1' : '0');
+    lb.el.setAttribute('fill', on ? ty.col : 'transparent');
+    if (on) {
+      try {
+        const bbox = lb.el.getBBox();
+        lb.bg.setAttribute('x', bbox.x - 7); lb.bg.setAttribute('y', bbox.y - 5);
+        lb.bg.setAttribute('width', bbox.width + 14); lb.bg.setAttribute('height', bbox.height + 10);
+        lb.bg.setAttribute('fill', 'rgba(255,255,255,0.9)');
+        lb.bg.setAttribute('stroke', ty.col); lb.bg.setAttribute('stroke-width', '1.5');
+        lb.bg.setAttribute('opacity', '1');
+      } catch(e) {}
+    } else {
+      lb.bg.setAttribute('opacity', '0');
+    }
+  });
+}
+
+// Build legend buttons
+const ctrl = document.getElementById('ctrl');
+const infoEl = document.getElementById('info');
+Object.entries(TYPES).forEach(([k, t]) => {
+  const btn = document.createElement('button');
+  btn.className = 'btn';
+  btn.innerHTML = `<span class="swatch" style="background:${t.fill};border:2px solid ${t.col}"></span>${t.label}`;
+  btn.style.borderColor = t.col;
+  btn.dataset.type = k;
+  btn.onclick = () => {
+    activeTypes[k] = !activeTypes[k];
+    btn.classList.toggle('off', !activeTypes[k]);
+    infoEl.innerHTML = activeTypes[k]
+      ? `<strong style="color:${t.col}">${t.label}</strong> &nbsp; ${t.desc}`
+      : 'Click a unit type above to highlight it on the plan.';
+    render();
+  };
+  ctrl.insertBefore(btn, ctrl.querySelector('.reset'));
+});
+
+function resetAll() {
+  Object.keys(activeTypes).forEach(k => activeTypes[k] = false);
+  document.querySelectorAll('.btn[data-type]').forEach(b => b.classList.remove('off'));
+  infoEl.textContent = 'Click a unit type above to highlight it on the plan.';
+  render();
+}
+</script>
+</body>
+</html>
