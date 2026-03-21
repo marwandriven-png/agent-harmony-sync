@@ -82,6 +82,7 @@ function matchesCorner(villa: CommunityVilla, intel: VillaIntelligence | undefin
 }
 
 function matchesEndUnit(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {
+  if (matchesCorner(villa, intel)) return false;
   return intel?.layout.positionType === 'end' || villa.position_type === 'end';
 }
 

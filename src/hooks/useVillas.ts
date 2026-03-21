@@ -223,16 +223,17 @@ export function useVillaWithDetails(villaId: string | undefined) {
 
 export function useVillaListingCounts(villaIds: string[]) {
   const { user } = useAuth();
+  const realIds = villaIds.filter(id => !id.startsWith('gis:')).sort();
 
   return useQuery({
-    queryKey: ['villa-listing-counts', villaIds],
+    queryKey: ['villa-listing-counts', realIds],
     queryFn: async () => {
-      if (villaIds.length === 0) return {};
+      if (realIds.length === 0) return {};
 
       const { data, error } = await supabase
         .from('bayut_listings')
         .select('villa_id')
-        .in('villa_id', villaIds)
+        .in('villa_id', realIds)
         .eq('is_active', true);
 
       if (error) throw error;
@@ -243,7 +244,7 @@ export function useVillaListingCounts(villaIds: string[]) {
       });
       return counts;
     },
-    enabled: !!user && villaIds.length > 0,
+    enabled: !!user && realIds.length > 0,
   });
 }
 

@@ -234,39 +234,45 @@ export default function PlotsPage() {
   // Client-side filter function for GIS-matched villas (apply active filters)
   const applyVillaFilters = useCallback((villa: typeof villas[0]): boolean => {
     const intel = intelligenceMap.get(villa.id);
-    // If PI intelligence is still loading (intel undefined) and a PI-only filter
-    // is active, let the villa pass — we apply the filter only when we have data.
     const piReady = intel !== undefined;
+    const layout = intel?.layout;
+
+    // Unit-type model follows the uploaded reference:
+    // - row type (B2B / Single Row / Backs Park / Backs Road / Open View)
+    // - positional overlays (Corner / End Unit)
+    // Corner is a stronger overlay than End Unit, so corners are excluded from end-unit results.
+    const matchesCorner = !!villa.is_corner || layout?.positionType === 'corner';
+    const matchesEndUnit = !matchesCorner && (villa.position_type === 'end' || layout?.positionType === 'end');
+    const matchesBackToBack = layout?.layoutType === 'back_to_back';
+    const matchesSingleRow = layout?.layoutType === 'single_row' || (!!villa.is_single_row && layout?.layoutType !== 'back_to_back');
+    const matchesBacksPark = !!villa.backs_park || layout?.backFacing === 'park';
+    const matchesBacksRoad = !!villa.backs_road || layout?.backFacing === 'road';
+    const matchesOpenView = layout?.backFacing === 'open_space';
 
     if (villaFilters.bedrooms && villa.bedrooms !== villaFilters.bedrooms) return false;
     if (villaFilters.minSize && (villa.plot_size_sqft ?? 0) < villaFilters.minSize) return false;
     if (villaFilters.maxSize && (villa.plot_size_sqft ?? 0) > villaFilters.maxSize) return false;
 
-    // Layout match: pass villa through while PI not loaded yet; enforce once ready
     if (villaFilters.isCorner) {
-      if (!villa.is_corner && piReady && intel.layout.positionType !== 'corner') return false;
+      if (!matchesCorner) return false;
     }
     if (villaFilters.isSingleRow) {
-      // Strict: if intel says back_to_back, NEVER pass as single_row (even if DB flag says so)
-      if (piReady && intel.layout.layoutType === 'back_to_back') return false;
-      if (!villa.is_single_row && piReady && intel.layout.layoutType !== 'single_row') return false;
+      if (!matchesSingleRow) return false;
     }
     if (villaFilters.isBackToBack) {
-      if (piReady && intel.layout.layoutType !== 'back_to_back') return false;
+      if (!matchesBackToBack) return false;
     }
     if (villaFilters.isEndUnit) {
-      if (villa.position_type !== 'end' && piReady && intel.layout.positionType !== 'end') return false;
+      if (!matchesEndUnit) return false;
     }
     if (villaFilters.backsPark) {
-      // backFacing and layoutType are independent — a B2B row can face a park
-      if (!villa.backs_park && piReady && intel.layout.backFacing !== 'park') return false;
+      if (!matchesBacksPark) return false;
     }
     if (villaFilters.backsRoad) {
-      // backFacing and layoutType are independent
-      if (!villa.backs_road && piReady && intel.layout.backFacing !== 'road') return false;
+      if (!matchesBacksRoad) return false;
     }
     if (villaFilters.backsOpenSpace) {
-      if (piReady && intel.layout.backFacing !== 'open_space') return false;
+      if (!matchesOpenView) return false;
     }
 
     // Amenity match
