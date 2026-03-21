@@ -129,7 +129,6 @@ export function normalizeCoordinatesForSearch(lat: number, lng: number): { lat: 
 class DDAGISService {
   async testConnection(): Promise<boolean> {
     try {
-      console.log('Testing GIS connection via edge function...');
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dda-gis-proxy?action=test`,
@@ -148,7 +147,6 @@ class DDAGISService {
       }
 
       const result = await response.json();
-      console.log('GIS test result:', result);
       return result.connected === true;
     } catch (error) {
       console.error('GIS connection test failed:', error);
@@ -158,7 +156,6 @@ class DDAGISService {
 
   async fetchPlots(limit: number = 100): Promise<PlotData[]> {
     try {
-      console.log(`Fetching plots via edge function (limit: ${limit})...`);
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dda-gis-proxy?action=fetch&limit=${limit}`,
@@ -185,8 +182,6 @@ class DDAGISService {
       if (!data.features || !Array.isArray(data.features)) {
         throw new Error('Invalid response format from GIS service');
       }
-
-      console.log(`Received ${data.features.length} features from GIS`);
       return this.transformGISData(data.features);
     } catch (error) {
       console.error('DDA GIS API Error:', error);
@@ -361,7 +356,6 @@ class DDAGISService {
       if (!data.features || data.features.length === 0) return null;
 
       const attrs = data.features[0].attributes;
-      console.log('[AP Fallback] Building affection plan from plot attributes:', Object.keys(attrs));
 
       return {
         plotNumber: attrs.PLOT_NUMBER || plotId,
@@ -634,7 +628,6 @@ class DDAGISService {
     } catch (error) {
       console.error('Consolidated location search error:', error);
       // Fallback to legacy spatial search
-      console.log('Falling back to legacy GIS-only spatial search...');
       const plots = await this.searchByLocation(safeLat, safeLng, radiusMeters);
       return {
         plots,
@@ -930,12 +923,10 @@ class DLDFallbackService {
     // Check local cache first
     const cached = this.cache.get(plotNumber);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL_MS) {
-      console.log(`DLD Cache hit for plot ${plotNumber}`);
       return cached.data;
     }
 
     try {
-      console.log(`Querying DLD fallback for plot ${plotNumber}`);
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dld-status-proxy?action=lookup&plotNumber=${encodeURIComponent(plotNumber)}`,

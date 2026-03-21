@@ -210,19 +210,16 @@ export const LandOSMapView = memo(function LandOSMapView({
     }
 
     // Fetch real boundary from DDA GIS
-    console.log(`[GIS] Fetching real boundary for plot: ${plotNumber}`);
     const rings = await gisService.fetchPlotBoundary(plotNumber);
     gisCacheRef.current.set(plotNumber, rings);
 
     if (rings) {
-      console.log(`[GIS] Received ${rings.length} ring(s) with ${rings[0]?.length || 0} vertices`);
       renderBoundaryLayers(bg, rings);
       gisLoadedPlotsRef.current.add(plotId);
       const genPoly = polygonMapRef.current.get(plotId);
       if (genPoly) genPoly.setStyle({ opacity: 0, fillOpacity: 0 });
       if (gg) gg.clearLayers();
     } else {
-      console.log(`[GIS] No boundary found for ${plotNumber}, using generated polygon`);
     }
   }, []);
 
