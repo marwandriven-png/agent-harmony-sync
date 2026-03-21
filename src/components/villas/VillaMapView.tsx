@@ -177,6 +177,18 @@ function buildGisDiamond(): string {
   </svg>`;
 }
 
+/** Neutral pin for filtered matches that don't have a resolved class yet */
+function buildFallbackMatchPin(selected = false): string {
+  const glow = selected
+    ? 'filter:drop-shadow(0 0 6px rgba(255,255,255,0.5)) drop-shadow(0 2px 4px rgba(0,0,0,0.6))'
+    : 'filter:drop-shadow(0 2px 4px rgba(0,0,0,0.55))';
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" style="${glow}">
+    <circle cx="9" cy="9" r="6.5" fill="#0f172a" stroke="#e2e8f0" stroke-width="2" />
+    <circle cx="9" cy="9" r="2.25" fill="#ffffff" />
+  </svg>`;
+}
+
 // ─── Popup ─────────────────────────────────────────────────────────────────
 
 function buildPopup(
@@ -376,22 +388,27 @@ export const VillaMapView = memo(function VillaMapView({
     markerMapRef.current.clear();
 
     const intelLoaded = (intelligenceMap?.size ?? 0) > 0;
+    const duplicatePositionCounts = new Map<string, number>();
 
     villas.forEach((villa, idx) => {
       const intel = intelligenceMap?.get(villa.id);
       const cls   = resolveDisplayedClass(villa, intel, intelLoaded, activeFilters);
 
-      // Rule 1: no classification → no pin
-      if (!cls) return;
-
-      const pos      = getVillaPosition(villa, idx);
+      const basePos   = getVillaPosition(villa, idx);
+      const posKey    = `${basePos[0].toFixed(6)}:${basePos[1].toFixed(6)}`;
+      const dupIndex  = duplicatePositionCounts.get(posKey) ?? 0;
+      duplicatePositionCounts.set(posKey, dupIndex + 1);
+      const posObject = dupIndex > 0
+        ? offsetM(basePos[0], basePos[1], dupIndex * 7, (dupIndex * 47) % 360)
+        : { lat: basePos[0], lng: basePos[1] };
+      const pos: [number, number] = [posObject.lat, posObject.lng];
       const isMatch  = matchedVillaIds?.has(villa.id) ?? false;
       const selected = villa.id === selectedVillaId;
-      const dist     = searchCenter ? haversineDistance(searchCenter.lat, searchCenter.lng, pos[0], pos[1]) : undefined;
+      const dist     = searchCenter ? haversineDistance(searchCenter.lat, searchCenter.lng, basePos[0], basePos[1]) : undefined;
 
-      const html  = buildClassPin(cls, selected || isMatch);
-      const w     = cls.badge.length <= 2 ? 34 : 42;
-      const h     = 29; // 22 + 7 (tail)
+      const html  = cls ? buildClassPin(cls, selected || isMatch) : buildFallbackMatchPin(selected || isMatch);
+      const w     = cls ? (cls.badge.length <= 2 ? 34 : 42) : 18;
+      const h     = cls ? 29 : 18;
 
       const icon = L.divIcon({
         html,
@@ -411,7 +428,7 @@ export const VillaMapView = memo(function VillaMapView({
         className: 'villa-map-popup', maxWidth: 250, closeButton: true, autoPan: true,
       });
       marker.bindTooltip(
-        `<strong style="color:${cls.fill}">${cls.label}</strong>&nbsp;&mdash;&nbsp;${
+        `<strong style="color:${cls?.fill ?? '#e2e8f0'}">${cls?.label ?? 'Matched Result'}</strong>&nbsp;&mdash;&nbsp;${
           villa.villa_number.startsWith('gis:') ? `Plot ${villa.plot_number}` : `Villa ${villa.villa_number}`
         }`,
         { direction: 'top', className: 'villa-tooltip', offset: [0, -h], permanent: false }
@@ -521,12 +538,16 @@ export const VillaMapView = memo(function VillaMapView({
   // ── Build legend (only active classes) ────────────────────────────────
   const filterOn    = hasActiveClassFilter(activeFilters);
   const classCounts: Record<string, number> = {};
+  let unclassifiedCount = 0;
   if (intelligenceMap) {
     const intelLoaded = intelligenceMap.size > 0;
     for (const villa of villas) {
       const intel = intelligenceMap.get(villa.id);
       const cls   = resolveDisplayedClass(villa, intel, intelLoaded, activeFilters);
-      if (!cls) continue;
+      if (!cls) {
+        unclassifiedCount += 1;
+        continue;
+      }
       classCounts[cls.key] = (classCounts[cls.key] ?? 0) + 1;
     }
   }
@@ -577,6 +598,15 @@ export const VillaMapView = memo(function VillaMapView({
                 </div>
               )
           }
+          {unclassifiedCount > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 shrink-0 rounded-full border-2 border-[hsl(220,20%,92%)] bg-[hsl(220,35%,12%)]" />
+              <span className="text-[9px] text-[hsl(220,10%,62%)]">
+                Matched Result
+                <span className="text-[hsl(220,10%,38%)] ml-1">({unclassifiedCount})</span>
+              </span>
+            </div>
+          )}
         </div>
         {amenities.length > 0 && (
           <div className="mt-2 pt-1.5 border-t border-[hsl(220,20%,14%)] space-y-1">
