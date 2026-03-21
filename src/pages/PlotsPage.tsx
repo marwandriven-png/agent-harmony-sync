@@ -136,6 +136,15 @@ export default function PlotsPage() {
     return [...gisPlots, ...mockCommunityPlots.filter(p => !ids.has(p.id))];
   }, [gisContextPlots, gisResults, mockCommunityPlots]);
 
+  const plotCoordinateLookup = useMemo(() => {
+    const lookup = new Map<string, { lat: number; lng: number }>();
+    for (const plot of nearbyPlots) {
+      const coords = normalizeCoordinatesForSearch(plot.y, plot.x);
+      if (coords) lookup.set(plot.id, coords);
+    }
+    return lookup;
+  }, [nearbyPlots]);
+
   /**
    * Convert GIS result plots (PlotData) → synthetic CommunityVilla objects so the
    * Property Intelligence Engine can classify and color-code them on the map.
@@ -512,6 +521,7 @@ export default function PlotsPage() {
             amenities={allAmenities}
             intelligenceMap={intelligenceMap}
             activeFilters={villaFilters}
+            plotCoordinateLookup={plotCoordinateLookup}
           />
         </div>
       </>

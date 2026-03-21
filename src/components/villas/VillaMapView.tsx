@@ -45,6 +45,7 @@ interface VillaMapViewProps {
   amenities?:       DetectedAmenity[];
   intelligenceMap?: Map<string, VillaIntelligence>;
   activeFilters?:   VillaSearchFilters;
+  plotCoordinateLookup?: Map<string, { lat: number; lng: number }>;
 }
 
 // ─── Classification palette ───────────────────────────────────────────────────
@@ -275,8 +276,17 @@ const COMMUNITY_CENTERS: Record<string, [number, number]> = {
   'tilal al ghaf':          [25.0650, 55.2400],
 };
 
-export function getVillaPosition(villa: CommunityVilla, idx: number): [number, number] {
+export function getVillaPosition(
+  villa: CommunityVilla,
+  idx: number,
+  plotCoordinateLookup?: Map<string, { lat: number; lng: number }>,
+): [number, number] {
   if (villa.latitude && villa.longitude) return [villa.latitude, villa.longitude];
+  const linkedPlotId = villa.plot_number ?? villa.plot_id ?? (villa.villa_number.startsWith('gis:') ? villa.villa_number.replace(/^gis:/, '') : null);
+  if (linkedPlotId) {
+    const linkedCoords = plotCoordinateLookup?.get(linkedPlotId);
+    if (linkedCoords) return [linkedCoords.lat, linkedCoords.lng];
+  }
   const key = Object.keys(COMMUNITY_CENTERS).find(k => villa.community_name.toLowerCase().includes(k));
   if (key) {
     const b = COMMUNITY_CENTERS[key];
@@ -299,7 +309,7 @@ function offsetM(lat: number, lng: number, m: number, deg: number) {
 export const VillaMapView = memo(function VillaMapView({
   villas, selectedVillaId, onSelectVilla, onRadiusSearch,
   searchCenter, searchRadius = 1000, matchedVillaIds,
-  gisResults = [], amenities = [], intelligenceMap, activeFilters,
+  gisResults = [], amenities = [], intelligenceMap, activeFilters, plotCoordinateLookup,
 }: VillaMapViewProps) {
   const containerRef      = useRef<HTMLDivElement>(null);
   const mapRef            = useRef<L.Map | null>(null);
@@ -394,7 +404,7 @@ export const VillaMapView = memo(function VillaMapView({
       const intel = intelligenceMap?.get(villa.id);
       const cls   = resolveDisplayedClass(villa, intel, intelLoaded, activeFilters);
 
-      const basePos   = getVillaPosition(villa, idx);
+      const basePos   = getVillaPosition(villa, idx, plotCoordinateLookup);
       const posKey    = `${basePos[0].toFixed(6)}:${basePos[1].toFixed(6)}`;
       const dupIndex  = duplicatePositionCounts.get(posKey) ?? 0;
       duplicatePositionCounts.set(posKey, dupIndex + 1);
@@ -437,7 +447,7 @@ export const VillaMapView = memo(function VillaMapView({
       lg.addLayer(marker);
       markerMapRef.current.set(villa.id, marker);
     });
-  }, [villas, searchCenter, matchedVillaIds, intelligenceMap, selectedVillaId, activeFilters]);
+  }, [villas, searchCenter, matchedVillaIds, intelligenceMap, selectedVillaId, activeFilters, plotCoordinateLookup]);
 
   // ── GIS plot pins (only when no class filter active) ───────────────────
   useEffect(() => {

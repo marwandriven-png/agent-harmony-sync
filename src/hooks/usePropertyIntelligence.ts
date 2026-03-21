@@ -70,11 +70,13 @@ export function usePropertyIntelligence(
       const chunk = villas.slice(idx, end);
 
       for (const villa of chunk) {
-        // Villas without GPS coordinates can't be classified
-        if (!villa.latitude || !villa.longitude) continue;
-
         // If villa has a matching GIS plot, use polygon-aware analysis
-        const villaPlot = villa.plot_number ? plotById.get(villa.plot_number) ?? null : null;
+        const villaPlot = (villa.plot_number ? plotById.get(villa.plot_number) : null)
+          ?? (villa.plot_id ? plotById.get(villa.plot_id) : null)
+          ?? null;
+
+        // Villas without a linked GIS plot still need coordinates for centroid fallback
+        if (!villaPlot && (!villa.latitude || !villa.longitude)) continue;
 
         let layout:    LayoutAnalysis;
         let amenities: DetectedAmenity[];
