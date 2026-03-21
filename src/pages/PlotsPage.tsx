@@ -258,12 +258,11 @@ export default function PlotsPage() {
       if (villa.position_type !== 'end' && piReady && intel.layout.positionType !== 'end') return false;
     }
     if (villaFilters.backsPark) {
-      // Strict: B2B villas cannot back park (their back faces another villa)
-      if (piReady && intel.layout.layoutType === 'back_to_back') return false;
+      // backFacing and layoutType are independent — a B2B row can face a park
       if (!villa.backs_park && piReady && intel.layout.backFacing !== 'park') return false;
     }
     if (villaFilters.backsRoad) {
-      if (piReady && intel.layout.layoutType === 'back_to_back') return false;
+      // backFacing and layoutType are independent
       if (!villa.backs_road && piReady && intel.layout.backFacing !== 'road') return false;
     }
     if (villaFilters.backsOpenSpace) {

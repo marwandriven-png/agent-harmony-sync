@@ -318,15 +318,16 @@ export class PropertyIntelligenceEngine {
 
     const layoutType: LayoutType = isB2B ? 'back_to_back' : 'single_row';
 
-    // Back-facing: only meaningful for single_row
+    // Back-facing: what is ACTUALLY at the rear, regardless of layout type.
+    // B2B means another villa row is adjacent, but the back of that row
+    // may itself face a park/road. We set backFacing = 'villa' for B2B
+    // UNLESS a park or road is also directly detectable behind this unit
+    // (within tighter radius — indicating the park/road is really close).
     let backFacing: BackFacingType = 'community_edge';
-    if (!isB2B) {
-      if (rearRoad)      backFacing = 'road';
-      else if (rearPark) backFacing = 'park';
-      else if (rearOpen) backFacing = 'open_space';
-    } else {
-      backFacing = 'villa'; // B2B always faces another villa at the back
-    }
+    if (rearPark)        backFacing = 'park';
+    else if (rearRoad)   backFacing = 'road';
+    else if (rearOpen)   backFacing = 'open_space';
+    else if (isB2B)      backFacing = 'villa';
 
     return { layoutType, backFacing };
   }

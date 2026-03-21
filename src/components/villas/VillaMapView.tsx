@@ -95,12 +95,12 @@ function matchesSingleRow(villa: CommunityVilla, intel: VillaIntelligence | unde
 }
 
 function matchesBacksPark(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {
-  if (intel?.layout.layoutType === 'back_to_back') return false;
+  // backFacing='park' and B2B are independent. A row can back a park AND be B2B.
   return intel?.layout.backFacing === 'park' || villa.backs_park;
 }
 
 function matchesBacksRoad(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {
-  if (intel?.layout.layoutType === 'back_to_back') return false;
+  // backFacing='road' and B2B are independent.
   return intel?.layout.backFacing === 'road' || villa.backs_road;
 }
 
