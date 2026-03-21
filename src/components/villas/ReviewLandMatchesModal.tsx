@@ -27,6 +27,8 @@ export function ReviewLandMatchesModal({ open, onClose, gisResults }: ReviewLand
   const uniquePlots = useMemo(() => {
     const map = new Map<string, GISSearchResult>();
     gisResults.forEach(r => {
+      // Skip plots with zero or missing GFA — no buildable data
+      if (!r.plot.gfa || r.plot.gfa <= 0) return;
       const existing = map.get(r.plot.id);
       if (!existing || r.confidenceScore > existing.confidenceScore) map.set(r.plot.id, r);
     });

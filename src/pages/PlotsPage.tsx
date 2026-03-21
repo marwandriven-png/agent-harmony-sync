@@ -154,6 +154,8 @@ export default function PlotsPage() {
         // This is the same function used by VillaMapView to place GIS pins correctly
         const coords = normalizeCoordinatesForSearch(plot.y, plot.x);
         if (!coords) return null;
+        // Exclude plots with zero or missing GFA — no buildable data
+        if (!plot.gfa || plot.gfa <= 0) return null;
         return {
           id:                    `gis:${plot.id}`,
           community_name:        plot.location || plot.project || 'GIS Plot',

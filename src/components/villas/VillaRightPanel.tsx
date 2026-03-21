@@ -129,6 +129,8 @@ export const VillaRightPanel = memo(function VillaRightPanel({
     const unique = new Map<string, GISSearchResult>();
 
     gisResults.forEach((result) => {
+      // Exclude plots with zero or missing GFA
+      if (!result.plot.gfa || result.plot.gfa <= 0) return;
       const existing = unique.get(result.plot.id);
       if (!existing || result.confidenceScore > existing.confidenceScore) {
         unique.set(result.plot.id, result);
