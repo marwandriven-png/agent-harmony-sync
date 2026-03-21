@@ -117,7 +117,17 @@ function resolveDisplayedClass(
   filters: VillaSearchFilters | undefined,
 ): VillaClass | null {
   const primary = resolveVillaClass(villa, intel, intelLoaded);
-  if (!filters || !hasActiveClassFilter(filters)) return primary;
+
+  const referenceAlignedRowClass = (() => {
+    if (matchesCorner(villa, intel)) return VILLA_CLASSES.corner;
+    if (matchesEndUnit(villa, intel)) return VILLA_CLASSES.end_unit;
+    if (matchesBacksPark(villa, intel)) return VILLA_CLASSES.backs_park;
+    if (matchesBacksRoad(villa, intel)) return VILLA_CLASSES.backs_road;
+    if (matchesOpenView(intel)) return VILLA_CLASSES.open_view;
+    return primary;
+  })();
+
+  if (!filters || !hasActiveClassFilter(filters)) return referenceAlignedRowClass;
 
   const matchedFilteredClass: VillaClass[] = [];
 
@@ -139,7 +149,7 @@ function resolveDisplayedClass(
 
   if (hasExplicitClassToggle) return null;
 
-  return primary;
+  return referenceAlignedRowClass;
 }
 
 // ─── Pin SVG builders ─────────────────────────────────────────────────────────

@@ -137,7 +137,7 @@ export default function PlotsPage() {
   }, [gisContextPlots, gisResults, mockCommunityPlots]);
 
   const plotCoordinateLookup = useMemo(() => {
-    const lookup: Map<string, { lat: number; lng: number }> = new Map();
+    const lookup = new globalThis.Map<string, { lat: number; lng: number }>();
     for (const plot of nearbyPlots) {
       const coords = normalizeCoordinatesForSearch(plot.y, plot.x);
       if (coords) lookup.set(plot.id, coords);

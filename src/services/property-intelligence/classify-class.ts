@@ -61,17 +61,18 @@ export function resolveVillaClass(
   const bf  = intel?.layout.backFacing;
   const hasVastu = intel?.tags.some(t => t.label.includes('Vastu')) || !!villa.vastu_compliant;
 
-  // Row-type illustration follows the community type reference:
-  // specific rear condition (park/road/open) should illustrate before generic row layout.
-  if (bf === 'park'        || villa.backs_park)    return VILLA_CLASSES.backs_park;
-  if (bf === 'road'        || villa.backs_road)    return VILLA_CLASSES.backs_road;
-  if (bf === 'open_space')                         return VILLA_CLASSES.open_view;
+  // B2B is absolute highest — nothing overrides it
   if (lt === 'back_to_back')                       return VILLA_CLASSES.back_to_back;
   if (lt === 'single_row')                         return VILLA_CLASSES.single_row;
 
   // Positional (only when layout is not B2B/SR from intel)
   if (pt === 'corner'      || villa.is_corner)    return VILLA_CLASSES.corner;
   if (pt === 'end')                                return VILLA_CLASSES.end_unit;
+
+  // Back-facing sub-classification for single-row villas
+  if (bf === 'park'        || villa.backs_park)    return VILLA_CLASSES.backs_park;
+  if (bf === 'road'        || villa.backs_road)    return VILLA_CLASSES.backs_road;
+  if (bf === 'open_space')                         return VILLA_CLASSES.open_view;
 
   // DB flag fallback (when intel hasn't run yet for this villa)
   if (villa.is_single_row)                         return VILLA_CLASSES.single_row;
