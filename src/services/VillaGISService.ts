@@ -111,24 +111,27 @@ class VillaGISService {
       return this.villaCoordinateInFlight;
     }
 
-    this.villaCoordinateInFlight = supabase
-      .from('community_villas')
-      .select('id, latitude, longitude')
-      .not('latitude', 'is', null)
-      .not('longitude', 'is', null)
-      .limit(1000)
-      .then(({ data }) => {
+    this.villaCoordinateInFlight = (async () => {
+      try {
+        const { data } = await supabase
+          .from('community_villas')
+          .select('id, latitude, longitude')
+          .not('latitude', 'is', null)
+          .not('longitude', 'is', null)
+          .limit(1000);
+
         const rows = (data ?? []).filter(
           (villa): villa is { id: string; latitude: number; longitude: number } =>
             typeof villa.id === 'string' && typeof villa.latitude === 'number' && typeof villa.longitude === 'number'
         );
+
         this.villaCoordinateCache = rows;
         this.villaCoordinateCacheExpiresAt = Date.now() + 60 * 1000;
         return rows;
-      })
-      .finally(() => {
+      } finally {
         this.villaCoordinateInFlight = null;
-      });
+      }
+    })();
 
     return this.villaCoordinateInFlight;
   }
