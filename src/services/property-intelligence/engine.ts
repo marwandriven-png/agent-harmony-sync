@@ -510,13 +510,12 @@ export class PropertyIntelligenceEngine {
       tags.push({ label: 'End Unit', category: 'position', emoji: '↔️', color: 'bg-purple-500/10 text-purple-400' });
     }
 
-    // ── Back facing (only for single_row — B2B implies facing=villa, no separate tag) ─────
-    if (lt !== 'back_to_back') {
-      if (bf === 'road'       || villa.backs_road)  tags.push({ label: 'Backs Road',     category: 'facing', emoji: '🛣️', color: 'bg-yellow-500/10 text-yellow-400' });
-      else if (bf === 'park'  || villa.backs_park)  tags.push({ label: 'Backs Park',     category: 'facing', emoji: '🌳', color: 'bg-emerald-500/10 text-emerald-400' });
-      else if (bf === 'open_space')                 tags.push({ label: 'Open View',      category: 'facing', emoji: '🏞️', color: 'bg-sky-500/10 text-sky-400' });
-      // community_edge: only add if no other facing is detected — rare, skip for cleanliness
-    }
+    // ── Back facing follows the uploaded unit-type reference as an independent dimension.
+    // Park / Road / Open View can coexist with row-type logic; only skip explicit villa/community-edge defaults.
+    if (bf === 'road'       || villa.backs_road)  tags.push({ label: 'Backs Road',     category: 'facing', emoji: '🛣️', color: 'bg-yellow-500/10 text-yellow-400' });
+    else if (bf === 'park'  || villa.backs_park)  tags.push({ label: 'Backs Park',     category: 'facing', emoji: '🌳', color: 'bg-emerald-500/10 text-emerald-400' });
+    else if (bf === 'open_space')                 tags.push({ label: 'Open View',      category: 'facing', emoji: '🏞️', color: 'bg-sky-500/10 text-sky-400' });
+    // community_edge / villa: skip for cleanliness
 
     // ── Vastu ─────────────────────────────────────────────────────────────────
     const vastu = classifyVastu(villa.facing_direction);
