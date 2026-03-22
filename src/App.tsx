@@ -12,7 +12,6 @@ const DashboardPage       = lazy(() => import("./pages/DashboardPage"));
 const LeadsPage           = lazy(() => import("./pages/LeadsPage"));
 const LeadDetailPage      = lazy(() => import("./pages/LeadDetailPage"));
 const BuyerMatchingPage   = lazy(() => import("./pages/BuyerMatchingPage"));
-const ColdCallsPage       = lazy(() => import("./pages/ColdCallsPage"));
 const CalendarPage        = lazy(() => import("./pages/CalendarPage"));
 const TasksPage           = lazy(() => import("./pages/TasksPage"));
 const PropertiesPage      = lazy(() => import("./pages/PropertiesPage"));
@@ -22,9 +21,6 @@ const ReportsPage         = lazy(() => import("./pages/ReportsPage"));
 const SettingsPage        = lazy(() => import("./pages/SettingsPage"));
 const AuthPage            = lazy(() => import("./pages/AuthPage"));
 const SetupPage           = lazy(() => import("./pages/SetupPage"));
-const OutreachCenterPage  = lazy(() => import("./pages/OutreachCenterPage"));
-const AllLeadsPage        = lazy(() => import("./pages/AllLeadsPage"));
-const LeadGenerationPage  = lazy(() => import("./pages/LeadGenerationPage"));
 const NotFound            = lazy(() => import("./pages/NotFound"));
 
 // ─── Minimal page-level loader ────────────────────────────────────────────────
@@ -70,7 +66,6 @@ const App = () => (
               <Route path="/leads" element={<ProtectedRoute><LeadsPage /></ProtectedRoute>} />
               <Route path="/leads/:id" element={<ProtectedRoute><LeadDetailPage /></ProtectedRoute>} />
               <Route path="/leads/:id/matching" element={<ProtectedRoute><BuyerMatchingPage /></ProtectedRoute>} />
-              <Route path="/cold-calls" element={<ProtectedRoute><ColdCallsPage /></ProtectedRoute>} />
               <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
               <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
               <Route path="/properties" element={<ProtectedRoute><PropertiesPage /></ProtectedRoute>} />
@@ -78,9 +73,6 @@ const App = () => (
               <Route path="/templates" element={<ProtectedRoute><TemplatesPage /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-              <Route path="/outreach" element={<ProtectedRoute><OutreachCenterPage /></ProtectedRoute>} />
-              <Route path="/all-leads" element={<ProtectedRoute><AllLeadsPage /></ProtectedRoute>} />
-              <Route path="/lead-generation" element={<ProtectedRoute><LeadGenerationPage /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
