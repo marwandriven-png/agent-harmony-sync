@@ -263,7 +263,7 @@ export class PropertyIntelligenceEngine {
       (road.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, road.edges, this.tolM, 3) >= 3)
       || this._hasRearContextCandidate(villaCentroid, backEdges, road, resolvedFrontBearing, 18)
     );
-    const rearSeparators = [...roads, ...opens, ...residential];
+    const rearSeparators = [...roads, ...opens];
     const backsPark = parks.some((park) =>
       this._hasDirectRearPolygonExposure(villaCentroid, backEdges, park, resolvedFrontBearing, 12, rearSeparators)
     );
@@ -531,22 +531,48 @@ export class PropertyIntelligenceEngine {
       ...candidate.polygon,
       ...candidate.edges.map((edge) => edge.mid),
     ];
+    const backBearing = (frontBearing + 180) % 360;
 
     return backEdges.some((edge) => {
-      const hasRearAlignedPolygonPoint = candidatePoints.some((point) =>
-        Geo.sideFB(Geo.bearingFrom(edge.mid, point), frontBearing) === 'back'
+      const samplePoints = this._sampleEdgePoints(edge);
+      const hasRearAlignedPolygonPoint = samplePoints.some((sample) =>
+        candidatePoints.some((point) => this._projectPointOntoBearing(sample, point, backBearing).along > 0.5)
       );
 
       if (!hasRearAlignedPolygonPoint) return false;
 
-      return this._sampleEdgePoints(edge).some((sample) => {
+      return samplePoints.some((sample) => {
+        const rearCandidatePoints = candidatePoints
+          .map((point) => ({ point, ...this._projectPointOntoBearing(sample, point, backBearing) }))
+          .filter(({ along }) => along > 0.5);
+
+        if (rearCandidatePoints.length === 0) {
+          return false;
+        }
+
         const candidateDistance = Geo.distancePointToPolygonM(sample, candidate.polygon!);
         if (candidateDistance > maxGapM) {
           return false;
         }
 
+        const nearestCandidateAlong = rearCandidatePoints.reduce((min, point) => Math.min(min, point.along), Number.POSITIVE_INFINITY);
+        const lateralTolerance = Math.max(
+          8,
+          Math.min(
+            20,
+            rearCandidatePoints.reduce((min, point) => Math.min(min, point.lateral), Number.POSITIVE_INFINITY) + 2,
+          ),
+        );
+
         const hasRearBlocker = blockers.some((blocker) => {
           if (blocker.plot.id === candidate.plot.id || blocker.polygon == null) return false;
+
+          const sharesRearBoundary = blocker.edges.length > 0
+            && Geo.sharedBoundaryOverlapM(backEdges, blocker.edges, this.tolM, 3) >= 3;
+
+          if (sharesRearBoundary) {
+            return true;
+          }
 
           const blockerDistance = Geo.distancePointToPolygonM(sample, blocker.polygon);
           if (blockerDistance >= candidateDistance - 0.25) return false;
@@ -557,18 +583,17 @@ export class PropertyIntelligenceEngine {
             ...blocker.edges.map((blockerEdge) => blockerEdge.mid),
           ];
 
-          return blockerPoints.some((point) =>
-            Geo.distanceM(sample, point) > 0.5
-            && Geo.sideFB(Geo.bearingFrom(sample, point), frontBearing) === 'back'
-          );
+          return blockerPoints.some((point) => {
+            const projection = this._projectPointOntoBearing(sample, point, backBearing);
+            if (projection.along <= 0.5) return false;
+            if (projection.along >= nearestCandidateAlong - 0.25) return false;
+            return projection.lateral <= lateralTolerance;
+          });
         });
 
         if (hasRearBlocker) return false;
 
-        return candidatePoints.some((point) =>
-          Geo.distanceM(sample, point) > 0.5
-          && Geo.sideFB(Geo.bearingFrom(sample, point), frontBearing) === 'back'
-        );
+        return rearCandidatePoints.length > 0;
       });
     });
   }
@@ -578,6 +603,26 @@ export class PropertyIntelligenceEngine {
       edge.a[0] + ((edge.b[0] - edge.a[0]) * t),
       edge.a[1] + ((edge.b[1] - edge.a[1]) * t),
     ]));
+  }
+
+  private _projectPointOntoBearing(
+    origin: [number, number],
+    point: [number, number],
+    bearing: number,
+  ): { along: number; lateral: number } {
+    const refLat = origin[1] * Math.PI / 180;
+    const metersPerDegLat = 111_320;
+    const metersPerDegLng = Math.cos(refLat) * 111_320;
+    const dx = (point[0] - origin[0]) * metersPerDegLng;
+    const dy = (point[1] - origin[1]) * metersPerDegLat;
+    const radians = bearing * Math.PI / 180;
+    const ux = Math.sin(radians);
+    const uy = Math.cos(radians);
+
+    return {
+      along: (dx * ux) + (dy * uy),
+      lateral: Math.abs((-uy * dx) + (ux * dy)),
+    };
   }
 
   private _parseFrontBearing(dir?: string | null): number | null {
