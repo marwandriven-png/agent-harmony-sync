@@ -417,11 +417,6 @@ export default function PlotsPage() {
     return mergeVillasByPlotKey(ordered);
   }, [matchedVillaIds, radiusFilteredAllVillas, radiusFilteredGisMatchedVillas]);
 
-  const hasExplicitClassFilter = !!(
-    villaFilters.isCorner || villaFilters.isEndUnit || villaFilters.isBackToBack || villaFilters.isSingleRow ||
-    villaFilters.backsPark || villaFilters.backsRoad || villaFilters.backsOpenSpace
-  );
-
   const displayedVillas = useMemo(() => {
     const baseCandidates = filteredCandidateVillas.filter(hasRenderableVillaLocation);
 
@@ -434,6 +429,11 @@ export default function PlotsPage() {
       ...baseCandidates,
     ]);
   }, [filteredCandidateVillas, hasRenderableVillaLocation, radiusFilteredSearchableGISResults.length, searchableGISVillas]);
+
+  const displayedMatchedVillaIds = useMemo(
+    () => new Set(radiusFilteredGisMatchedVillas.map((villa) => villa.id)),
+    [radiusFilteredGisMatchedVillas],
+  );
 
   const villaIds = useMemo(() => displayedVillas.map(v => v.id), [displayedVillas]);
   const { data: listingCounts = {} } = useVillaListingCounts(villaIds, { enabled: isVillaMode && villaIds.length > 0 });
@@ -607,7 +607,7 @@ export default function PlotsPage() {
                 onRadiusSearch={handleRadiusSearch}
                 searchCenter={villaSearchCenter}
                 searchRadius={villaSearchRadius}
-                matchedVillaIds={matchedVillaIds}
+                matchedVillaIds={displayedMatchedVillaIds}
                 gisResults={radiusFilteredSearchableGISResults}
                 amenities={allAmenities}
                 intelligenceMap={intelligenceMap}
@@ -721,12 +721,11 @@ export default function PlotsPage() {
                   gisResults={radiusFilteredSearchableGISResults}
                   onClearGIS={clearVillaGIS}
                   searchCenter={villaSearchCenter}
-                   matchedVillaIds={new Set(radiusFilteredGisMatchedVillas.map(v => v.id))}
+                  matchedVillaIds={displayedMatchedVillaIds}
                   searchRadius={villaSearchRadius}
                   onSearchRadiusChange={setVillaSearchRadius}
-                  onGoToPlotLocation={(lat, lng) => setVillaManualCenter({ lat, lng })}
                   intelligenceMap={intelligenceMap}
-                   plotCoordinateLookup={plotCoordinateLookup}
+                  plotCoordinateLookup={plotCoordinateLookup}
                 />
               </Suspense>
             ) : detailPlot ? (
