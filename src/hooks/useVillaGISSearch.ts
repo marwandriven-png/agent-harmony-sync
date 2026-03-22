@@ -14,6 +14,47 @@ export interface GISSearchResult {
   gfaDeviation?: number;
 }
 
+interface RadiusSearchDependencies {
+  searchByLocationConsolidated: typeof gisService.searchByLocationConsolidated;
+  searchByLocation: typeof gisService.searchByLocation;
+  searchVillasNearLocation: typeof villaGISService.searchVillasNearLocation;
+}
+
+export async function loadRadiusSearchData(
+  lat: number,
+  lng: number,
+  radiusMeters: number,
+  contextRadiusMeters: number,
+  deps: RadiusSearchDependencies = {
+    searchByLocationConsolidated: gisService.searchByLocationConsolidated.bind(gisService),
+    searchByLocation: gisService.searchByLocation.bind(gisService),
+    searchVillasNearLocation: villaGISService.searchVillasNearLocation.bind(villaGISService),
+  },
+): Promise<{ plots: PlotData[]; villaIds: string[] }> {
+  const [villaIds, consolidatedPlots] = await Promise.all([
+    deps.searchVillasNearLocation(lat, lng, radiusMeters),
+    (async () => {
+      try {
+        const consolidated = await deps.searchByLocationConsolidated(lat, lng, contextRadiusMeters);
+        if ((consolidated.plots?.length ?? 0) > 0) return consolidated.plots;
+      } catch {
+        // fall through to direct GIS search
+      }
+
+      try {
+        return await deps.searchByLocation(lat, lng, contextRadiusMeters);
+      } catch {
+        return [] as PlotData[];
+      }
+    })(),
+  ]);
+
+  return {
+    plots: consolidatedPlots,
+    villaIds,
+  };
+}
+
 /**
  * Parse Google Maps URL or raw coordinates into lat/lng.
  * Supports formats:
@@ -190,24 +231,18 @@ export function useVillaGISSearch() {
                 center = normalizedCenter;
 
                 // Search villas within the exact user radius
-                const [nearbyVillaIds, consolidated] = await Promise.all([
-                  villaGISService.searchVillasNearLocation(
-                    normalizedCenter.lat,
-                    normalizedCenter.lng,
-                    radiusMeters,
-                  ),
-                  gisService.searchByLocationConsolidated(
-                    normalizedCenter.lat,
-                    normalizedCenter.lng,
-                    contextRadiusMeters,
-                  ).catch(() => ({ plots: [], metadata: null })),
-                ]);
+                const { villaIds: nearbyVillaIds, plots: consolidatedPlots } = await loadRadiusSearchData(
+                  normalizedCenter.lat,
+                  normalizedCenter.lng,
+                  radiusMeters,
+                  contextRadiusMeters,
+                );
 
                 for (const id of nearbyVillaIds) {
                   villaIdSet.add(id);
                 }
 
-                for (const np of consolidated.plots) {
+                for (const np of consolidatedPlots) {
                   addContextPlot(np);
                   if (!resultIds.has(np.id)) {
                     resultIds.add(np.id);
@@ -271,20 +306,14 @@ export function useVillaGISSearch() {
           if (coords) {
             center = coords;
 
-            const [consolidated, nearbyVillaIds] = await Promise.all([
-              gisService.searchByLocationConsolidated(
-                coords.lat,
-                coords.lng,
-                contextRadiusMeters,
-              ),
-              villaGISService.searchVillasNearLocation(
-                coords.lat,
-                coords.lng,
-                radiusMeters,
-              ),
-            ]);
+            const { plots: consolidatedPlots, villaIds: nearbyVillaIds } = await loadRadiusSearchData(
+              coords.lat,
+              coords.lng,
+              radiusMeters,
+              contextRadiusMeters,
+            );
 
-            for (const np of consolidated.plots) {
+            for (const np of consolidatedPlots) {
               addContextPlot(np);
               if (!resultIds.has(np.id)) {
                 resultIds.add(np.id);
