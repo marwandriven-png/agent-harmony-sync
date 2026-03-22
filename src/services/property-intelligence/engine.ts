@@ -244,20 +244,31 @@ export class PropertyIntelligenceEngine {
       return this._detectLayoutCentroid(villaCentroid, roads, parks, opens, residential, fb);
     }
 
-    const backsRoad = roads.some(r => r.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, r.edges, this.tolM, 3) >= 3);
-    const backsPark = parks.some(p => p.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, p.edges, this.tolM, 3) >= 3);
-    const backsOpen = opens.some(o => o.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, o.edges, this.tolM, 3) >= 3);
+    const backsRoad = roads.some((road) =>
+      (road.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, road.edges, this.tolM, 3) >= 3)
+      || this._hasRearContextCandidate(villaCentroid, backEdges, road, resolvedFrontBearing, 18)
+    );
+    const backsPark = parks.some((park) =>
+      (park.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, park.edges, this.tolM, 3) >= 3)
+      || this._hasRearContextCandidate(villaCentroid, backEdges, park, resolvedFrontBearing, 80)
+    );
+    const backsOpen = opens.some((open) =>
+      (open.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, open.edges, this.tolM, 3) >= 3)
+      || this._hasRearContextCandidate(villaCentroid, backEdges, open, resolvedFrontBearing, 60)
+    );
     const backsRes = residential.some(r => r.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, r.edges, this.tolM, 6) >= 6);
 
     // B2B ONLY when the rear touches residential AND no rear road / park / open buffer exists.
     const layoutType: LayoutType =
       (backsRes && !backsRoad && !backsPark && !backsOpen) ? 'back_to_back' : 'single_row';
 
-    // Back-facing priority: Road > Park > Open > Residential > Edge
+    // Back-facing priority: Park > Open > Road > Residential > Edge.
+    // This keeps park-facing villas illustrated as park-facing even when
+    // a narrow rear road/buffer also exists between the villa and park.
     let backFacing: BackFacingType = 'community_edge';
-    if (backsRoad)       backFacing = 'road';
-    else if (backsPark)  backFacing = 'park';
+    if (backsPark)       backFacing = 'park';
     else if (backsOpen)  backFacing = 'open_space';
+    else if (backsRoad)  backFacing = 'road';
     else if (backsRes)   backFacing = 'villa';
 
     return { layoutType, backFacing };
@@ -455,6 +466,31 @@ export class PropertyIntelligenceEngine {
       ).length;
     }
     return candidates.filter(c => Geo.distanceM(vc, c.centroid) < fallbackRadius).length;
+  }
+
+  private _hasRearContextCandidate(
+    villaCentroid: [number, number],
+    backEdges: Edge[],
+    candidate: ClassifiedPlot,
+    frontBearing: number,
+    maxDistanceM: number,
+  ): boolean {
+    if (Geo.sideFB(Geo.bearingFrom(villaCentroid, candidate.centroid), frontBearing) !== 'back') {
+      return false;
+    }
+
+    const minCentroidDistance = Math.min(
+      ...backEdges.map((edge) => Geo.distanceM(edge.mid, candidate.centroid)),
+    );
+
+    if (candidate.polygon) {
+      const minPolygonDistance = Math.min(
+        ...backEdges.map((edge) => Geo.distancePointToPolygonM(edge.mid, candidate.polygon!)),
+      );
+      return Math.min(minPolygonDistance, minCentroidDistance) <= maxDistanceM;
+    }
+
+    return minCentroidDistance <= maxDistanceM;
   }
 
   private _parseFrontBearing(dir?: string | null): number | null {
