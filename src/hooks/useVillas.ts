@@ -103,7 +103,11 @@ export interface VillaSearchFilters {
   maxDistance?: number;
 }
 
-export function useVillas(filters?: VillaSearchFilters) {
+interface QueryToggleOptions {
+  enabled?: boolean;
+}
+
+export function useVillas(filters?: VillaSearchFilters, options?: QueryToggleOptions) {
   const { user } = useAuth();
   const serverFilters = {
     community: filters?.community ?? '',
@@ -187,7 +191,7 @@ export function useVillas(filters?: VillaSearchFilters) {
 
       return villas;
     },
-    enabled: !!user,
+    enabled: !!user && (options?.enabled ?? true),
     staleTime: 60 * 1000,
   });
 }
@@ -221,7 +225,7 @@ export function useVillaWithDetails(villaId: string | undefined) {
   });
 }
 
-export function useVillaListingCounts(villaIds: string[]) {
+export function useVillaListingCounts(villaIds: string[], options?: QueryToggleOptions) {
   const { user } = useAuth();
   const realIds = villaIds.filter(id => !id.startsWith('gis:')).sort();
 
@@ -244,11 +248,11 @@ export function useVillaListingCounts(villaIds: string[]) {
       });
       return counts;
     },
-    enabled: !!user && realIds.length > 0,
+    enabled: !!user && realIds.length > 0 && (options?.enabled ?? true),
   });
 }
 
-export function useCommunities() {
+export function useCommunities(options?: QueryToggleOptions) {
   const { user } = useAuth();
 
   return useQuery({
@@ -263,11 +267,11 @@ export function useCommunities() {
       const unique = [...new Set((data || []).map((d: any) => d.community_name))];
       return unique.sort();
     },
-    enabled: !!user,
+    enabled: !!user && (options?.enabled ?? true),
   });
 }
 
-export function useVillasByIds(villaIds: string[]) {
+export function useVillasByIds(villaIds: string[], options?: QueryToggleOptions) {
   const { user } = useAuth();
   const realIds = villaIds.filter(id => !id.startsWith('gis:')).sort();
 
@@ -287,7 +291,7 @@ export function useVillasByIds(villaIds: string[]) {
       const byId = new Map((data || []).map((villa: any) => [villa.id, villa as CommunityVilla]));
       return realIds.map(id => byId.get(id)).filter(Boolean) as CommunityVilla[];
     },
-    enabled: !!user && realIds.length > 0,
+    enabled: !!user && realIds.length > 0 && (options?.enabled ?? true),
     staleTime: 60 * 1000,
   });
 }
