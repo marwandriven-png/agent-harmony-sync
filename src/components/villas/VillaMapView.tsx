@@ -30,11 +30,7 @@ import { normalizeCoordinatesForSearch } from '@/services/DDAGISService';
 import { AMENITY_CONFIG, type DetectedAmenity } from '@/services/PropertyIntelligenceService';
 import { haversineDistance } from '@/lib/geo';
 import { VILLA_CLASSES as _VILLA_CLASSES, resolveVillaClass as _resolveVillaClass, type VillaClass } from '@/services/property-intelligence/classify-class';
-import {
-  hasActiveClassFilter,
-  normalizePlotKey,
-  resolveDisplayedVillaClass,
-} from '@/services/property-intelligence/unit-reference';
+import { resolveDisplayedVillaClass } from '@/services/property-intelligence/unit-reference';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -51,7 +47,6 @@ interface VillaMapViewProps {
   intelligenceMap?: Map<string, VillaIntelligence>;
   activeFilters?:   VillaSearchFilters;
   plotCoordinateLookup?: Map<string, { lat: number; lng: number }>;
-  renderedPlotIds?: Set<string>;
 }
 
 // ─── Classification palette ───────────────────────────────────────────────────
@@ -102,16 +97,6 @@ function buildClassPin(cls: VillaClass, selected = false): string {
   </svg>`;
 }
 
-/** Small diamond for GIS plot matches */
-function buildGisDiamond(): string {
-  const s = 18;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}"
-    style="filter:drop-shadow(0 1px 3px rgba(0,0,0,0.45))">
-    <rect x="${s*0.18}" y="${s*0.18}" width="${s*0.64}" height="${s*0.64}" rx="2"
-          fill="#ea580c" stroke="#fed7aa" stroke-width="1.5"
-          transform="rotate(45 ${s/2} ${s/2})"/>
-  </svg>`;
-}
 
 /** Neutral pin for filtered matches that don't have a resolved class yet */
 function buildFallbackMatchPin(selected = false): string {
@@ -242,14 +227,13 @@ function spreadOverlappingMarker(lat: number, lng: number, overlapIndex: number,
 export const VillaMapView = memo(function VillaMapView({
   villas, selectedVillaId, onSelectVilla, onRadiusSearch,
   searchCenter, searchRadius = 1000, matchedVillaIds,
-  gisResults = [], amenities = [], intelligenceMap, activeFilters, plotCoordinateLookup, renderedPlotIds,
+  gisResults = [], amenities = [], intelligenceMap, activeFilters, plotCoordinateLookup,
 }: VillaMapViewProps) {
   const containerRef      = useRef<HTMLDivElement>(null);
   const mapRef            = useRef<L.Map | null>(null);
   const villaLayerRef     = useRef<L.LayerGroup | null>(null);
   const markerMapRef      = useRef<Map<string, L.Marker>>(new Map());
   const radiusLayerRef    = useRef<L.LayerGroup | null>(null);
-  const gisLayerRef       = useRef<L.LayerGroup | null>(null);
   const amenityLayerRef   = useRef<L.LayerGroup | null>(null);
   const pinMarkerRef      = useRef<L.Marker | null>(null);
   const onSelectRef       = useRef(onSelectVilla);
@@ -275,7 +259,6 @@ export const VillaMapView = memo(function VillaMapView({
 
     villaLayerRef.current   = L.layerGroup().addTo(map);
     radiusLayerRef.current  = L.layerGroup().addTo(map);
-    gisLayerRef.current     = L.layerGroup().addTo(map);
     amenityLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
 
@@ -495,15 +478,8 @@ export const VillaMapView = memo(function VillaMapView({
   }, [selectedVillaId]);
 
   // ── Build legend (only active classes) ────────────────────────────────
-  const filterOn    = hasActiveClassFilter(activeFilters);
   const classCounts: Record<string, number> = {};
-  const residualGisCount = filterOn
-    ? 0
-    : gisResults.filter((result) => {
-        const plotKey = normalizePlotKey(result.plot.id);
-        if (!plotKey) return false;
-        return !renderedPlotIds?.has(plotKey);
-      }).length;
+
   let unclassifiedCount = 0;
   if (intelligenceMap) {
     const intelLoaded = intelligenceMap.size > 0;
@@ -539,12 +515,7 @@ export const VillaMapView = memo(function VillaMapView({
       <div className="absolute bottom-4 left-4 z-[500] bg-[hsl(220,25%,10%,0.93)] border border-[hsl(220,20%,18%)] rounded-xl p-3 backdrop-blur-sm min-w-[145px]">
         <div className="text-[8px] text-[hsl(220,10%,42%)] uppercase tracking-wider mb-2 font-semibold">Classification</div>
         <div className="space-y-1.5">
-          {residualGisCount > 0 && (
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 shrink-0 rotate-45 rounded-sm" style={{ background: '#ea580c', border: '1.5px solid #fed7aa' }} />
-              <span className="text-[9px] text-[hsl(220,10%,62%)]">GIS Plot ({residualGisCount})</span>
-            </div>
-          )}
+
           {legendItems.length > 0
             ? legendItems.map(cls => (
                 <div key={cls.key} className="flex items-center gap-2">
@@ -605,8 +576,6 @@ export const VillaMapView = memo(function VillaMapView({
         .villa-map-popup .leaflet-popup-close-button:hover { color:#fff!important; }
         .villa-class-pin { cursor:pointer; transition:transform 0.12s ease, filter 0.12s; }
         .villa-class-pin:hover { transform:scale(1.18) translateY(-2px); filter:brightness(1.15); }
-        .villa-gis-pin { cursor:pointer; transition:transform 0.1s; }
-        .villa-gis-pin:hover { transform:scale(1.25); }
         .villa-amenity-icon { cursor:pointer; transition:transform 0.12s; }
         .villa-amenity-icon:hover { transform:scale(1.2); }
         .villa-tooltip {

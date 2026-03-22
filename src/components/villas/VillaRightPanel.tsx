@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, memo } from 'react';
-import { haversineDistance, formatDistance } from '@/lib/geo';
-import { Search, MapPin, Compass, CornerDownRight, TreePine, Eye, Hash, Sparkles, X, ChevronDown, ChevronUp, Home, Radar, Loader2, Target, Navigation, Ruler, MapPinned, FileText, ShoppingBag } from 'lucide-react';
+import { haversineDistance } from '@/lib/geo';
+import { Search, MapPin, Compass, CornerDownRight, TreePine, Eye, Hash, Sparkles, X, ChevronDown, ChevronUp, Home, Radar, Loader2, Target, Navigation, Ruler, ShoppingBag } from 'lucide-react';
 import { ReviewLandMatchesModal } from './ReviewLandMatchesModal';
 import { propertyIntelligence, parseNaturalLanguageQuery, describeFilters } from '@/services/PropertyIntelligenceService';
 import { Input } from '@/components/ui/input';
@@ -14,12 +14,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import type { CommunityVilla, VillaSearchFilters } from '@/hooks/useVillas';
-import type { GISSearchResult } from '@/hooks/useVillaGISSearch';
-import { normalizeCoordinatesForSearch } from '@/services/DDAGISService';
 import { resolveVillaClass, VILLA_CLASSES, type VillaClass } from '@/components/villas/VillaMapView';
 import { SQFT_TO_SQM, SQM_TO_SQFT } from '@/lib/units';
 import type { VillaIntelligence } from '@/hooks/usePropertyIntelligence';
-import { hasActiveClassFilter, normalizePlotKey, resolveDisplayedVillaClass } from '@/services/property-intelligence/unit-reference';
+import { resolveDisplayedVillaClass } from '@/services/property-intelligence/unit-reference';
 import { isVillaWithinSearchRadius, resolveVillaSearchCoordinates, type SearchCenterPoint } from '@/services/property-intelligence/search-radius';
 
 interface VillaRightPanelProps {
@@ -40,9 +38,7 @@ interface VillaRightPanelProps {
   matchedVillaIds?: Set<string>;
   searchRadius?: number;
   onSearchRadiusChange?: (radius: number) => void;
-  onGoToPlotLocation?: (lat: number, lng: number, plotId: string) => void;
   intelligenceMap?: Map<string, import('@/hooks/usePropertyIntelligence').VillaIntelligence>;
-  matchedPlotIds?: Set<string>;
   plotCoordinateLookup?: Map<string, SearchCenterPoint>;
 }
 
@@ -51,7 +47,7 @@ export const VillaRightPanel = memo(function VillaRightPanel({
   filters, onFiltersChange, onAISearch,
   onGISSearch, isGISSearching, gisResults = [], onClearGIS,
   searchCenter, matchedVillaIds, searchRadius = 1000, onSearchRadiusChange,
-  onGoToPlotLocation, intelligenceMap, matchedPlotIds, plotCoordinateLookup,
+  intelligenceMap, plotCoordinateLookup,
 }: VillaRightPanelProps) {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState('');
@@ -73,8 +69,6 @@ export const VillaRightPanel = memo(function VillaRightPanel({
 
   const activeCount = Object.values(filters).filter(v => v !== undefined && v !== '' && v !== 'all' && v !== false).length;
   const activeSearchRadius = searchRadius;
-  const hasClassFilter = hasActiveClassFilter(filters);
-
   const handleAISearch = () => {
     if (aiQuery.trim()) onAISearch(aiQuery.trim());
   };
@@ -133,59 +127,7 @@ export const VillaRightPanel = memo(function VillaRightPanel({
       .sort((a, b) => b.matchScore - a.matchScore);
   }, [villas, searchCenter, searchRadius, matchedVillaIds, intelligenceMap, plotCoordinateLookup]);
 
-  const rankedPlots = useMemo(() => {
-    if (hasClassFilter) return [];
-
-    const unique = new Map<string, GISSearchResult>();
-
-    gisResults.forEach((result) => {
-      const plotKey = normalizePlotKey(result.plot.id);
-      if (!plotKey) return;
-      if (matchedPlotIds?.has(plotKey)) return;
-      // Exclude plots with zero or missing GFA
-      if (!result.plot.gfa || result.plot.gfa <= 0) return;
-      const existing = unique.get(plotKey);
-      if (!existing || result.confidenceScore > existing.confidenceScore) {
-        unique.set(plotKey, result);
-      }
-    });
-
-    return Array.from(unique.values())
-      .map((result) => {
-        const coords = normalizeCoordinatesForSearch(result.plot.y, result.plot.x);
-        const distance = searchCenter && coords
-          ? haversineDistance(searchCenter.lat, searchCenter.lng, coords.lat, coords.lng)
-          : undefined;
-        if (searchCenter && (!coords || distance == null || distance > searchRadius)) {
-          return null;
-        }
-        return { result, distance };
-      })
-      .filter((entry): entry is { result: GISSearchResult; distance: number | undefined } => entry !== null)
-      .sort((a, b) => {
-        if (a.result.confidenceScore !== b.result.confidenceScore) {
-          return b.result.confidenceScore - a.result.confidenceScore;
-        }
-        if (a.distance != null && b.distance != null) {
-          return a.distance - b.distance;
-        }
-        return 0;
-      });
-  }, [gisResults, hasClassFilter, searchCenter, searchRadius, matchedPlotIds]);
-
-  const handleGoToPlot = useCallback((result: GISSearchResult) => {
-    if (!onGoToPlotLocation) return;
-    const coords = normalizeCoordinatesForSearch(result.plot.y, result.plot.x);
-    if (coords) {
-      onGoToPlotLocation(coords.lat, coords.lng, result.plot.id);
-      return;
-    }
-    if (searchCenter) {
-      onGoToPlotLocation(searchCenter.lat, searchCenter.lng, result.plot.id);
-    }
-  }, [onGoToPlotLocation, searchCenter]);
-
-  const totalResultCount = rankedVillas.length + rankedPlots.length;
+  const totalResultCount = rankedVillas.length;
 
   return (
     <div className="h-full flex flex-col bg-black border-l border-gray-900">
@@ -544,11 +486,7 @@ export const VillaRightPanel = memo(function VillaRightPanel({
           <ScrollArea className="h-full">
             {/* Unit toggle in results header */}
             <div className="px-3 py-2 border-b border-[hsl(220,20%,14%)] flex items-center justify-between">
-              <span className="text-[10px] text-[hsl(220,10%,50%)]">
-                {rankedPlots.length > 0
-                  ? `${rankedPlots.length} plot matches • ${rankedVillas.length} villas`
-                  : `${rankedVillas.length} villas`}
-              </span>
+              <span className="text-[10px] text-[hsl(220,10%,50%)]">{rankedVillas.length} villas</span>
               <div className="flex gap-0.5 bg-[hsl(220,22%,14%)] rounded-md p-0.5">
                 <button onClick={() => setSizeUnit('sqft')} className={cn('px-2 py-0.5 rounded text-[8px] font-bold transition-colors', sizeUnit === 'sqft' ? 'bg-white/15 text-white' : 'text-gray-500 hover:text-white')}>SQFT</button>
                 <button onClick={() => setSizeUnit('sqm')} className={cn('px-2 py-0.5 rounded text-[8px] font-bold transition-colors', sizeUnit === 'sqm' ? 'bg-white/15 text-white' : 'text-gray-500 hover:text-white')}>SQM</button>
@@ -568,114 +506,6 @@ export const VillaRightPanel = memo(function VillaRightPanel({
                 </div>
               ) : (
                 <>
-                  {rankedPlots.length > 0 && (
-                    <div className="space-y-2 mb-2">
-                      {/* Action buttons */}
-                      <div className="flex gap-2 px-1 pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => { onClearGIS?.(); }}
-                          className="flex-1 h-9 text-[11px] font-semibold bg-transparent border-gray-700 text-gray-400 hover:bg-white/5 hover:text-white"
-                        >
-                          New Search
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="flex-1 h-9 text-[11px] font-semibold bg-[#BFFF00] hover:bg-[#BFFF00]/90 text-black border-[#BFFF00] gap-1.5"
-                          onClick={() => setReviewModalOpen(true)}
-                        >
-                          <FileText className="h-3.5 w-3.5" />
-                          Review Data ({rankedPlots.length})
-                        </Button>
-                      </div>
-
-                      {/* Plot cards */}
-                      {rankedPlots.map(({ result, distance }) => {
-                        const plot = result.plot;
-                        const areaName = plot.location || 'Unknown';
-                        const zoning = plot.zoning || plot.landUseDetails || '—';
-                        const landSizeSqm = plot.area ? Math.round(plot.area * 100) / 100 : 0;
-                        const gfa = plot.gfa ?? 0;
-
-                        return (
-                          <div
-                            key={`plot-${plot.id}`}
-                            className="rounded-lg border border-gray-700 bg-gray-950 hover:bg-gray-900 hover:border-gray-600 p-3.5 transition-all"
-                          >
-                            <div className="flex items-start justify-between mb-2.5">
-                              <div className="flex items-center gap-2">
-                                <Checkbox checked className="border-[#BFFF00] data-[state=checked]:bg-[#BFFF00] data-[state=checked]:border-[#BFFF00] data-[state=checked]:text-black h-4 w-4" />
-                                <div>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[14px] font-bold text-white">Plot {plot.id}</span>
-                                    <MapPinned className="h-3.5 w-3.5 text-gray-400" />
-                                  </div>
-                                  <span className="text-[11px] text-gray-300 uppercase tracking-wide font-medium">{areaName}</span>
-                                </div>
-                              </div>
-                              <span className={cn(
-                                'text-[11px] px-2.5 py-0.5 rounded-full font-bold whitespace-nowrap border',
-                                result.confidenceScore >= 90
-                                  ? 'bg-[#BFFF00]/15 text-[#BFFF00] border-[#BFFF00]/40'
-                                  : result.confidenceScore >= 70
-                                    ? 'bg-[#BFFF00]/10 text-[#BFFF00] border-[#BFFF00]/30'
-                                    : 'bg-gray-800 text-gray-300 border-gray-600'
-                              )}>
-                                {result.confidenceScore}%
-                              </span>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mb-2.5">
-                              <div className="flex items-baseline justify-between">
-                                <span className="text-[11px] text-gray-400 font-medium">Land Size:</span>
-                                <span className="text-[12px] text-white font-bold">{landSizeSqm.toLocaleString()} m²</span>
-                              </div>
-                              <div className="flex items-baseline justify-between">
-                                <span className="text-[11px] text-gray-400 font-medium">GFA:</span>
-                                <span className="text-[12px] text-white font-bold">{gfa.toLocaleString()} m²</span>
-                              </div>
-                              <div className="flex items-baseline justify-between">
-                                <span className="text-[11px] text-gray-400 font-medium">Zoning:</span>
-                                <span className="text-[12px] text-white font-semibold uppercase truncate ml-1">{zoning}</span>
-                              </div>
-                              <div className="flex items-baseline justify-between">
-                                <span className="text-[11px] text-gray-400 font-medium">Status:</span>
-                                <span className="text-[12px] text-emerald-400 font-semibold">Available</span>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-1.5 mb-2.5">
-                              <MapPin className="h-3.5 w-3.5 text-gray-400" />
-                              <span className="text-[11px] text-gray-300 truncate font-medium">{areaName}</span>
-                              {distance != null && (
-                                <span className="text-[10px] text-[#BFFF00] font-bold ml-auto shrink-0">{formatDistance(distance)}</span>
-                              )}
-                            </div>
-
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full h-8 text-[11px] font-semibold bg-white text-black border-white hover:bg-white/90"
-                              onClick={() => handleGoToPlot(result)}
-                            >
-                              <MapPinned className="h-3.5 w-3.5 mr-1.5" />
-                              Go to Location on Map
-                            </Button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {rankedPlots.length > 0 && rankedVillas.length > 0 && (
-                    <div className="flex items-center gap-2 py-2">
-                      <div className="flex-1 h-px bg-[hsl(220,20%,16%)]" />
-                      <span className="text-[9px] text-[hsl(220,10%,40%)] uppercase tracking-widest">Villa Results</span>
-                      <div className="flex-1 h-px bg-[hsl(220,20%,16%)]" />
-                    </div>
-                  )}
-
                   {rankedVillas.map(({ villa, distance, isMatched }) => {
                     const isSelected = villa.id === selectedVillaId;
                     const listings = listingCounts[villa.id] || 0;
