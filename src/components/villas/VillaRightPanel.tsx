@@ -519,14 +519,14 @@ export const VillaRightPanel = memo(function VillaRightPanel({
                     {filters.community && <ActiveBadge label={filters.community} onRemove={() => updateFilter('community', undefined)} />}
                     {filters.plotNumber && <ActiveBadge label={`Plot: ${filters.plotNumber}`} onRemove={() => updateFilter('plotNumber', undefined)} />}
                     {filters.googleLocation && <ActiveBadge label="📍 Location" onRemove={() => updateFilter('googleLocation', undefined)} />}
-                    {filters.isCorner && <ActiveBadge label="Corner" onRemove={() => updateFilter('isCorner', undefined)} />}
-                    {filters.isEndUnit && <ActiveBadge label="End Unit" onRemove={() => updateFilter('isEndUnit', undefined)} />}
-                    {filters.isSingleRow && <ActiveBadge label="Single Row" onRemove={() => updateFilter('isSingleRow', undefined)} />}
-                    {filters.isBackToBack && <ActiveBadge label="Back-to-Back" onRemove={() => updateFilter('isBackToBack', undefined)} />}
-                    {filters.backsPark && <ActiveBadge label="Park View" onRemove={() => updateFilter('backsPark', undefined)} />}
-                    {filters.backsRoad && <ActiveBadge label="Road Back" onRemove={() => updateFilter('backsRoad', undefined)} />}
-                    {filters.backsOpenSpace && <ActiveBadge label="Open View" onRemove={() => updateFilter('backsOpenSpace', undefined)} />}
-                    {filters.vastuCompliant && <ActiveBadge label="Vastu" onRemove={() => updateFilter('vastuCompliant', undefined)} />}
+                    {filters.isCorner && <ActiveBadge label={VILLA_CLASSES.corner.label} onRemove={() => updateFilter('isCorner', undefined)} />}
+                    {filters.isEndUnit && <ActiveBadge label={VILLA_CLASSES.end_unit.label} onRemove={() => updateFilter('isEndUnit', undefined)} />}
+                    {filters.isSingleRow && <ActiveBadge label={VILLA_CLASSES.single_row.label} onRemove={() => updateFilter('isSingleRow', undefined)} />}
+                    {filters.isBackToBack && <ActiveBadge label={VILLA_CLASSES.back_to_back.label} onRemove={() => updateFilter('isBackToBack', undefined)} />}
+                    {filters.backsPark && <ActiveBadge label={VILLA_CLASSES.backs_park.label} onRemove={() => updateFilter('backsPark', undefined)} />}
+                    {filters.backsRoad && <ActiveBadge label={VILLA_CLASSES.backs_road.label} onRemove={() => updateFilter('backsRoad', undefined)} />}
+                    {filters.backsOpenSpace && <ActiveBadge label={VILLA_CLASSES.open_view.label} onRemove={() => updateFilter('backsOpenSpace', undefined)} />}
+                    {filters.vastuCompliant && <ActiveBadge label={VILLA_CLASSES.vastu.label} onRemove={() => updateFilter('vastuCompliant', undefined)} />}
                     {filters.nearPool && <ActiveBadge label="Pool" onRemove={() => updateFilter('nearPool', undefined)} />}
                     {filters.nearEntrance && <ActiveBadge label="Entrance" onRemove={() => updateFilter('nearEntrance', undefined)} />}
                     {filters.nearSchool && <ActiveBadge label="School" onRemove={() => updateFilter('nearSchool', undefined)} />}

@@ -3,7 +3,8 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useVillaWithDetails, type CommunityVilla } from '@/hooks/useVillas';
-import { propertyIntelligence, classifyVastu, vastuRatingColor, vastuRatingHex, AMENITY_CONFIG, TAG_COLORS, type SmartTag, type DetectedAmenity } from '@/services/PropertyIntelligenceService';
+import { propertyIntelligence, classifyVastu, vastuRatingColor, vastuRatingHex, AMENITY_CONFIG, type SmartTag, type DetectedAmenity } from '@/services/PropertyIntelligenceService';
+import { VILLA_CLASSES } from '@/services/property-intelligence/classify-class';
 import { useMemo } from 'react';
 
 interface VillaDetailPanelProps {
@@ -361,12 +362,11 @@ const TAG_COLOR_MAP: Record<string, string> = {
   'Back-to-Back': '#FF5555',
   'Corner': '#FFB347',
   'End Unit': '#BD93F9',
-  'Backs Park': '#26E8C8',
-  'Backs Road': '#F1FA8C',
-  'Backs Open Land': '#FFB347',
-  'Vastu ✓': '#FF79C6',
+  [VILLA_CLASSES.backs_park.label]: '#26E8C8',
+  [VILLA_CLASSES.backs_road.label]: '#F1FA8C',
+  [VILLA_CLASSES.open_view.label]: '#4F8EF7',
+  [VILLA_CLASSES.vastu.label]: '#FF79C6',
   'Community Edge': '#555',
-  'Open View': '#4F8EF7',
 };
 
 function getTagColor(label: string): string {
