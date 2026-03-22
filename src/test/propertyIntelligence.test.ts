@@ -266,9 +266,9 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
   });
 
   it('keeps a plot single_row when it touches a road on one side and residential on the rear', () => {
-    const villa = makePlot('villa', [[0,0],[1,0],[1,1],[0,1]], 'RESIDENTIAL ATTACHED VILLAS');
-    const rearResidential = makePlot('rear', [[0,1],[1,1],[1,2],[0,2]], 'RESIDENTIAL ATTACHED VILLAS');
-    const frontRoad = makePlot('road', [[0,-1],[1,-1],[1,0],[0,0]], 'ROAD');
+    const villa = makePlot('villa', [[55.0000,25.0000],[55.0001,25.0000],[55.0001,25.0001],[55.0000,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
+    const rearResidential = makePlot('rear', [[55.0000,25.0001],[55.0001,25.0001],[55.0001,25.0002],[55.0000,25.0002]], 'RESIDENTIAL ATTACHED VILLAS');
+    const frontRoad = makePlot('road', [[55.0000,24.9999],[55.0001,24.9999],[55.0001,25.0000],[55.0000,25.0000]], 'ROAD');
 
     const batch = propertyIntelligence.buildBatch([villa, rearResidential, frontRoad]);
     const result = propertyIntelligence.analyzeWithBatch(villa, batch, 'S');
