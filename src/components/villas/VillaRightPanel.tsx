@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, memo } from 'react';
-import { haversineDistance } from '@/lib/geo';
+import { formatDistance, haversineDistance } from '@/lib/geo';
 import { Search, MapPin, Compass, CornerDownRight, TreePine, Eye, Hash, Sparkles, X, ChevronDown, ChevronUp, Home, Radar, Loader2, Target, Navigation, Ruler, ShoppingBag } from 'lucide-react';
 import { ReviewLandMatchesModal } from './ReviewLandMatchesModal';
 import { propertyIntelligence, parseNaturalLanguageQuery, describeFilters } from '@/services/PropertyIntelligenceService';
@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import type { CommunityVilla, VillaSearchFilters } from '@/hooks/useVillas';
+import type { GISSearchResult } from '@/hooks/useVillaGISSearch';
 import { resolveVillaClass, VILLA_CLASSES, type VillaClass } from '@/components/villas/VillaMapView';
 import { SQFT_TO_SQM, SQM_TO_SQFT } from '@/lib/units';
 import type { VillaIntelligence } from '@/hooks/usePropertyIntelligence';
