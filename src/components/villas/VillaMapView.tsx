@@ -30,7 +30,7 @@ import { normalizeCoordinatesForSearch } from '@/services/DDAGISService';
 import { AMENITY_CONFIG, type DetectedAmenity } from '@/services/PropertyIntelligenceService';
 import { haversineDistance } from '@/lib/geo';
 import { VILLA_CLASSES as _VILLA_CLASSES, resolveVillaClass as _resolveVillaClass, type VillaClass } from '@/services/property-intelligence/classify-class';
-import { resolveDisplayedVillaClass } from '@/services/property-intelligence/unit-reference';
+import { normalizePlotKey, resolveDisplayedVillaClass } from '@/services/property-intelligence/unit-reference';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -375,65 +375,6 @@ export const VillaMapView = memo(function VillaMapView({
       markerMapRef.current.set(villa.id, marker);
     });
   }, [villas, searchCenter, matchedVillaIds, intelligenceMap, selectedVillaId, activeFilters, plotCoordinateLookup]);
-
-  // ── GIS plot pins (only when no class filter active) ───────────────────
-  useEffect(() => {
-    const gl = gisLayerRef.current;
-    if (!gl) return;
-    gl.clearLayers();
-
-    if (hasActiveClassFilter(activeFilters)) return;
-
-    const seen     = new Set<string>();
-    const dupCount = new Map<string, number>();
-    let fi = 0;
-
-    gisResults.forEach(r => {
-      const plotKey = normalizePlotKey(r.plot.id);
-      if (!plotKey) return;
-      if (seen.has(plotKey)) return;
-      seen.add(plotKey);
-      if (renderedPlotIds?.has(plotKey)) return;
-
-      const coords = normalizeCoordinatesForSearch(r.plot.y, r.plot.x);
-      if (!coords) return;
-      const centerDistance = searchCenter
-        ? haversineDistance(searchCenter.lat, searchCenter.lng, coords.lat, coords.lng)
-        : undefined;
-      if (searchCenter && (centerDistance == null || centerDistance > searchRadius)) return;
-
-      const ck = `${coords.lat.toFixed(6)}:${coords.lng.toFixed(6)}`;
-      const di = dupCount.get(ck) ?? 0;
-      dupCount.set(ck, di + 1);
-      const { lat, lng } = di > 0 ? offsetM(coords.lat, coords.lng, di * 8, (di * 47) % 360) : coords;
-      const sz = 18;
-      const d  = centerDistance;
-
-      const marker = L.marker([lat, lng], {
-        icon: L.divIcon({ html: buildGisDiamond(), className: 'villa-gis-pin', iconSize: [sz, sz], iconAnchor: [sz / 2, sz / 2] }),
-        zIndexOffset: 600,
-      });
-
-      marker.bindPopup(`
-        <div style="font-family:system-ui;min-width:200px">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
-            <span style="font-size:13px;font-weight:800;color:#fff">Plot ${r.plot.id}</span>
-            <span style="font-size:9px;padding:2px 6px;border-radius:99px;
-                  background:rgba(234,88,12,0.2);color:#fb923c;font-weight:700">${r.confidenceScore}%</span>
-          </div>
-          <div style="font-size:9px;color:#9ca3af;margin-bottom:4px">Source: ${r.source}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.08)">
-            <div><div style="font-size:7px;color:#6b7280;text-transform:uppercase">Area</div>
-              <div style="font-size:10px;color:#d1d5db;font-weight:600">${r.plot.area ? Math.round(r.plot.area).toLocaleString() + ' m\u00b2' : '\u2014'}</div></div>
-            <div><div style="font-size:7px;color:#6b7280;text-transform:uppercase">GFA</div>
-              <div style="font-size:10px;color:#d1d5db;font-weight:600">${r.plot.gfa ? Math.round(r.plot.gfa).toLocaleString() + ' m\u00b2' : '\u2014'}</div></div>
-          </div>
-          ${d != null ? `<div style="font-size:9px;color:#22d3ee;margin-top:4px">${d < 1000 ? Math.round(d) + 'm' : (d / 1000).toFixed(1) + 'km'} from center</div>` : ''}
-        </div>`, { className: 'villa-map-popup', maxWidth: 230, closeButton: true });
-
-      gl.addLayer(marker);
-    });
-  }, [gisResults, searchCenter, searchRadius, renderedPlotIds, activeFilters]);
 
   // ── Amenity icons ──────────────────────────────────────────────────────
   useEffect(() => {
