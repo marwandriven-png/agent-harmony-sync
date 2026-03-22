@@ -450,6 +450,19 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
     expect(result.layout.backFacing).not.toBe('villa');
   });
 
+  it('keeps B2B classification when the front road is inferred within the community reference range', () => {
+    propertyIntelligence.clearCache();
+    const villa = makePlot('villa', [[55.00000,25.00000],[55.00010,25.00000],[55.00010,25.00010],[55.00000,25.00010]], 'RESIDENTIAL ATTACHED VILLAS');
+    const rearVilla = makePlot('rear-villa', [[55.00000,25.00010],[55.00010,25.00010],[55.00010,25.00020],[55.00000,25.00020]], 'RESIDENTIAL ATTACHED VILLAS');
+    const frontRoad = makePlot('front-road', [[55.00000,24.99945],[55.00010,24.99945],[55.00010,24.99960],[55.00000,24.99960]], 'ROAD');
+
+    const batch = propertyIntelligence.buildBatch([villa, rearVilla, frontRoad]);
+    const result = propertyIntelligence.analyzeWithBatch(villa, batch, null);
+
+    expect(result.layout.layoutType).toBe('back_to_back');
+    expect(result.layout.backFacing).toBe('villa');
+  });
+
   it('dedupes db and gis records with case-insensitive plot ids', () => {
     const synthetic = { ...baseVilla, id: 'gis:ABC-1', plot_number: ' ABC-1 ', plot_id: ' ABC-1 ', latitude: 25.2, longitude: 55.2, facing_direction: null, bedrooms: null, plot_size_sqft: null };
     const db = { ...baseVilla, id: 'db-1', plot_number: 'abc-1', plot_id: 'abc-1', latitude: 25.2, longitude: 55.2, facing_direction: 'N', bedrooms: 4, plot_size_sqft: 3000 };

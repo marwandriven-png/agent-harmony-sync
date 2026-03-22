@@ -143,6 +143,7 @@ export class PropertyIntelligenceEngine {
 
   /** Boundary-sharing tolerance in metres (walls of adjacent plots touch) */
   private tolM = 15;
+  private frontRoadInferenceMaxM = 80;
 
   private cache = new Map<string, { layout: LayoutAnalysis; amenities: DetectedAmenity[]; tags: string[] }>();
 
@@ -443,7 +444,7 @@ export class PropertyIntelligenceEngine {
       }
     }
 
-    if (!nearestRoadEdge || !Number.isFinite(nearestDistance) || nearestDistance > 35) {
+    if (!nearestRoadEdge || !Number.isFinite(nearestDistance) || nearestDistance > this.frontRoadInferenceMaxM) {
       return null;
     }
 
@@ -465,7 +466,7 @@ export class PropertyIntelligenceEngine {
       }
     }
 
-    if (!nearestRoad || nearestDistance > 70) return null;
+    if (!nearestRoad || nearestDistance > this.frontRoadInferenceMaxM) return null;
     return Geo.bearingFrom(villaCentroid, nearestRoad.centroid);
   }
 
