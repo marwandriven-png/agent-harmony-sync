@@ -3,6 +3,8 @@
  * Single source of truth used by both VillaMapView and VillaRightPanel.
  */
 
+import { classifyVastu, resolveDirectionText } from './classifiers';
+
 export interface VillaClass {
   key:    string;
   fill:   string;
@@ -29,6 +31,9 @@ export interface ClassifiableVilla {
   backs_park?: boolean;
   backs_road?: boolean;
   vastu_compliant?: boolean | null;
+  facing_direction?: string | null;
+  orientation?: string | null;
+  vastu_details?: string | null;
 }
 
 export interface ClassifiableIntel {
@@ -59,7 +64,8 @@ export function resolveVillaClass(
   const lt  = intel?.layout.layoutType;
   const pt  = intel?.layout.positionType;
   const bf  = intel?.layout.backFacing;
-  const hasVastu = intel?.tags.some(t => t.label.includes('Vastu')) || !!villa.vastu_compliant;
+  const hasResolvedVastu = classifyVastu(resolveDirectionText(villa.facing_direction, villa.orientation, villa.vastu_details)).compliant;
+  const hasVastu = intel?.tags.some(t => t.label.includes('Vastu')) || !!villa.vastu_compliant || hasResolvedVastu;
 
   // Explicit live B2B intel must override stale DB single-row flags.
   if (lt === 'back_to_back' && bf === 'villa')      return VILLA_CLASSES.back_to_back;

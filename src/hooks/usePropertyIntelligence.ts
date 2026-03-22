@@ -14,6 +14,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import type { CommunityVilla } from './useVillas';
 import type { PlotData } from '@/services/DDAGISService';
 import { propertyIntelligence, type PlotBatch } from '@/services/property-intelligence/engine';
+import { resolveDirectionText } from '@/services/property-intelligence/classifiers';
 import { computeVillaScore } from '@/services/property-intelligence/filter';
 import type { DetectedAmenity, LayoutAnalysis, SmartTag } from '@/services/property-intelligence/types';
 import { normalizePlotKey } from '@/services/property-intelligence/unit-reference';
@@ -91,7 +92,11 @@ export function usePropertyIntelligence(
 
         if (villaPlot) {
           // Polygon-accurate analysis using pre-built batch (fast path)
-          const result = propertyIntelligence.analyzeWithBatch(villaPlot, batch, villa.facing_direction);
+          const result = propertyIntelligence.analyzeWithBatch(
+            villaPlot,
+            batch,
+            resolveDirectionText(villa.facing_direction, villa.orientation, villa.vastu_details),
+          );
           layout    = result.layout;
           amenities = result.amenities;
         } else {

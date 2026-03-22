@@ -1,5 +1,6 @@
 import type { CommunityVilla, VillaSearchFilters } from '@/hooks/useVillas';
 import type { VillaIntelligence } from '@/hooks/usePropertyIntelligence';
+import { classifyVastu, resolveDirectionText } from './classifiers';
 import {
   VILLA_CLASSES,
   resolveVillaClass,
@@ -83,7 +84,8 @@ export function mergeVillasByPlotKey(villas: CommunityVilla[]): CommunityVilla[]
 }
 
 export function hasVastu(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {
-  return !!(intel?.tags.some((t) => t.label.includes('Vastu')) || villa.vastu_compliant);
+  const resolvedVastu = classifyVastu(resolveDirectionText(villa.facing_direction, villa.orientation, villa.vastu_details)).compliant;
+  return !!(intel?.tags.some((t) => t.label.includes('Vastu')) || villa.vastu_compliant || resolvedVastu);
 }
 
 export function matchesCorner(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {

@@ -5,6 +5,78 @@
 import type { ProximityClass, ProximityThresholds, VastuAnalysis, VastuRating, AmenityType } from './types';
 import { DEFAULT_THRESHOLDS } from './types';
 
+const normalizeClassifierText = (value: string) => value
+  .toUpperCase()
+  .replace(/[_-]+/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+export function resolveDirectionText(...values: Array<string | null | undefined>): string | null {
+  const first = values
+    .map((value) => value?.trim())
+    .find((value): value is string => Boolean(value));
+
+  return first ?? null;
+}
+
+const PLAYGROUND_TERMS = [
+  /\bPLAY(?:\s+AREA|\s+GROUND)?\b/,
+  /\bKIDS?(?:\s+ZONE|\s+AREA)?\b/,
+  /\bTOT\s+LOT\b/,
+];
+
+const PARK_TERMS = [
+  /\bPARK\b/,
+  /\bGARDEN\b/,
+  /\bGREEN(?:\s+BELT|\s+AREA|\s+SPACE|S)?\b/,
+  /\bLANDSCAP(?:E|ED|ING)\b/,
+  /\bRECREAT(?:ION|IONAL)\b/,
+  /\bLAKE\b/,
+  /\bLAGOON\b/,
+  /\bPOND\b/,
+  /\bWATER\s+FEATURE\b/,
+  /\bWADI\b/,
+];
+
+const COMMUNITY_CENTER_TERMS = [
+  /\bCOMMUNITY\b.*\b(CENTER|CENTRE|CLUB|HUB|PAVILION)\b/,
+  /\bCLUB\s*HOUSE\b/,
+  /\bCLUBHOUSE\b/,
+];
+
+const ROAD_TERMS = [
+  /\bROAD\b/,
+  /\bSTREET\b/,
+  /\bHIGHWAY\b/,
+  /\bSERVICE(?:\s+ROAD|\s+LANE)?\b/,
+  /\bDRIVE\b/,
+  /\bLANE\b/,
+  /\bAVENUE\b/,
+  /\bBOULEVARD\b/,
+  /\bCRESCENT\b/,
+  /\bWAY\b/,
+];
+
+const RESIDENTIAL_TERMS = [
+  /\bVILLA\b/,
+  /\bRESIDENTIAL\b/,
+  /\bTOWN\s*HOUSE\b/,
+  /\bTOWNHOUSE\b/,
+  /\bHOUSE\b/,
+  /\bROW\s+HOUSE\b/,
+  /\bROWHOUSE\b/,
+];
+
+const OPEN_SPACE_TERMS = [
+  /\bOPEN\b/,
+  /\bVACANT\b/,
+  /\bEMPTY\b/,
+  /\bBUFFER\b/,
+  /\bUTILITY\b/,
+];
+
+const matchesAny = (value: string, patterns: RegExp[]) => patterns.some((pattern) => pattern.test(value));
+
 // ─── Distance Classification ───
 
 export function classifyDistance(meters: number, thresholds: ProximityThresholds = DEFAULT_THRESHOLDS): ProximityClass {
@@ -56,37 +128,38 @@ const VASTU_MAP: Record<string, { rating: VastuRating; score: number }> = {
 };
 
 export function classifyVastu(facingDirection: string | null | undefined): VastuAnalysis {
-  const dir = (facingDirection || '').toUpperCase().trim();
+  const dir = normalizeClassifierText(facingDirection || '');
+  const compact = dir.replace(/\s+/g, '');
 
-  // Try to match cardinal direction
-  for (const [card, { rating, score }] of Object.entries(VASTU_MAP)) {
-    const patterns = card.length === 2
-      ? [card, card.split('').join('')]  // NE, NE
-      : [card];
+  const directionAliases: Array<[keyof typeof VASTU_MAP, string[], string]> = [
+    ['NE', ['NORTHEAST', 'NORTH EAST', 'NE'], 'Northeast'],
+    ['NW', ['NORTHWEST', 'NORTH WEST', 'NW'], 'Northwest'],
+    ['SE', ['SOUTHEAST', 'SOUTH EAST', 'SE'], 'Southeast'],
+    ['SW', ['SOUTHWEST', 'SOUTH WEST', 'SW'], 'Southwest'],
+    ['E', ['EAST', 'E'], 'East'],
+    ['N', ['NORTH', 'N'], 'North'],
+    ['W', ['WEST', 'W'], 'West'],
+    ['S', ['SOUTH', 'S'], 'South'],
+  ];
 
-    for (const p of patterns) {
-      if (dir === p || dir.includes(p === 'E' ? 'EAST' : p === 'W' ? 'WEST' : p === 'N' ? 'NORTH' : p === 'S' ? 'SOUTH' : p)) {
-        const dirLabel = {
-          'E': 'East', 'W': 'West', 'N': 'North', 'S': 'South',
-          'NE': 'Northeast', 'NW': 'Northwest', 'SE': 'Southeast', 'SW': 'Southwest',
-        }[card] || card;
-        const compliant = score >= 3;
-        return {
-          entranceDirection: dirLabel,
-          rating,
-          compliant,
-          details: `${dirLabel}-facing entrance — ${rating === 'excellent' ? 'Excellent' : rating === 'good' ? 'Good' : rating === 'neutral' ? 'Neutral' : 'Less preferred'} Vastu orientation`,
-          score,
-        };
-      }
-    }
+  for (const [card, aliases, dirLabel] of directionAliases) {
+    const match = aliases.some((alias) => {
+      const normalizedAlias = alias.replace(/\s+/g, '');
+      return compact === normalizedAlias || dir.includes(alias);
+    });
+
+    if (!match) continue;
+
+    const { rating, score } = VASTU_MAP[card];
+    const compliant = score >= 3;
+    return {
+      entranceDirection: dirLabel,
+      rating,
+      compliant,
+      details: `${dirLabel}-facing entrance — ${rating === 'excellent' ? 'Excellent' : rating === 'good' ? 'Good' : rating === 'neutral' ? 'Neutral' : 'Less preferred'} Vastu orientation`,
+      score,
+    };
   }
-
-  // Check for directional words
-  if (dir.includes('EAST')) return { entranceDirection: 'East', rating: 'excellent', compliant: true, details: 'East-facing entrance — Excellent Vastu orientation', score: 4 };
-  if (dir.includes('NORTH')) return { entranceDirection: 'North', rating: 'good', compliant: true, details: 'North-facing entrance — Good Vastu orientation', score: 3 };
-  if (dir.includes('WEST')) return { entranceDirection: 'West', rating: 'neutral', compliant: false, details: 'West-facing entrance — Neutral Vastu orientation', score: 2 };
-  if (dir.includes('SOUTH')) return { entranceDirection: 'South', rating: 'less_preferred', compliant: false, details: 'South-facing entrance — Less preferred Vastu orientation', score: 1 };
 
   return { entranceDirection: 'Unknown', rating: 'neutral', compliant: false, details: 'Orientation not determined', score: 0 };
 }
@@ -112,18 +185,25 @@ export function vastuRatingHex(rating: VastuRating): string {
 // ─── Land Use Classification ───
 
 export function classifyLandUse(landUse: string): AmenityType | 'residential' | 'road' | 'open_space' | null {
-  const lu = landUse.toUpperCase();
-  if (lu.includes('PARK') || lu.includes('GARDEN') || lu.includes('GREEN') || lu.includes('LANDSCAPE')) return 'park';
+  const lu = normalizeClassifierText(landUse);
+  if (!lu) return null;
   if (lu.includes('POOL') || lu.includes('SWIMMING')) return 'pool';
   if (lu.includes('SCHOOL') || lu.includes('NURSERY') || lu.includes('KINDERGARTEN')) return 'school';
   if (lu.includes('MOSQUE') || lu.includes('MASJID')) return 'mosque';
   if (lu.includes('MALL') || lu.includes('SHOPPING')) return 'mall';
-  if (lu.includes('PLAY') || lu.includes('KIDS')) return 'playground';
-  if (lu.includes('COMMUNITY') && (lu.includes('CENTER') || lu.includes('CENTRE') || lu.includes('CLUB'))) return 'community_center';
+  if (matchesAny(lu, PLAYGROUND_TERMS)) return 'playground';
+  if (matchesAny(lu, COMMUNITY_CENTER_TERMS)) return 'community_center';
   if (lu.includes('HOSPITAL') || lu.includes('CLINIC') || lu.includes('HEALTH')) return 'healthcare';
   if (lu.includes('RETAIL') || lu.includes('COMMERCIAL') || lu.includes('SHOP')) return 'retail';
-  if (lu.includes('ROAD') || lu.includes('STREET') || lu.includes('HIGHWAY') || lu.includes('SERVICE')) return 'road';
-  if (lu.includes('VILLA') || lu.includes('RESIDENTIAL') || lu.includes('TOWNHOUSE') || lu.includes('HOUSE')) return 'residential';
-  if (lu.includes('OPEN') || lu.includes('VACANT') || lu.includes('EMPTY')) return 'open_space';
+  if (matchesAny(lu, PARK_TERMS)) return 'park';
+  if (matchesAny(lu, ROAD_TERMS)) return 'road';
+  if (matchesAny(lu, RESIDENTIAL_TERMS)) return 'residential';
+  if (matchesAny(lu, OPEN_SPACE_TERMS)) return 'open_space';
   return null;
+}
+
+export function isParkFacingLandUse(landUse: string): boolean {
+  const lu = normalizeClassifierText(landUse);
+  if (!lu) return false;
+  return matchesAny(lu, PARK_TERMS) || matchesAny(lu, PLAYGROUND_TERMS);
 }

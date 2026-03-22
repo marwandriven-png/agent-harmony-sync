@@ -26,9 +26,21 @@ import type {
   BackFacingType, SmartTag, AmenityType, ProximityThresholds,
 } from './types';
 import { DEFAULT_THRESHOLDS, AMENITY_CONFIG } from './types';
-import { classifyDistance, classifyVastu, classifyLandUse } from './classifiers';
+import { classifyDistance, classifyVastu, classifyLandUse, isParkFacingLandUse, resolveDirectionText } from './classifiers';
 import { Geo, type Polygon, type Edge } from './geometry';
 import { detectCommunityAmenities } from './amenity-registry';
+
+const AMENITY_KINDS = new Set<AmenityType>([
+  'park',
+  'pool',
+  'school',
+  'mosque',
+  'mall',
+  'playground',
+  'community_center',
+  'healthcare',
+  'retail',
+]);
 
 // ─── Coordinate conversion ────────────────────────────────────────────────────
 
@@ -146,7 +158,8 @@ export class PropertyIntelligenceEngine {
     const byId = new Map<string, ClassifiedPlot>();
 
     for (const plot of nearbyPlots) {
-      const kind = classifyLandUse(plot.landUseDetails || plot.zoning || '');
+      const rawLandUse = plot.landUseDetails || plot.zoning || '';
+      const kind = classifyLandUse(rawLandUse);
       if (!kind) continue;
       const centroid = plotCentroid(plot);
       if (!centroid) continue;
@@ -154,11 +167,11 @@ export class PropertyIntelligenceEngine {
       const edges   = polygon ? Geo.edges(polygon) : [];
       const cp: ClassifiedPlot = { plot, kind, polygon, edges, centroid };
       byId.set(plot.id, cp);
-      if (kind === 'road')        roads.push(cp);
-      else if (kind === 'park')   parks.push(cp);
-      else if (kind === 'open_space' || kind === 'community_center') openSpaces.push(cp);
-      else if (kind === 'residential') residential.push(cp);
-      else amenities.push(cp);
+      if (kind === 'road') roads.push(cp);
+      if (kind === 'park' || isParkFacingLandUse(rawLandUse)) parks.push(cp);
+      if (kind === 'open_space' || kind === 'community_center') openSpaces.push(cp);
+      if (kind === 'residential') residential.push(cp);
+      if (AMENITY_KINDS.has(kind as AmenityType)) amenities.push(cp);
     }
     return { roads, parks, openSpaces, residential, amenities, byId };
   }
@@ -606,7 +619,7 @@ export class PropertyIntelligenceEngine {
     // community_edge / villa: skip for cleanliness
 
     // ── Vastu ─────────────────────────────────────────────────────────────────
-    const vastu = classifyVastu(villa.facing_direction);
+    const vastu = classifyVastu(resolveDirectionText(villa.facing_direction, villa.orientation, villa.vastu_details));
     if (vastu.entranceDirection !== 'Unknown') {
       tags.push({
         label: `${vastu.entranceDirection} Facing`, category: 'vastu',
