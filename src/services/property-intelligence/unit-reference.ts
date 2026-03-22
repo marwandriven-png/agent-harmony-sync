@@ -1,4 +1,5 @@
 import type { CommunityVilla, VillaSearchFilters } from '@/hooks/useVillas';
+import type { PlotData } from '@/services/DDAGISService';
 import type { VillaIntelligence } from '@/hooks/usePropertyIntelligence';
 import { classifyVastu, resolveDirectionText } from './classifiers';
 import {
@@ -41,6 +42,34 @@ export function isSyntheticGisVilla(villa: Pick<CommunityVilla, 'id'>): boolean 
 export function normalizePlotKey(value: string | null | undefined): string | null {
   const normalized = value?.trim().toLowerCase();
   return normalized ? normalized : null;
+}
+
+export function getPlotDataKeys(
+  plot: Pick<PlotData, 'id' | 'municipalityNumber' | 'rawAttributes'>,
+): string[] {
+  const attrs = plot.rawAttributes ?? {};
+  const candidateKeys = [
+    typeof attrs.LAND_NUMBER === 'string' ? attrs.LAND_NUMBER : null,
+    typeof attrs.land_number === 'string' ? attrs.land_number : null,
+    typeof attrs.PLOT_NUMBER === 'string' ? attrs.PLOT_NUMBER : null,
+    typeof attrs.plot_number === 'string' ? attrs.plot_number : null,
+    plot.id,
+    typeof attrs.PLOT_ID === 'string' ? attrs.PLOT_ID : null,
+    typeof attrs.plot_id === 'string' ? attrs.plot_id : null,
+    plot.municipalityNumber,
+    typeof attrs.MUNICIPALITY_NUMBER === 'string' ? attrs.MUNICIPALITY_NUMBER : null,
+    typeof attrs.municipality_number === 'string' ? attrs.municipality_number : null,
+  ];
+
+  return Array.from(
+    new Set(candidateKeys.map((value) => normalizePlotKey(value)).filter((value): value is string => Boolean(value))),
+  );
+}
+
+export function getPrimaryPlotDataKey(
+  plot: Pick<PlotData, 'id' | 'municipalityNumber' | 'rawAttributes'>,
+): string | null {
+  return getPlotDataKeys(plot)[0] ?? null;
 }
 
 export function getVillaPlotKey(

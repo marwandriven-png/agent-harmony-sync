@@ -165,6 +165,8 @@ describe('parseNaturalLanguageQuery', () => {
 
 import { resolveVillaClass, VILLA_CLASSES } from '@/services/property-intelligence/classify-class';
 import {
+  getPlotDataKeys,
+  getPrimaryPlotDataKey,
   getVillaPlotKey,
   hasVastu,
   matchesActiveVillaClassFilters,
@@ -452,6 +454,20 @@ describe('unit-reference integration regression', () => {
   it('normalizes raw plot keys for map/list parity', () => {
     expect(normalizePlotKey(' 6482941 ')).toBe('6482941');
     expect(normalizePlotKey(' Plot-A1 ')).toBe('plot-a1');
+  });
+
+  it('prefers land number aliases when deriving GIS plot keys', () => {
+    const plot = {
+      id: 'GIS-312E655D',
+      municipalityNumber: 'M-12',
+      rawAttributes: {
+        LAND_NUMBER: '6483837',
+        PLOT_ID: 'GIS-312E655D',
+      },
+    };
+
+    expect(getPrimaryPlotDataKey(plot as any)).toBe('6483837');
+    expect(getPlotDataKeys(plot as any)).toEqual(['6483837', 'gis-312e655d', 'm-12']);
   });
 
   it('returns filtered display class from shared resolver', () => {
