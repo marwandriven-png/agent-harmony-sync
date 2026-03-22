@@ -175,8 +175,13 @@ export default function PlotsPage() {
           villa_number:          `gis:${plot.id}`,
           plot_number:           plot.id,   // ← matches nearbyPlots so engine finds polygon
           plot_id:               plot.id,
-          orientation:           null,
-          facing_direction:      null,
+          orientation:           (plot.rawAttributes?.ORIENTATION as string | undefined) ?? null,
+          facing_direction:      (plot.rawAttributes?.facingDirection as string | undefined)
+                                ?? (plot.rawAttributes?.FACING_DIRECTION as string | undefined)
+                                ?? (plot.rawAttributes?.ENTRANCE_SIDE as string | undefined)
+                                ?? (plot.rawAttributes?.ENTRANCE_DIRECTION as string | undefined)
+                                ?? (plot.rawAttributes?.ORIENTATION as string | undefined)
+                                ?? null,
           position_type:         null,
           is_corner:             false,
           is_single_row:         false,
@@ -345,6 +350,15 @@ export default function PlotsPage() {
       return true;
     });
   }, [filteredAllVillas, filteredGisMatchedVillas, matchedVillaIds]);
+
+  const matchedPlotIds = useMemo(() => {
+    return new Set(
+      mergedVillas
+        .filter(v => v.id.startsWith('gis:'))
+        .map(v => v.plot_number ?? v.plot_id ?? v.id.replace(/^gis:/, ''))
+        .filter((plotId): plotId is string => Boolean(plotId))
+    );
+  }, [mergedVillas]);
 
   const villaIds = useMemo(() => mergedVillas.map(v => v.id), [mergedVillas]);
   const { data: listingCounts = {} } = useVillaListingCounts(villaIds, { enabled: isVillaMode && villaIds.length > 0 });
@@ -654,6 +668,7 @@ export default function PlotsPage() {
                   onClearGIS={clearVillaGIS}
                   searchCenter={villaSearchCenter}
                   matchedVillaIds={matchedVillaIds}
+                  matchedPlotIds={matchedPlotIds}
                   searchRadius={villaSearchRadius}
                   onSearchRadiusChange={setVillaSearchRadius}
                   onGoToPlotLocation={(lat, lng) => setVillaManualCenter({ lat, lng })}

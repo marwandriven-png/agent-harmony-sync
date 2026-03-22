@@ -40,6 +40,7 @@ interface VillaRightPanelProps {
   onSearchRadiusChange?: (radius: number) => void;
   onGoToPlotLocation?: (lat: number, lng: number, plotId: string) => void;
   intelligenceMap?: Map<string, import('@/hooks/usePropertyIntelligence').VillaIntelligence>;
+  matchedPlotIds?: Set<string>;
 }
 
 export const VillaRightPanel = memo(function VillaRightPanel({
@@ -47,7 +48,7 @@ export const VillaRightPanel = memo(function VillaRightPanel({
   filters, onFiltersChange, onAISearch,
   onGISSearch, isGISSearching, gisResults = [], onClearGIS,
   searchCenter, matchedVillaIds, searchRadius = 1000, onSearchRadiusChange,
-  onGoToPlotLocation, intelligenceMap,
+  onGoToPlotLocation, intelligenceMap, matchedPlotIds,
 }: VillaRightPanelProps) {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState('');
@@ -129,6 +130,7 @@ export const VillaRightPanel = memo(function VillaRightPanel({
     const unique = new Map<string, GISSearchResult>();
 
     gisResults.forEach((result) => {
+      if (matchedPlotIds?.has(result.plot.id)) return;
       // Exclude plots with zero or missing GFA
       if (!result.plot.gfa || result.plot.gfa <= 0) return;
       const existing = unique.get(result.plot.id);
@@ -154,7 +156,7 @@ export const VillaRightPanel = memo(function VillaRightPanel({
         }
         return 0;
       });
-  }, [gisResults, searchCenter]);
+  }, [gisResults, searchCenter, matchedPlotIds]);
 
   const handleGoToPlot = useCallback((result: GISSearchResult) => {
     if (!onGoToPlotLocation) return;
