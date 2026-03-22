@@ -238,15 +238,21 @@ export class PropertyIntelligenceEngine {
   ): { layoutType: LayoutType; backFacing: BackFacingType } {
     const resolvedFrontBearing = this._resolveFrontBearing(villaCentroid, villaEdges, roads, fb);
     const backEdges = this._backEdges(villaEdges, villaCentroid, resolvedFrontBearing);
+    const allEdges = villaEdges;
 
     const backsRoad = roads.some(r  => r.edges.length && Geo.sharesBoundary(backEdges, r.edges, this.tolM));
     const backsPark = parks.some(p  => p.edges.length && Geo.sharesBoundary(backEdges, p.edges, this.tolM));
     const backsOpen = opens.some(o  => o.edges.length && Geo.sharesBoundary(backEdges, o.edges, this.tolM));
     const backsRes  = residential.some(r => r.edges.length && Geo.sharesBoundary(backEdges, r.edges, this.tolM));
 
+    const touchesRoad = roads.some(r => r.edges.length && Geo.sharesBoundary(allEdges, r.edges, this.tolM));
+    const touchesPark = parks.some(p => p.edges.length && Geo.sharesBoundary(allEdges, p.edges, this.tolM));
+    const touchesOpen = opens.some(o => o.edges.length && Geo.sharesBoundary(allEdges, o.edges, this.tolM));
+    const touchesAnyOpenBuffer = touchesRoad || touchesPark || touchesOpen;
+
     // B2B ONLY when rear touches residential AND no road/park/open space buffer
     const layoutType: LayoutType =
-      (backsRes && !backsRoad && !backsPark && !backsOpen) ? 'back_to_back' : 'single_row';
+      (backsRes && !touchesAnyOpenBuffer) ? 'back_to_back' : 'single_row';
 
     // Back-facing priority: Road > Park > Open > Residential > Edge
     let backFacing: BackFacingType = 'community_edge';

@@ -649,7 +649,7 @@ class DDAGISService {
           developer: undefined,
           project: p.project_name,
           entity: p.entity_name,
-          landUseDetails: undefined,
+          landUseDetails: p.landuse_details || p.sub_landuse || p.main_landuse || undefined,
           maxHeight: undefined,
           plotCoverage: p.plot_coverage,
           isFrozen: p.is_frozen || false,
@@ -657,6 +657,9 @@ class DDAGISService {
           constructionStatus: p.construction_status,
           siteStatus: p.site_status,
           rawAttributes: {
+            MAIN_LANDUSE: p.main_landuse,
+            SUB_LANDUSE: p.sub_landuse,
+            LANDUSE_DETAILS: p.landuse_details,
             data_source_master: p.data_source_master,
             confidence_score: p.confidence_score,
             is_fallback: p.is_fallback,
