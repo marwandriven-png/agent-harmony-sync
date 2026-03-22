@@ -68,7 +68,10 @@ export function resolveVillaClass(
   const hasVastu = intel?.tags.some(t => t.label.includes('Vastu')) || !!villa.vastu_compliant || hasResolvedVastu;
 
   // Explicit live B2B intel must override stale DB single-row flags.
-  if (lt === 'back_to_back' && bf === 'villa')      return VILLA_CLASSES.back_to_back;
+  // If no stronger illustrated rear-facing class exists, still show B2B.
+  if (lt === 'back_to_back' && bf !== 'park' && bf !== 'road' && bf !== 'open_space') {
+    return VILLA_CLASSES.back_to_back;
+  }
 
   // Community illustration model: specific rear-facing row types take precedence
   // so the map matches the unit-type reference illustration.
