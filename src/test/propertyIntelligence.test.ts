@@ -574,6 +574,34 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
     expect(result.layout.backFacing).toBe('villa');
   });
 
+  it('detects a genuine two-road corner without collapsing it into end unit', () => {
+    propertyIntelligence.clearCache();
+    const villa = makePlot('villa', [[55.00000,25.00000],[55.00010,25.00000],[55.00010,25.00010],[55.00000,25.00010]], 'RESIDENTIAL ATTACHED VILLAS');
+    const southRoad = makePlot('south-road', [[55.00000,24.99990],[55.00010,24.99990],[55.00010,25.00000],[55.00000,25.00000]], 'ROAD');
+    const eastRoad = makePlot('east-road', [[55.00010,25.00000],[55.00020,25.00000],[55.00020,25.00010],[55.00010,25.00010]], 'ROAD');
+    const westVilla = makePlot('west-villa', [[54.99990,25.00000],[55.00000,25.00000],[55.00000,25.00010],[54.99990,25.00010]], 'RESIDENTIAL ATTACHED VILLAS');
+    const northVilla = makePlot('north-villa', [[55.00000,25.00010],[55.00010,25.00010],[55.00010,25.00020],[55.00000,25.00020]], 'RESIDENTIAL ATTACHED VILLAS');
+
+    const batch = propertyIntelligence.buildBatch([villa, southRoad, eastRoad, westVilla, northVilla]);
+    const result = propertyIntelligence.analyzeWithBatch(villa, batch, 'S');
+
+    expect(result.layout.positionType).toBe('corner');
+  });
+
+  it('keeps rear-residential plots as back-to-back instead of degrading them into end-only results', () => {
+    propertyIntelligence.clearCache();
+    const villa = makePlot('villa', [[55.00000,25.00000],[55.00010,25.00000],[55.00010,25.00010],[55.00000,25.00010]], 'RESIDENTIAL ATTACHED VILLAS');
+    const frontRoad = makePlot('front-road', [[55.00000,24.99990],[55.00010,24.99990],[55.00010,25.00000],[55.00000,25.00000]], 'ROAD');
+    const rearVilla = makePlot('rear-villa', [[55.00000,25.00010],[55.00010,25.00010],[55.00010,25.00020],[55.00000,25.00020]], 'RESIDENTIAL ATTACHED VILLAS');
+    const leftVilla = makePlot('left-villa', [[54.99990,25.00000],[55.00000,25.00000],[55.00000,25.00010],[54.99990,25.00010]], 'RESIDENTIAL ATTACHED VILLAS');
+
+    const batch = propertyIntelligence.buildBatch([villa, frontRoad, rearVilla, leftVilla]);
+    const result = propertyIntelligence.analyzeWithBatch(villa, batch, 'S');
+
+    expect(result.layout.layoutType).toBe('back_to_back');
+    expect(result.layout.positionType).not.toBe('end');
+  });
+
   it('applies back-to-back hard filters strictly', () => {
     const villas = [
       { ...baseVilla, id: 'b2b-villa' },
