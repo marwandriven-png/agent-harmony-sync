@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Geo, type Polygon } from '@/services/property-intelligence/geometry';
-import { classifyDistance, classifyVastu, proximityLabel, proximityColor } from '@/services/property-intelligence/classifiers';
+import { classifyDistance, classifyLandUse, classifyVastu, proximityLabel, proximityColor } from '@/services/property-intelligence/classifiers';
 import { parseNaturalLanguageQuery } from '@/services/property-intelligence/nl-parser';
 import { DEFAULT_THRESHOLDS } from '@/services/property-intelligence/types';
 import { propertyIntelligence } from '@/services/property-intelligence/engine';
@@ -102,7 +102,15 @@ describe('classifyVastu', () => {
   it('empty string → defined result', () => { expect(classifyVastu('')).toBeDefined(); });
   it('lowercase east → excellent', () => expect(classifyVastu('east').rating).toBe('excellent'));
   it('EAST full word → excellent', () => expect(classifyVastu('East').rating).toBe('excellent'));
+  it('North East phrase → good', () => expect(classifyVastu('North East').rating).toBe('good'));
+  it('north-east hyphenated → good', () => expect(classifyVastu('north-east').rating).toBe('good'));
   it('unknown → fallback with defined fields', () => { const v = classifyVastu('UNKNOWN'); expect(v.rating).toBeDefined(); expect(typeof v.score).toBe('number'); });
+});
+
+describe('classifyLandUse', () => {
+  it('normalizes neighborhood park as park', () => expect(classifyLandUse('NEIGHBORHOOD PARK')).toBe('park'));
+  it('keeps play area as playground amenity', () => expect(classifyLandUse('KIDS PLAY AREA')).toBe('playground'));
+  it('normalizes clubhouse as community center', () => expect(classifyLandUse('COMMUNITY CLUBHOUSE')).toBe('community_center'));
 });
 
 // ─── NL Parser ───────────────────────────────────────────────────────────────
@@ -151,6 +159,7 @@ describe('parseNaturalLanguageQuery', () => {
 import { resolveVillaClass, VILLA_CLASSES } from '@/services/property-intelligence/classify-class';
 import {
   getVillaPlotKey,
+  hasVastu,
   mergeVillasByPlotKey,
   normalizePlotKey,
   resolveDisplayedVillaClass,
@@ -333,6 +342,10 @@ describe('unit-reference integration regression', () => {
     );
     expect(cls?.key).toBe('backs_park');
   });
+
+  it('treats orientation fallback as vastu-compliant', () => {
+    expect(hasVastu({ ...baseVilla, orientation: 'North East' } as any, undefined)).toBe(true);
+  });
 });
 
 describe('PropertyIntelligenceEngine polygon layout regression', () => {
@@ -414,5 +427,17 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
     const merged = mergeVillasByPlotKey([synthetic as any, db as any]);
     expect(merged).toHaveLength(1);
     expect(merged[0].id).toBe('db-1');
+  });
+
+  it('includes park and community-center plots in amenity search batch', () => {
+    propertyIntelligence.clearCache();
+    const villa = makePlot('villa', [[55.0000,25.0000],[55.0001,25.0000],[55.0001,25.0001],[55.0000,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
+    const park = makePlot('6482996', [[55.0000,25.0001],[55.0001,25.0001],[55.0001,25.0002],[55.0000,25.0002]], 'NEIGHBORHOOD PARK');
+    const clubhouse = makePlot('club', [[55.0001,25.0000],[55.0002,25.0000],[55.0002,25.0001],[55.0001,25.0001]], 'COMMUNITY CLUBHOUSE');
+
+    const batch = propertyIntelligence.buildBatch([villa, park, clubhouse]);
+    expect(batch.parks.map((plot) => plot.plot.id)).toContain('6482996');
+    expect(batch.amenities.map((plot) => plot.plot.id)).toContain('6482996');
+    expect(batch.amenities.map((plot) => plot.plot.id)).toContain('club');
   });
 });
