@@ -1,49 +1,55 @@
 
-Goal: fix the “Backs Park” class so the villas inside the marked area appear in match results only when their rear boundary truly faces a park, not just because a park is nearby.
+Goal: make the bottom labels match the actual villa class names everywhere, so users see the same wording as the class system (for example `Backs Park` instead of `Park View`, and consistent Vastu naming).
 
-What I found:
-- The current filter/result pipeline on `/plots` is mostly wired correctly:
-  - `applyVillaFilters()` uses `matchesOrDefersActiveVillaClassFilters()`
-  - `resolveDisplayedVillaClass()` is shared between map pins and results
-- The likely bug is in the spatial classifier, not the UI filter:
-  - `engine.ts` marks `backsPark` using `_hasRearContextCandidate(...)`
-  - that helper still relies heavily on the candidate centroid plus a broad polygon distance check
-  - for irregular/large park polygons, a villa can be truly rear-facing while the centroid sits off-axis, so the class is missed
-- Your clarification matters: Backs Park should mean `direct rear park only` — not “near park” and not “rear park across a buffer”.
+Plan:
+1. Audit the current class-label sources
+   - Review the shared class definitions in `src/services/property-intelligence/classify-class.ts`
+   - Review any secondary label maps/hardcoded strings in:
+     - `src/components/villas/VillaRightPanel.tsx`
+     - `src/components/villas/VillaMapView.tsx`
+     - `src/components/villas/VillaDetailPanel.tsx`
+     - `src/services/property-intelligence/unit-reference.ts`
+   - Identify mismatches like:
+     - `Park View` vs `Backs Park`
+     - `Road Back` vs `Backs Road`
+     - `Vastu` vs `Vastu Compliant`
+     - `Backs park` casing mismatch
 
-Implementation plan:
-1. Tighten the spatial rule for Backs Park in `src/services/property-intelligence/engine.ts`
-   - Refactor `_hasRearContextCandidate()` so park classification is based on true rear-edge relationship to the park polygon, not centroid bias.
-   - Require the park polygon itself to align behind at least one rear edge.
-   - Remove/limit permissive fallback behavior that can miss or over-generalize elongated park shapes.
-   - Keep landscape/open-space separate from park.
+2. Unify naming under one source of truth
+   - Reuse `VILLA_CLASSES` labels wherever the UI shows a class name
+   - Replace hardcoded bottom filter-chip labels in `VillaRightPanel` with the same shared labels used by class resolution
+   - Normalize any helper/reference labels in `unit-reference.ts` so the terminology is identical across filters, results, legend, and detail panel
 
-2. Preserve class parity between results and pins
-   - Keep `resolveDisplayedVillaClass()` as the single display source of truth.
-   - Verify that a villa with `layoutType: 'back_to_back'` or `single_row` can still resolve to `backs_park` when rear-facing park is confirmed, since facing and layout are independent dimensions.
-   - Ensure no “No classes detected” case happens for true rear-park villas once intelligence is computed.
+3. Fix the bottom UI specifically
+   - Update the “Active Filters” badges at the bottom of the right sidebar so they show the real class names:
+     - `Backs Park`
+     - `Backs Road`
+     - `Open View`
+     - `Vastu Compliant`
+   - Ensure the selected class shown on result cards and map legend uses the same text as the active filter chips
 
-3. Add regression tests in `src/test/propertyIntelligence.test.ts`
-   - Add a polygon test where:
-     - the park is directly behind the villa and should classify as `backFacing: 'park'`
-     - the park polygon is offset/elongated so centroid-only logic would fail
-   - Add a negative test where a side park does not classify as Backs Park.
-   - Add a resolver/filter parity test confirming Backs Park appears in class-filtered results.
+4. Align tag/legend/detail naming
+   - Update the detail/tag color map to use the same class names as the resolver
+   - Remove outdated aliases like `Backs Open Land` if the visible class is `Open View`
+   - Keep label casing and punctuation consistent everywhere
 
-4. Validate the `/plots` search flow after the patch
-   - Confirm the red-circled villas are included when `Backs Park` is active.
-   - Confirm landscape/open space does not leak into park results.
-   - Confirm results count, sidebar matches, and map pins stay in sync.
+5. Validate class-to-label parity
+   - Confirm that when a villa resolves to `backs_park`, every visible UI surface says `Backs Park`
+   - Confirm that when Vastu is active, the UI says `Vastu Compliant`
+   - Check that “No classes detected” only appears when there truly is no resolved class, not when labels are merely mismatched
 
 Technical notes:
-- Main files:
-  - `src/services/property-intelligence/engine.ts`
-  - `src/services/property-intelligence/unit-reference.ts` (verify only)
-  - `src/services/property-intelligence/classify-class.ts` (verify priority only)
-  - `src/pages/PlotsPage.tsx` (verify parity only)
-  - `src/test/propertyIntelligence.test.ts`
-- Intended behavior after fix:
-  - direct rear park = `Backs Park`
-  - side park = not `Backs Park`
-  - nearby park only = not `Backs Park`
-  - landscape = not `Backs Park`
+- Likely files to update:
+  - `src/services/property-intelligence/classify-class.ts`
+  - `src/services/property-intelligence/unit-reference.ts`
+  - `src/components/villas/VillaRightPanel.tsx`
+  - `src/components/villas/VillaDetailPanel.tsx`
+  - possibly `src/components/villas/VillaMapView.tsx`
+- Main issue found from the current code:
+  - `VillaRightPanel` bottom active badges still use old names (`Park View`, `Road Back`, `Vastu`)
+  - `unit-reference.ts` contains inconsistent casing (`Backs park`)
+  - `VillaDetailPanel` still includes an outdated label alias (`Backs Open Land`)
+- Desired outcome:
+  - one shared naming system
+  - bottom labels exactly match the resolved class labels
+  - no more mismatch between filters, cards, legend, and detail tags
