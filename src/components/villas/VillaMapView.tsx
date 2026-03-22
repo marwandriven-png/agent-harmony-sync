@@ -31,6 +31,7 @@ import { AMENITY_CONFIG, type DetectedAmenity } from '@/services/PropertyIntelli
 import { haversineDistance } from '@/lib/geo';
 import { VILLA_CLASSES as _VILLA_CLASSES, resolveVillaClass as _resolveVillaClass, type VillaClass } from '@/services/property-intelligence/classify-class';
 import { normalizePlotKey, resolveDisplayedVillaClass } from '@/services/property-intelligence/unit-reference';
+import { resolveVillaSearchCoordinates } from '@/services/property-intelligence/search-radius';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -195,7 +196,9 @@ export function getVillaPosition(
   idx: number,
   plotCoordinateLookup?: Map<string, { lat: number; lng: number }>,
 ): [number, number] | null {
-  if (villa.latitude && villa.longitude) return [villa.latitude, villa.longitude];
+  const resolvedCoords = resolveVillaSearchCoordinates(villa, plotCoordinateLookup);
+  if (resolvedCoords) return [resolvedCoords.lat, resolvedCoords.lng];
+
   const linkedPlotId = normalizePlotKey(
     villa.plot_number
       ?? villa.plot_id
