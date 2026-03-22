@@ -1,70 +1,85 @@
 
-Goal: fix the villa map so every searched residential result is illustrated on the map, counts match the results panel, B2B is no longer over-applied, and all mock community code is removed from the project.
+Goal: fix the wrong villa classes on `/plots`, make map/list/filter behavior use the same class logic, and remove mock/demo access from the whole project.
 
-Plan
+What I found
+- The current `/plots` pipeline is not failing in one place; it has 3 separate mismatches:
+  1. `engine.ts` still over-labels `back_to_back` because rear-neighbour detection is too loose.
+  2. Filters in `PlotsPage.tsx` use raw helpers like `matchesBackToBack()` instead of the shared displayed-class resolver, so a plot can be visually “Backs Park / Backs Road” but still be filtered/count as B2B.
+  3. Geometry adjacency is too permissive: `Geo.sharesBoundary()` treats point/corner touches like a shared rear wall, which is a major source of false B2B and wrong end-unit results.
+- The screenshot matches that: many units that should be “single row + backs road” or “single row end unit” are currently classified/counting as B2B.
+- There is still project-wide mock/demo code outside `/plots` (`src/store/crmStore.ts`, demo naming in GIS/test data, etc.), so “remove from all project” is broader than the villa module.
 
-1. Remove all mock community dependencies
-- Delete the mock-community selector and all related state from `src/pages/PlotsPage.tsx`.
-- Stop importing/merging any data from `src/data/mock/communities`.
-- Remove the entire `src/data/mock/communities/` usage path from the app so classification relies only on real GIS/context data.
-- Remove any leftover labels/comments/UI copy that mention mock communities.
+Implementation plan
 
-2. Make the map render every matched result
-- Refactor the `/plots` villa flow so the result source of truth is the GIS search result set, not only `mergedVillas`.
-- Build a complete “display candidates” layer:
-  - database villas matched by plot
-  - synthetic GIS villas for residential/buildable plots without DB records
-  - neutral fallback pins for matched residential plots that still have no resolved class
-- Keep deduplication by plot key, but only for duplicate records representing the same plot; do not let deduplication reduce visible pin coverage.
-- Ensure `matchedPlotIds`, `renderedPlotIds`, and results count are derived from the same normalized plot-key logic.
+1. Fix the actual classification bug at the geometry level
+- Tighten boundary logic in `src/services/property-intelligence/geometry.ts` so corner-only contact does not count as a shared boundary.
+- Add a stricter “shared wall overlap” check for residential rear adjacency and use that for B2B detection.
+- Keep point/near-distance checks only as fallback, not as proof of a rear shared wall.
 
-3. Tighten classification to match the illustrated community model
-- Update shared classification in `src/services/property-intelligence/classify-class.ts` and `unit-reference.ts` so default visual class follows the illustrated row model:
-  - rear-facing illustrated row classes first (`backs_park`, `backs_road`, `open_view`)
+2. Tighten engine-side front/rear detection
+- Refine `src/services/property-intelligence/engine.ts` so front bearing is resolved from the true road-facing side first.
+- Only classify B2B when:
+  - the rear side is confidently identified,
+  - the rear side shares meaningful wall overlap with residential,
+  - and there is no rear road/park/open-space separator.
+- Make polygon and centroid fallback agree on the same stricter rule.
+
+3. Make filters and counts use the same class source of truth
+- Refactor `src/pages/PlotsPage.tsx` to stop using raw `matchesBackToBack / matchesSingleRow / matchesEndUnit` as the main class-filter truth.
+- Use the shared displayed-class resolver from `unit-reference.ts` for:
+  - filtering,
+  - result counting,
+  - matched plot IDs,
+  - rendered plot IDs.
+- This will make B2B filter return only true B2B display-class results, not plots whose raw layout says B2B but should illustrate as PK/RD/SR.
+
+4. Align map pins, legend, and right-panel cards
+- Update `src/components/villas/VillaMapView.tsx` and `src/components/villas/VillaRightPanel.tsx` so:
+  - primary class badge = shared displayed class,
+  - legend counts = same resolver,
+  - result cards = same resolver,
+  - neutral pins remain only for truly unclassified matched results.
+- Keep secondary tags optional, but do not let them override the primary displayed class.
+
+5. Re-check class hierarchy against your illustration
+- Keep the visual priority strict:
+  - `backs_park / backs_road / open_view`
   - then `single_row`
-  - positional overlays only when no row class exists
-  - `back_to_back` only when the rear actually shares residential with no buffer
-- Remove the current behavior where B2B visually dominates cases that should appear as single-row / backs-park / backs-road.
-- Keep end-unit excluding corner, matching the recent refactor.
+  - then `back_to_back`
+  - then `corner / end_unit`
+  - then `vastu`
+- Also preserve “end unit excludes corner”.
 
-4. Fix engine-side B2B false positives
-- Refine `src/services/property-intelligence/engine.ts` so B2B is assigned only from true rear-boundary adjacency, not general surrounding density or side-touch conditions.
-- Make rear-side analysis stricter:
-  - use resolved front bearing consistently
-  - evaluate only rear edges for rear classification
-  - treat any road/park/open separator on the rear as non-B2B
-- Align centroid fallback with the same stricter rule so no loose heuristic reintroduces false B2B labels.
+6. Remove mock/demo access from the whole project
+- Audit and remove runtime mock/demo sources across the app, starting with:
+  - `src/store/crmStore.ts`
+  - any remaining demo/mock helpers in GIS/property services
+  - demo terminology that appears in runtime code paths
+- Replace with empty states or real backend-driven defaults so no section depends on fabricated data.
+- Keep tests using synthetic fixtures if needed, but rename/remove “demo” runtime semantics so the shipped app has no mock access path.
 
-5. Unify results panel and map parity
-- Update `src/pages/PlotsPage.tsx` + `src/components/villas/VillaRightPanel.tsx` so:
-  - total results = all visible mapped villas + residual matched residential plots
-  - map pin count and results count are guaranteed to match
-  - unclassified residential matches use the neutral fallback pin you chose
-  - zero-GFA / utility-only context plots stay excluded from both counts and visible search results
-- Keep non-residential context plots available for intelligence context, but not counted as villa result pins.
-
-6. Regression coverage
-- Update/add tests in `src/test/propertyIntelligence.test.ts` to cover:
-  - every matched plot produces exactly one visible plotted result
-  - DB + synthetic villa records for the same plot collapse to one result without losing the pin
-  - single-row with rear road/park/open buffer is never classified as B2B
-  - class priority matches the illustrated community model
-- Add a regression around plot-key normalization so rendered pin IDs and sidebar counts stay aligned.
-
-7. Verify against the community reference HTML
-- Use `tmp/community_unit_types-2.html` as the visual logic reference only for class hierarchy/illustration behavior.
-- Match the implemented priority to that reference without depending on any mock dataset in runtime code.
+7. Add regression coverage for the exact bugs shown
+- Extend `src/test/propertyIntelligence.test.ts` to cover:
+  - corner-touch must not count as B2B,
+  - rear road separator keeps a unit single-row,
+  - displayed class and filter class are identical,
+  - one plot key = one result card + one rendered pin,
+  - end-unit/corner cases from the illustrated pattern.
+- Add a test around the shared resolver so future edits cannot reintroduce B2B overreach.
 
 Files most likely to change
+- `src/services/property-intelligence/geometry.ts`
+- `src/services/property-intelligence/engine.ts`
+- `src/services/property-intelligence/classify-class.ts`
+- `src/services/property-intelligence/unit-reference.ts`
 - `src/pages/PlotsPage.tsx`
 - `src/components/villas/VillaMapView.tsx`
 - `src/components/villas/VillaRightPanel.tsx`
-- `src/services/property-intelligence/classify-class.ts`
-- `src/services/property-intelligence/unit-reference.ts`
-- `src/services/property-intelligence/engine.ts`
+- `src/store/crmStore.ts`
 - `src/test/propertyIntelligence.test.ts`
 
-Technical notes
-- Main bug today: `mergedVillas` is the map input, so only plots that successfully become villas survive into the primary marker layer. That is why you can get fewer pins than results.
-- Secondary bug: mock-community context is still injected on `/plots`, which can distort classification and must be removed completely.
-- Third bug: the current default resolver still lets B2B win too aggressively; that conflicts with the intended illustrated row logic and causes wrong labels.
+Expected outcome
+- Units like the ones in your screenshot stop collapsing into B2B.
+- “single row + backs road”, “single row end unit”, and park-backed rows render with the correct primary class.
+- Filters, sidebar totals, legend totals, and map pins all agree.
+- Mock/demo runtime data is removed project-wide.
