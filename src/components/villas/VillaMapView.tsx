@@ -46,6 +46,7 @@ interface VillaMapViewProps {
   intelligenceMap?: Map<string, VillaIntelligence>;
   activeFilters?:   VillaSearchFilters;
   plotCoordinateLookup?: Map<string, { lat: number; lng: number }>;
+  renderedPlotIds?: Set<string>;
 }
 
 // ─── Classification palette ───────────────────────────────────────────────────
@@ -310,7 +311,7 @@ function offsetM(lat: number, lng: number, m: number, deg: number) {
 export const VillaMapView = memo(function VillaMapView({
   villas, selectedVillaId, onSelectVilla, onRadiusSearch,
   searchCenter, searchRadius = 1000, matchedVillaIds,
-  gisResults = [], amenities = [], intelligenceMap, activeFilters, plotCoordinateLookup,
+  gisResults = [], amenities = [], intelligenceMap, activeFilters, plotCoordinateLookup, renderedPlotIds,
 }: VillaMapViewProps) {
   const containerRef      = useRef<HTMLDivElement>(null);
   const mapRef            = useRef<L.Map | null>(null);
@@ -456,9 +457,6 @@ export const VillaMapView = memo(function VillaMapView({
     if (!gl) return;
     gl.clearLayers();
 
-    // When user has a class filter on → hide GIS orange diamonds entirely
-    if (hasActiveClassFilter(activeFilters)) return;
-
     const seen     = new Set<string>();
     const dupCount = new Map<string, number>();
     let fi = 0;
@@ -466,6 +464,7 @@ export const VillaMapView = memo(function VillaMapView({
     gisResults.forEach(r => {
       if (seen.has(r.plot.id)) return;
       seen.add(r.plot.id);
+      if (renderedPlotIds?.has(r.plot.id)) return;
 
       let coords = normalizeCoordinatesForSearch(r.plot.y, r.plot.x);
       if (!coords && searchCenter) { fi++; coords = offsetM(searchCenter.lat, searchCenter.lng, 30 + fi * 12, (fi * 137.5) % 360); }
@@ -502,7 +501,7 @@ export const VillaMapView = memo(function VillaMapView({
 
       gl.addLayer(marker);
     });
-  }, [gisResults, searchCenter, activeFilters]);
+  }, [gisResults, searchCenter, renderedPlotIds]);
 
   // ── Amenity icons ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -549,6 +548,7 @@ export const VillaMapView = memo(function VillaMapView({
   // ── Build legend (only active classes) ────────────────────────────────
   const filterOn    = hasActiveClassFilter(activeFilters);
   const classCounts: Record<string, number> = {};
+  const residualGisCount = gisResults.filter(result => !renderedPlotIds?.has(result.plot.id)).length;
   let unclassifiedCount = 0;
   if (intelligenceMap) {
     const intelLoaded = intelligenceMap.size > 0;
@@ -584,10 +584,10 @@ export const VillaMapView = memo(function VillaMapView({
       <div className="absolute bottom-4 left-4 z-[500] bg-[hsl(220,25%,10%,0.93)] border border-[hsl(220,20%,18%)] rounded-xl p-3 backdrop-blur-sm min-w-[145px]">
         <div className="text-[8px] text-[hsl(220,10%,42%)] uppercase tracking-wider mb-2 font-semibold">Classification</div>
         <div className="space-y-1.5">
-          {!filterOn && gisResults.length > 0 && (
+          {residualGisCount > 0 && (
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 shrink-0 rotate-45 rounded-sm" style={{ background: '#ea580c', border: '1.5px solid #fed7aa' }} />
-              <span className="text-[9px] text-[hsl(220,10%,62%)]">GIS Plot ({gisResults.length})</span>
+              <span className="text-[9px] text-[hsl(220,10%,62%)]">GIS Plot ({residualGisCount})</span>
             </div>
           )}
           {legendItems.length > 0
