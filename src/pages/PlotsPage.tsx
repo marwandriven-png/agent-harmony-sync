@@ -238,6 +238,8 @@ export default function PlotsPage() {
     return [...villas, ...syntheticVillasFromGIS.filter(v => !supabaseIds.has(v.id))];
   }, [villas, syntheticVillasFromGIS]);
 
+  const villaSearchCenter = villaManualCenter || resolvedCenter;
+
   const villasForIntelligence = useMemo<CommunityVilla[]>(() => {
     if (!villaSearchCenter) return allVillasForIntel;
     const intelligenceRadius = Math.max(villaSearchRadius + 150, 250);
@@ -250,8 +252,6 @@ export default function PlotsPage() {
     isVillaMode ? villasForIntelligence : [],
     isVillaMode ? nearbyPlots : [],
   );
-
-  const villaSearchCenter = villaManualCenter || resolvedCenter;
 
   // Client-side filter function for GIS-matched villas (apply active filters)
   const applyVillaFilters = useCallback((villa: CommunityVilla): boolean => {
