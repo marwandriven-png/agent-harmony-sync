@@ -369,6 +369,30 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
     expect(result.layout.backFacing).toBe('road');
   });
 
+  it('marks rear park beyond a narrow road buffer as backs_park', () => {
+    const villa = makePlot('villa', [[55.0000,25.0000],[55.0001,25.0000],[55.0001,25.0001],[55.0000,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
+    const frontRoad = makePlot('front-road', [[55.0000,24.9999],[55.0001,24.9999],[55.0001,25.0000],[55.0000,25.0000]], 'ROAD');
+    const rearRoad = makePlot('rear-road', [[55.0000,25.0001],[55.0001,25.0001],[55.0001,25.00013],[55.0000,25.00013]], 'ROAD');
+    const rearPark = makePlot('rear-park', [[55.0000,25.00013],[55.0001,25.00013],[55.0001,25.00032],[55.0000,25.00032]], 'NEIGHBORHOOD PARK');
+
+    const batch = propertyIntelligence.buildBatch([villa, frontRoad, rearRoad, rearPark]);
+    const result = propertyIntelligence.analyzeWithBatch(villa, batch, 'S');
+
+    expect(result.layout.layoutType).toBe('single_row');
+    expect(result.layout.backFacing).toBe('park');
+  });
+
+  it('keeps park-facing class even when vastu is also compliant', () => {
+    const cls = resolveDisplayedVillaClass(
+      { ...baseVilla, vastu_compliant: true, facing_direction: 'E' } as any,
+      makeIntel('single_row', 'park') as any,
+      true,
+      { backsPark: true, vastuCompliant: true },
+    );
+
+    expect(cls?.key).toBe('backs_park');
+  });
+
   it('does not mark B2B when rear residential only touches at one corner', () => {
     const villa = makePlot('villa', [[55.0000,25.0000],[55.0001,25.0000],[55.0001,25.0001],[55.0000,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
     const frontRoad = makePlot('front-road', [[55.0000,24.9999],[55.0001,24.9999],[55.0001,25.0000],[55.0000,25.0000]], 'ROAD');
