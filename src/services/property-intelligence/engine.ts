@@ -250,11 +250,11 @@ export class PropertyIntelligenceEngine {
     );
     const backsPark = parks.some((park) =>
       (park.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, park.edges, this.tolM, 3) >= 3)
-      || this._hasRearContextCandidate(villaCentroid, backEdges, park, resolvedFrontBearing, 42)
+      || this._hasRearContextCandidate(villaCentroid, backEdges, park, resolvedFrontBearing, 80)
     );
     const backsOpen = opens.some((open) =>
       (open.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, open.edges, this.tolM, 3) >= 3)
-      || this._hasRearContextCandidate(villaCentroid, backEdges, open, resolvedFrontBearing, 30)
+      || this._hasRearContextCandidate(villaCentroid, backEdges, open, resolvedFrontBearing, 60)
     );
     const backsRes = residential.some(r => r.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, r.edges, this.tolM, 6) >= 6);
 
@@ -479,16 +479,17 @@ export class PropertyIntelligenceEngine {
       return false;
     }
 
+    const minCentroidDistance = Math.min(
+      ...backEdges.map((edge) => Geo.distanceM(edge.mid, candidate.centroid)),
+    );
+
     if (candidate.polygon) {
       const minPolygonDistance = Math.min(
         ...backEdges.map((edge) => Geo.distancePointToPolygonM(edge.mid, candidate.polygon!)),
       );
-      return minPolygonDistance <= maxDistanceM;
+      return Math.min(minPolygonDistance, minCentroidDistance) <= maxDistanceM;
     }
 
-    const minCentroidDistance = Math.min(
-      ...backEdges.map((edge) => Geo.distanceM(edge.mid, candidate.centroid)),
-    );
     return minCentroidDistance <= maxDistanceM;
   }
 
