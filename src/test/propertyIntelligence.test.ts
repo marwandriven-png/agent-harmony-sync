@@ -438,6 +438,19 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
     expect(result.layout.backFacing).not.toBe('open_space');
   });
 
+  it('marks a directly shared rear park boundary as backs_park even when the rear park polygon is irregular', () => {
+    propertyIntelligence.clearCache();
+    const villa = makePlot('villa', [[55.0000,25.0000],[55.0001,25.0000],[55.0001,25.0001],[55.0000,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
+    const frontRoad = makePlot('front-road', [[55.0000,24.9999],[55.0001,24.9999],[55.0001,25.0000],[55.0000,25.0000]], 'ROAD');
+    const rearPark = makePlot('rear-park', [[55.00000,25.00010],[55.00012,25.00010],[55.00016,25.00016],[55.00008,25.00022],[54.99996,25.00018]], 'NEIGHBORHOOD PARK');
+
+    const batch = propertyIntelligence.buildBatch([villa, frontRoad, rearPark]);
+    const result = propertyIntelligence.analyzeWithBatch(villa, batch, 'S');
+
+    expect(result.layout.layoutType).toBe('single_row');
+    expect(result.layout.backFacing).toBe('park');
+  });
+
   it('keeps backs_park when adjacent side villas are nearer than the rear park but not actually behind it', () => {
     propertyIntelligence.clearCache();
     const villa = makePlot('villa', [[55.0000,25.0000],[55.0001,25.0000],[55.0001,25.0001],[55.0000,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
@@ -598,5 +611,29 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
 
     expect(result.villaIds).toEqual(['villa-db-1']);
     expect(result.plots.map((plot) => plot.id)).toEqual(['villa-plot', 'park-plot']);
+  });
+
+  it('applies vastu compliant filter from resolved orientation even when no explicit tag exists yet', () => {
+    const villas = [{ ...baseVilla, id: 'east-facing', orientation: 'East' }] as any[];
+    const intelligenceMap = new Map([
+      ['east-facing', { layout: makeIntel('single_row', 'community_edge').layout, amenities: [], tags: [] }],
+    ]);
+
+    const results = applyIntelligenceFilters(villas as any, intelligenceMap as any, { vastuCompliant: true });
+
+    expect(results).toHaveLength(1);
+    expect(results[0].villa.id).toBe('east-facing');
+  });
+
+  it('applies vastu direction filter from resolved orientation text fallback', () => {
+    const villas = [{ ...baseVilla, id: 'ne-facing', orientation: 'North East' }] as any[];
+    const intelligenceMap = new Map([
+      ['ne-facing', { layout: makeIntel('single_row', 'community_edge').layout, amenities: [], tags: [] }],
+    ]);
+
+    const results = applyIntelligenceFilters(villas as any, intelligenceMap as any, { vastuDirection: 'NE' });
+
+    expect(results).toHaveLength(1);
+    expect(results[0].villa.id).toBe('ne-facing');
   });
 });

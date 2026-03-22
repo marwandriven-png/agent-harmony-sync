@@ -7,6 +7,7 @@
 import type { CommunityVilla } from '@/hooks/useVillas';
 import type { VillaIntelligence } from '@/hooks/usePropertyIntelligence';
 import type { PISearchFilters, AmenityType, ProximityClass } from './types';
+import { classifyVastu, resolveDirectionText } from './classifiers';
 import { parseNaturalLanguageQuery } from './nl-parser';
 
 // ─── Scoring weights ───
@@ -87,6 +88,7 @@ export function applyIntelligenceFilters(
   for (const villa of villas) {
     const intel = intelligenceMap.get(villa.id);
     if (!intel) continue;
+    const resolvedVastu = classifyVastu(resolveDirectionText(villa.facing_direction, villa.orientation, villa.vastu_details));
 
     // Hard filters
     if (resolved.layoutType === 'single_row') {
@@ -120,14 +122,15 @@ export function applyIntelligenceFilters(
 
     if (resolved.vastuCompliant) {
       const hasVastu = intel.tags.some(t => t.label.includes('Vastu ✓'));
-      if (!hasVastu && !villa.vastu_compliant) continue;
+      if (!hasVastu && !villa.vastu_compliant && !resolvedVastu.compliant) continue;
     }
 
     if (resolved.vastuDirection) {
       const dirTag = intel.tags.find(t => t.category === 'vastu' && t.label.includes('Facing'));
       const dirMap: Record<string, string> = { E: 'East', W: 'West', N: 'North', S: 'South', NE: 'Northeast', NW: 'Northwest', SE: 'Southeast', SW: 'Southwest' };
       const expected = dirMap[resolved.vastuDirection] || resolved.vastuDirection;
-      if (!dirTag?.label.includes(expected)) continue;
+      const matchesResolvedDirection = resolvedVastu.entranceDirection === expected;
+      if (!dirTag?.label.includes(expected) && !matchesResolvedDirection) continue;
     }
 
     // Amenity proximity filters

@@ -265,7 +265,7 @@ export class PropertyIntelligenceEngine {
     );
     const rearSeparators = [...roads, ...opens];
     const backsPark = parks.some((park) =>
-      this._hasDirectRearPolygonExposure(villaCentroid, backEdges, park, resolvedFrontBearing, 12, rearSeparators)
+      this._hasDirectRearPolygonExposure(villaCentroid, backEdges, park, resolvedFrontBearing, 18, rearSeparators)
     );
     const backsOpen = opens.some((open) =>
       (open.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, open.edges, this.tolM, 3) >= 3)
@@ -526,14 +526,30 @@ export class PropertyIntelligenceEngine {
       return this._hasRearContextCandidate(villaCentroid, backEdges, candidate, frontBearing, maxGapM);
     }
 
+    const blockerSharesRearBoundary = (edge: Edge) => blockers.some((blocker) =>
+      blocker.polygon != null
+      && blocker.plot.id !== candidate.plot.id
+      && blocker.edges.length > 0
+      && Geo.sharedBoundaryOverlapM([edge], blocker.edges, this.tolM, 3) >= 3
+    );
+
     const candidatePoints: [number, number][] = [
       candidate.centroid,
       ...candidate.polygon,
-      ...candidate.edges.map((edge) => edge.mid),
+      ...candidate.edges.flatMap((edge) => this._sampleEdgePoints(edge)),
     ];
     const backBearing = (frontBearing + 180) % 360;
 
     return backEdges.some((edge) => {
+      if (blockerSharesRearBoundary(edge)) return false;
+
+      const sharesDirectRearBoundary = candidate.edges.length > 0
+        && Geo.sharedBoundaryOverlapM([edge], candidate.edges, this.tolM, 3) >= 3;
+
+      if (sharesDirectRearBoundary) {
+        return true;
+      }
+
       const samplePoints = this._sampleEdgePoints(edge);
       const hasRearAlignedPolygonPoint = samplePoints.some((sample) =>
         candidatePoints.some((point) => this._projectPointOntoBearing(sample, point, backBearing).along > 0.5)
@@ -580,7 +596,7 @@ export class PropertyIntelligenceEngine {
           const blockerPoints: [number, number][] = [
             blocker.centroid,
             ...blocker.polygon,
-            ...blocker.edges.map((blockerEdge) => blockerEdge.mid),
+            ...blocker.edges.flatMap((blockerEdge) => this._sampleEdgePoints(blockerEdge)),
           ];
 
           return blockerPoints.some((point) => {
