@@ -258,6 +258,7 @@ export class PropertyIntelligenceEngine {
       return this._detectLayoutCentroid(villaCentroid, roads, parks, opens, residential, fb);
     }
 
+    const backsRes = residential.some(r => r.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, r.edges, this.tolM, 6) >= 6);
     const backsRoad = roads.some((road) =>
       (road.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, road.edges, this.tolM, 3) >= 3)
       || this._hasRearContextCandidate(villaCentroid, backEdges, road, resolvedFrontBearing, 18)
@@ -270,20 +271,24 @@ export class PropertyIntelligenceEngine {
       (open.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, open.edges, this.tolM, 3) >= 3)
       || this._hasRearContextCandidate(villaCentroid, backEdges, open, resolvedFrontBearing, 60)
     );
-    const backsRes = residential.some(r => r.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, r.edges, this.tolM, 6) >= 6);
 
-    // B2B ONLY when the rear touches residential AND no rear road / park / open buffer exists.
-    const layoutType: LayoutType =
-      (backsRes && !backsRoad && !backsPark && !backsOpen) ? 'back_to_back' : 'single_row';
+    // Community unit-type model:
+    // if the rear boundary directly shares a wall with another residential row,
+    // this unit is Back-to-Back. Farther parks/roads behind that opposing row
+    // must not override the row class for the selected unit.
+    if (backsRes) {
+      return { layoutType: 'back_to_back', backFacing: 'villa' };
+    }
 
-    // Back-facing priority: Park > Open > Road > Residential > Edge.
+    const layoutType: LayoutType = 'single_row';
+
+    // Back-facing priority for true exposed rear edges: Park > Open > Road > Edge.
     // This keeps park-facing villas illustrated as park-facing even when
     // a narrow rear road/buffer also exists between the villa and park.
     let backFacing: BackFacingType = 'community_edge';
     if (backsPark)       backFacing = 'park';
     else if (backsOpen)  backFacing = 'open_space';
     else if (backsRoad)  backFacing = 'road';
-    else if (backsRes)   backFacing = 'villa';
 
     return { layoutType, backFacing };
   }
@@ -321,23 +326,17 @@ export class PropertyIntelligenceEngine {
     const rearPark = inRear(parks, 5, BUFFER_MAX).length > 0;
     const rearOpen = inRear(opens, 5, BUFFER_MAX).length > 0;
 
-    // STRICT B2B rule: residential is in the rear and there is no rear buffer.
-    const isB2B = rearRes && !rearRoad && !rearPark && !rearOpen;
+    // Community unit-type model: a rear residential row means this unit is B2B.
+    if (rearRes && !rearRoad && !rearPark && !rearOpen) {
+      return { layoutType: 'back_to_back', backFacing: 'villa' };
+    }
 
-    const layoutType: LayoutType = isB2B ? 'back_to_back' : 'single_row';
-
-    // Back-facing: what is ACTUALLY at the rear, regardless of layout type.
-    // B2B means another villa row is adjacent, but the back of that row
-    // may itself face a park/road. We set backFacing = 'villa' for B2B
-    // UNLESS a park or road is also directly detectable behind this unit
-    // (within tighter radius — indicating the park/road is really close).
     let backFacing: BackFacingType = 'community_edge';
     if (rearPark)        backFacing = 'park';
     else if (rearRoad)   backFacing = 'road';
     else if (rearOpen)   backFacing = 'open_space';
-    else if (isB2B)      backFacing = 'villa';
 
-    return { layoutType, backFacing };
+    return { layoutType: 'single_row', backFacing };
   }
 
   // ─── POSITION DETECTION ───────────────────────────────────────────────────

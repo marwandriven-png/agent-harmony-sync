@@ -168,6 +168,7 @@ import {
   normalizePlotKey,
   resolveDisplayedVillaClass,
 } from '@/services/property-intelligence/unit-reference';
+import { applyIntelligenceFilters } from '@/services/property-intelligence/filter';
 import { isVillaWithinSearchRadius } from '@/services/property-intelligence/search-radius';
 
 const baseVilla = {
@@ -461,6 +462,37 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
 
     expect(result.layout.layoutType).toBe('back_to_back');
     expect(result.layout.backFacing).toBe('villa');
+  });
+
+  it('keeps B2B when a park exists behind the opposing residential row', () => {
+    propertyIntelligence.clearCache();
+    const villa = makePlot('villa', [[55.00000,25.00000],[55.00010,25.00000],[55.00010,25.00010],[55.00000,25.00010]], 'RESIDENTIAL ATTACHED VILLAS');
+    const frontRoad = makePlot('front-road', [[55.00000,24.99990],[55.00010,24.99990],[55.00010,25.00000],[55.00000,25.00000]], 'ROAD');
+    const rearVilla = makePlot('rear-villa', [[55.00000,25.00010],[55.00010,25.00010],[55.00010,25.00020],[55.00000,25.00020]], 'RESIDENTIAL ATTACHED VILLAS');
+    const rearPark = makePlot('rear-park', [[55.00000,25.00020],[55.00010,25.00020],[55.00010,25.00035],[55.00000,25.00035]], 'NEIGHBORHOOD PARK');
+
+    const batch = propertyIntelligence.buildBatch([villa, frontRoad, rearVilla, rearPark]);
+    const result = propertyIntelligence.analyzeWithBatch(villa, batch, 'S');
+
+    expect(result.layout.layoutType).toBe('back_to_back');
+    expect(result.layout.backFacing).toBe('villa');
+  });
+
+  it('applies back-to-back hard filters strictly', () => {
+    const villas = [
+      { ...baseVilla, id: 'b2b-villa' },
+      { ...baseVilla, id: 'sr-villa', is_single_row: true },
+    ] as any[];
+
+    const intelligenceMap = new Map([
+      ['b2b-villa', { layout: makeIntel('back_to_back', 'villa').layout, amenities: [], tags: [] }],
+      ['sr-villa', { layout: makeIntel('single_row', 'park').layout, amenities: [], tags: [] }],
+    ]);
+
+    const results = applyIntelligenceFilters(villas as any, intelligenceMap as any, { layoutType: 'back_to_back' });
+
+    expect(results).toHaveLength(1);
+    expect(results[0].villa.id).toBe('b2b-villa');
   });
 
   it('dedupes db and gis records with case-insensitive plot ids', () => {
