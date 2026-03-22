@@ -248,49 +248,49 @@ export class PropertyIntelligenceEngine {
     roads: ClassifiedPlot[], parks: ClassifiedPlot[], opens: ClassifiedPlot[],
     residential: ClassifiedPlot[], fb: number | null,
   ): { layoutType: LayoutType; backFacing: BackFacingType } {
-    const resolvedFrontBearing = this._resolveFrontBearing(villaCentroid, villaEdges, roads, fb);
-    if (resolvedFrontBearing === null) {
+    const frontBearingCandidates = this._frontBearingCandidates(villaCentroid, villaEdges, roads, fb);
+    if (frontBearingCandidates.length === 0) {
       return this._detectLayoutCentroid(villaCentroid, roads, parks, opens, residential, fb);
     }
 
-    const backEdges = this._backEdges(villaEdges, villaCentroid, resolvedFrontBearing);
-    if (backEdges.length === 0) {
-      return this._detectLayoutCentroid(villaCentroid, roads, parks, opens, residential, fb);
-    }
-
-    const backsRes = residential.some(r => r.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, r.edges, this.tolM, 6) >= 6);
-    const backsRoad = roads.some((road) =>
-      (road.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, road.edges, this.tolM, 3) >= 3)
-      || this._hasRearContextCandidate(villaCentroid, backEdges, road, resolvedFrontBearing, 18)
-    );
     const rearSeparators = [...roads, ...opens];
-    const backsPark = parks.some((park) =>
-      this._hasDirectRearPolygonExposure(villaCentroid, backEdges, park, resolvedFrontBearing, 18, rearSeparators)
-    );
-    const backsOpen = opens.some((open) =>
-      (open.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, open.edges, this.tolM, 3) >= 3)
-      || this._hasRearContextCandidate(villaCentroid, backEdges, open, resolvedFrontBearing, 60)
-    );
+    let bestResult: { layoutType: LayoutType; backFacing: BackFacingType; score: number } | null = null;
 
-    // Community unit-type model:
-    // if the rear boundary directly shares a wall with another residential row,
-    // this unit is Back-to-Back. Farther parks/roads behind that opposing row
-    // must not override the row class for the selected unit.
-    if (backsRes) {
-      return { layoutType: 'back_to_back', backFacing: 'villa' };
+    for (const resolvedFrontBearing of frontBearingCandidates) {
+      const backEdges = this._backEdges(villaEdges, villaCentroid, resolvedFrontBearing);
+      if (backEdges.length === 0) continue;
+
+      const backsRes = residential.some((r) => r.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, r.edges, this.tolM, 6) >= 6);
+      const backsRoad = roads.some((road) =>
+        (road.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, road.edges, this.tolM, 3) >= 3)
+        || this._hasRearContextCandidate(villaCentroid, backEdges, road, resolvedFrontBearing, 18)
+      );
+      const backsPark = parks.some((park) =>
+        this._hasDirectRearPolygonExposure(villaCentroid, backEdges, park, resolvedFrontBearing, 18, rearSeparators)
+      );
+      const backsOpen = opens.some((open) =>
+        (open.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, open.edges, this.tolM, 3) >= 3)
+        || this._hasRearContextCandidate(villaCentroid, backEdges, open, resolvedFrontBearing, 60)
+      );
+
+      const candidateResult = backsRes
+        ? { layoutType: 'back_to_back' as LayoutType, backFacing: 'villa' as BackFacingType, score: 4 }
+        : backsPark
+          ? { layoutType: 'single_row' as LayoutType, backFacing: 'park' as BackFacingType, score: 3 }
+          : backsOpen
+            ? { layoutType: 'single_row' as LayoutType, backFacing: 'open_space' as BackFacingType, score: 2 }
+            : backsRoad
+              ? { layoutType: 'single_row' as LayoutType, backFacing: 'road' as BackFacingType, score: 1 }
+              : { layoutType: 'single_row' as LayoutType, backFacing: 'community_edge' as BackFacingType, score: 0 };
+
+      if (!bestResult || candidateResult.score > bestResult.score) {
+        bestResult = candidateResult;
+      }
     }
 
-    const layoutType: LayoutType = 'single_row';
-
-    // Back-facing priority for true exposed rear edges: Park > Open > Road > Edge.
-    // This keeps park-facing villas illustrated as park-facing even when
-    // a narrow rear road/buffer also exists between the villa and park.
-    let backFacing: BackFacingType = 'community_edge';
-    if (backsPark)       backFacing = 'park';
-    else if (backsOpen)  backFacing = 'open_space';
-    else if (backsRoad)  backFacing = 'road';
-
-    return { layoutType, backFacing };
+    return bestResult
+      ? { layoutType: bestResult.layoutType, backFacing: bestResult.backFacing }
+      : this._detectLayoutCentroid(villaCentroid, roads, parks, opens, residential, fb);
   }
 
   /**
@@ -408,46 +408,107 @@ export class PropertyIntelligenceEngine {
     roads: ClassifiedPlot[],
     fb: number | null,
   ): number | null {
-    if (fb !== null || villaEdges.length === 0 || roads.length === 0) return fb;
+    const [candidate] = this._frontBearingCandidates(villaCentroid, villaEdges, roads, fb);
+    return candidate ?? null;
+  }
 
-    const roadFacingEdges = villaEdges.filter((villaEdge) =>
-      roads.some((road) => road.edges.length > 0 && Geo.sharedBoundaryOverlapM([villaEdge], road.edges, this.tolM, 3) >= 3)
-    );
+  private _frontBearingCandidates(
+    villaCentroid: [number, number],
+    villaEdges: Edge[],
+    roads: ClassifiedPlot[],
+    fb: number | null,
+  ): number[] {
+    if (fb !== null) return [fb];
+    if (villaEdges.length === 0 || roads.length === 0) return [];
 
-    if (roadFacingEdges.length > 0) {
-      const avgMid: [number, number] = roadFacingEdges.reduce<[number, number]>(
-        (acc, edge) => [acc[0] + edge.mid[0], acc[1] + edge.mid[1]],
-        [0, 0],
+    const scoredEdges = villaEdges.map((edge) => {
+      const bearing = Geo.bearingFrom(villaCentroid, edge.mid);
+      const directOverlap = roads.reduce((sum, road) => {
+        if (road.edges.length === 0) return sum;
+        return sum + Geo.sharedBoundaryOverlapM([edge], road.edges, this.tolM, 3);
+      }, 0);
+
+      const exposure = roads.reduce(
+        (best, road) => {
+          const current = this._measureRoadExposure(edge, bearing, road);
+          if (!current) return best;
+
+          return {
+            support: best.support + current.support,
+            minDistance: Math.min(best.minDistance, current.minDistance),
+          };
+        },
+        { support: 0, minDistance: Number.POSITIVE_INFINITY },
       );
 
-      return Geo.bearingFrom(villaCentroid, [
-        avgMid[0] / roadFacingEdges.length,
-        avgMid[1] / roadFacingEdges.length,
-      ]);
+      return {
+        bearing,
+        directOverlap,
+        support: exposure.support,
+        minDistance: exposure.minDistance,
+      };
+    })
+      .filter((edge) => edge.directOverlap > 0 || edge.support > 0)
+      .sort((a, b) => {
+        if (b.directOverlap !== a.directOverlap) return b.directOverlap - a.directOverlap;
+        if (b.support !== a.support) return b.support - a.support;
+        return a.minDistance - b.minDistance;
+      });
+
+    const candidates: number[] = [];
+    for (const edge of scoredEdges) {
+      this._pushBearingCandidate(candidates, edge.bearing);
     }
 
-    let nearestRoadEdge: Edge | null = null;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-
-    for (const road of roads) {
-      for (const roadEdge of road.edges) {
-        const edgeDistance = villaEdges.reduce((min, villaEdge) => {
-          const dist = Geo.distanceM(villaEdge.mid, roadEdge.mid);
-          return dist < min ? dist : min;
-        }, Number.POSITIVE_INFINITY);
-
-        if (edgeDistance < nearestDistance) {
-          nearestDistance = edgeDistance;
-          nearestRoadEdge = roadEdge;
-        }
-      }
+    const centroidFallback = this._inferCentroidFrontBearing(villaCentroid, roads);
+    if (centroidFallback !== null) {
+      this._pushBearingCandidate(candidates, centroidFallback);
     }
 
-    if (!nearestRoadEdge || !Number.isFinite(nearestDistance) || nearestDistance > this.frontRoadInferenceMaxM) {
-      return null;
+    return candidates;
+  }
+
+  private _measureRoadExposure(
+    edge: Edge,
+    bearing: number,
+    road: ClassifiedPlot,
+  ): { support: number; minDistance: number } | null {
+    const roadPoints: [number, number][] = road.polygon
+      ? [road.centroid, ...road.polygon, ...road.edges.flatMap((roadEdge) => this._sampleEdgePoints(roadEdge))]
+      : [road.centroid];
+
+    let support = 0;
+    let minDistance = Number.POSITIVE_INFINITY;
+
+    for (const sample of this._sampleEdgePoints(edge)) {
+      const distance = road.polygon
+        ? Geo.distancePointToPolygonM(sample, road.polygon)
+        : Geo.distanceM(sample, road.centroid);
+
+      if (!Number.isFinite(distance) || distance > this.frontRoadInferenceMaxM) continue;
+
+      const hasForwardRoadPoint = roadPoints.some((point) => {
+        const projection = this._projectPointOntoBearing(sample, point, bearing);
+        return projection.along > 0.5 && projection.lateral <= 24;
+      });
+
+      if (!hasForwardRoadPoint) continue;
+
+      support += 1;
+      minDistance = Math.min(minDistance, distance);
     }
 
-    return Geo.bearingFrom(villaCentroid, nearestRoadEdge.mid);
+    return support > 0 ? { support, minDistance } : null;
+  }
+
+  private _pushBearingCandidate(candidates: number[], bearing: number) {
+    const normalized = ((bearing % 360) + 360) % 360;
+    const hasNearbyBearing = candidates.some((candidate) => {
+      const delta = Math.abs(candidate - normalized) % 360;
+      return Math.min(delta, 360 - delta) < 8;
+    });
+
+    if (!hasNearbyBearing) candidates.push(normalized);
   }
 
   private _inferCentroidFrontBearing(
