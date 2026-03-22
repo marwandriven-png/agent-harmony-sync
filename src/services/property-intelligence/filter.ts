@@ -89,10 +89,14 @@ export function applyIntelligenceFilters(
     if (!intel) continue;
 
     // Hard filters
-    if (resolved.layoutType) {
-      if (intel.layout.layoutType !== resolved.layoutType &&
-          !(resolved.layoutType === 'single_row' && villa.is_single_row) &&
-          !(resolved.layoutType === 'back_to_back')) {
+    if (resolved.layoutType === 'single_row') {
+      if (intel.layout.layoutType !== 'single_row' && !villa.is_single_row) {
+        continue;
+      }
+    }
+
+    if (resolved.layoutType === 'back_to_back') {
+      if (intel.layout.layoutType !== 'back_to_back') {
         continue;
       }
     }
