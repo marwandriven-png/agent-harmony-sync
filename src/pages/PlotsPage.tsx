@@ -26,6 +26,7 @@ import { usePropertyIntelligence } from '@/hooks/usePropertyIntelligence';
 import { cn } from '@/lib/utils';
 import {
   getVillaPlotKey,
+  hasVastu,
   mergeVillasByPlotKey,
   normalizePlotKey,
   resolveDisplayedVillaClass,
@@ -272,10 +273,7 @@ export default function PlotsPage() {
     }
 
     if (villaFilters.vastuCompliant) {
-      const hasVastu = !!(
-        intel?.tags.some((tag) => tag.label.includes('Vastu')) || villa.vastu_compliant
-      );
-      if (!hasVastu) return false;
+      if (!hasVastu(villa, intel)) return false;
     }
 
     // Amenity match
