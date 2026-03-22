@@ -144,6 +144,11 @@ describe('parseNaturalLanguageQuery', () => {
 // ─── Classification Priority — B2B vs Single Row mutual exclusion ─────────────
 
 import { resolveVillaClass, VILLA_CLASSES } from '@/services/property-intelligence/classify-class';
+import {
+  getVillaPlotKey,
+  mergeVillasByPlotKey,
+  resolveDisplayedVillaClass,
+} from '@/services/property-intelligence/unit-reference';
 
 const baseVilla = {
   id: 'test', is_corner: false, is_single_row: false,
@@ -242,6 +247,32 @@ describe('resolveVillaClass — strict priority (regression)', () => {
     const fills = Object.values(VILLA_CLASSES).map(c => c.fill);
     const unique = new Set(fills);
     expect(unique.size).toBe(fills.length);
+  });
+});
+
+describe('unit-reference integration regression', () => {
+  it('dedupes synthetic and db villas by plot key while keeping richer record', () => {
+    const synthetic = { ...baseVilla, id: 'gis:123', plot_number: '123', plot_id: '123', latitude: 25.2, longitude: 55.2, facing_direction: null, bedrooms: null, plot_size_sqft: null };
+    const db = { ...baseVilla, id: 'db-1', plot_number: '123', plot_id: '123', latitude: 25.2, longitude: 55.2, facing_direction: 'N', bedrooms: 4, plot_size_sqft: 3000 };
+    const merged = mergeVillasByPlotKey([synthetic as any, db as any]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].id).toBe('db-1');
+  });
+
+  it('uses plot_number / plot_id / gis id consistently for rendered pins', () => {
+    expect(getVillaPlotKey({ id: 'gis:456', plot_number: null, plot_id: null } as any)).toBe('456');
+    expect(getVillaPlotKey({ id: 'villa-1', plot_number: 'P-12', plot_id: null } as any)).toBe('P-12');
+    expect(getVillaPlotKey({ id: 'villa-2', plot_number: null, plot_id: 'plot-9' } as any)).toBe('plot-9');
+  });
+
+  it('returns filtered display class from shared resolver', () => {
+    const cls = resolveDisplayedVillaClass(
+      baseVilla as any,
+      makeIntel('single_row', 'park') as any,
+      true,
+      { backsPark: true },
+    );
+    expect(cls?.key).toBe('backs_park');
   });
 });
 

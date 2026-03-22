@@ -25,6 +25,18 @@ import { parseNaturalLanguageQuery } from '@/services/PropertyIntelligenceServic
 import { usePropertyIntelligence } from '@/hooks/usePropertyIntelligence';
 import { MOCK_COMMUNITIES, convertMockCommunityToPlots } from '@/data/mock/communities';
 import { cn } from '@/lib/utils';
+import {
+  getVillaPlotKey,
+  matchesBackToBack,
+  matchesBacksPark,
+  matchesBacksRoad,
+  matchesCorner,
+  matchesEndUnit,
+  matchesOpenView,
+  matchesSingleRow,
+  mergeVillasByPlotKey,
+  hasVastu,
+} from '@/services/property-intelligence/unit-reference';
 
 const VillaMapView = lazy(() => import('@/components/villas/VillaMapView').then((module) => ({ default: module.VillaMapView })));
 const VillaRightPanel = lazy(() => import('@/components/villas/VillaRightPanel').then((module) => ({ default: module.VillaRightPanel })));
@@ -254,44 +266,31 @@ export default function PlotsPage() {
   const applyVillaFilters = useCallback((villa: typeof villas[0]): boolean => {
     const intel = intelligenceMap.get(villa.id);
     const piReady = intel !== undefined;
-    const layout = intel?.layout;
-
-    // Unit-type model follows the uploaded reference:
-    // - row type (B2B / Single Row / Backs Park / Backs Road / Open View)
-    // - positional overlays (Corner / End Unit)
-    // Corner is a stronger overlay than End Unit, so corners are excluded from end-unit results.
-    const matchesCorner = !!villa.is_corner || layout?.positionType === 'corner';
-    const matchesEndUnit = !matchesCorner && (villa.position_type === 'end' || layout?.positionType === 'end');
-    const matchesBackToBack = layout?.layoutType === 'back_to_back';
-    const matchesSingleRow = layout?.layoutType === 'single_row' || (!!villa.is_single_row && layout?.layoutType !== 'back_to_back');
-    const matchesBacksPark = !!villa.backs_park || layout?.backFacing === 'park';
-    const matchesBacksRoad = !!villa.backs_road || layout?.backFacing === 'road';
-    const matchesOpenView = layout?.backFacing === 'open_space';
 
     if (villaFilters.bedrooms && villa.bedrooms !== villaFilters.bedrooms) return false;
     if (villaFilters.minSize && (villa.plot_size_sqft ?? 0) < villaFilters.minSize) return false;
     if (villaFilters.maxSize && (villa.plot_size_sqft ?? 0) > villaFilters.maxSize) return false;
 
     if (villaFilters.isCorner) {
-      if (!matchesCorner) return false;
+      if (!matchesCorner(villa, intel)) return false;
     }
     if (villaFilters.isSingleRow) {
-      if (!matchesSingleRow) return false;
+      if (!matchesSingleRow(villa, intel)) return false;
     }
     if (villaFilters.isBackToBack) {
-      if (!matchesBackToBack) return false;
+      if (!matchesBackToBack(intel)) return false;
     }
     if (villaFilters.isEndUnit) {
-      if (!matchesEndUnit) return false;
+      if (!matchesEndUnit(villa, intel)) return false;
     }
     if (villaFilters.backsPark) {
-      if (!matchesBacksPark) return false;
+      if (!matchesBacksPark(villa, intel)) return false;
     }
     if (villaFilters.backsRoad) {
-      if (!matchesBacksRoad) return false;
+      if (!matchesBacksRoad(villa, intel)) return false;
     }
     if (villaFilters.backsOpenSpace) {
-      if (!matchesOpenView) return false;
+      if (!matchesOpenView(intel)) return false;
     }
 
     // Amenity match
@@ -307,7 +306,7 @@ export default function PlotsPage() {
 
     // Vastu match
     if (villaFilters.vastuCompliant) {
-      if (!villa.vastu_compliant && piReady && !intel.tags.some(t => t.label.includes('Vastu ✓') || t.label.includes('Vastu Compliant'))) return false;
+      if (!hasVastu(villa, intel)) return false;
     }
 
     // PI Amenity proximity search ("Villa near mall")
@@ -338,24 +337,17 @@ export default function PlotsPage() {
 
   const mergedVillas = useMemo(() => {
     const matchedSet = matchedVillaIds;
-    // GIS-matched Supabase villas first, then all filtered villas (Supabase + synthetic), deduped
     const ordered = [
       ...filteredGisMatchedVillas,
       ...filteredAllVillas.filter(v => !matchedSet.has(v.id)),
     ];
-    const seen = new Set<string>();
-    return ordered.filter(v => {
-      if (seen.has(v.id)) return false;
-      seen.add(v.id);
-      return true;
-    });
+    return mergeVillasByPlotKey(ordered);
   }, [filteredAllVillas, filteredGisMatchedVillas, matchedVillaIds]);
 
   const matchedPlotIds = useMemo(() => {
     return new Set(
       mergedVillas
-        .filter(v => v.id.startsWith('gis:'))
-        .map(v => v.plot_number ?? v.plot_id ?? v.id.replace(/^gis:/, ''))
+        .map(getVillaPlotKey)
         .filter((plotId): plotId is string => Boolean(plotId))
     );
   }, [mergedVillas]);
@@ -363,7 +355,7 @@ export default function PlotsPage() {
   const renderedPlotIds = useMemo(() => {
     return new Set(
       mergedVillas
-        .map(v => v.plot_number ?? v.plot_id ?? (v.id.startsWith('gis:') ? v.id.replace(/^gis:/, '') : null))
+        .map(getVillaPlotKey)
         .filter((plotId): plotId is string => Boolean(plotId))
     );
   }, [mergedVillas]);

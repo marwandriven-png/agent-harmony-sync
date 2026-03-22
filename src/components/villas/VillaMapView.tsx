@@ -30,6 +30,10 @@ import { normalizeCoordinatesForSearch } from '@/services/DDAGISService';
 import { AMENITY_CONFIG, type DetectedAmenity } from '@/services/PropertyIntelligenceService';
 import { haversineDistance } from '@/lib/geo';
 import { VILLA_CLASSES as _VILLA_CLASSES, resolveVillaClass as _resolveVillaClass, type VillaClass } from '@/services/property-intelligence/classify-class';
+import {
+  hasActiveClassFilter,
+  resolveDisplayedVillaClass,
+} from '@/services/property-intelligence/unit-reference';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -63,85 +67,13 @@ export const VILLA_CLASSES = _VILLA_CLASSES;
  */
 export const resolveVillaClass = _resolveVillaClass;
 
-/** Returns true when at least one intelligence-related filter is active */
-function hasActiveClassFilter(f: VillaSearchFilters | undefined): boolean {
-  if (!f) return false;
-  return !!(
-    f.isCorner || f.isEndUnit || f.isBackToBack || f.isSingleRow ||
-    f.backsPark || f.backsRoad || f.backsOpenSpace ||
-    f.vastuCompliant ||
-    f.nearPool || f.nearSchool || f.nearEntrance ||
-    (f.nearAmenity?.length ?? 0) > 0
-  );
-}
-
-function hasVastu(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {
-  return !!(intel?.tags.some(t => t.label.includes('Vastu')) || villa.vastu_compliant);
-}
-
-function matchesCorner(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {
-  return intel?.layout.positionType === 'corner' || villa.is_corner;
-}
-
-function matchesEndUnit(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {
-  if (matchesCorner(villa, intel)) return false;
-  return intel?.layout.positionType === 'end' || villa.position_type === 'end';
-}
-
-function matchesBackToBack(intel: VillaIntelligence | undefined): boolean {
-  return intel?.layout.layoutType === 'back_to_back';
-}
-
-function matchesSingleRow(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {
-  if (intel?.layout.layoutType === 'back_to_back') return false;
-  return intel?.layout.layoutType === 'single_row' || villa.is_single_row;
-}
-
-function matchesBacksPark(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {
-  // backFacing='park' and B2B are independent. A row can back a park AND be B2B.
-  return intel?.layout.backFacing === 'park' || villa.backs_park;
-}
-
-function matchesBacksRoad(villa: CommunityVilla, intel: VillaIntelligence | undefined): boolean {
-  // backFacing='road' and B2B are independent.
-  return intel?.layout.backFacing === 'road' || villa.backs_road;
-}
-
-function matchesOpenView(intel: VillaIntelligence | undefined): boolean {
-  return intel?.layout.backFacing === 'open_space';
-}
-
 function resolveDisplayedClass(
   villa: CommunityVilla,
   intel: VillaIntelligence | undefined,
   intelLoaded: boolean,
   filters: VillaSearchFilters | undefined,
 ): VillaClass | null {
-  const primary = resolveVillaClass(villa, intel, intelLoaded);
-
-  if (!filters || !hasActiveClassFilter(filters)) return primary;
-
-  const matchedFilteredClass: VillaClass[] = [];
-
-  if (filters.backsPark && matchesBacksPark(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.backs_park);
-  if (filters.backsRoad && matchesBacksRoad(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.backs_road);
-  if (filters.backsOpenSpace && matchesOpenView(intel)) matchedFilteredClass.push(VILLA_CLASSES.open_view);
-  if (filters.isCorner && matchesCorner(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.corner);
-  if (filters.isEndUnit && matchesEndUnit(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.end_unit);
-  if (filters.isBackToBack && matchesBackToBack(intel)) matchedFilteredClass.push(VILLA_CLASSES.back_to_back);
-  if (filters.isSingleRow && matchesSingleRow(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.single_row);
-  if (filters.vastuCompliant && hasVastu(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.vastu);
-
-  if (matchedFilteredClass.length > 0) return matchedFilteredClass[0];
-
-  const hasExplicitClassToggle = !!(
-    filters.isCorner || filters.isEndUnit || filters.isBackToBack || filters.isSingleRow ||
-    filters.backsPark || filters.backsRoad || filters.backsOpenSpace || filters.vastuCompliant
-  );
-
-  if (hasExplicitClassToggle) return null;
-
-  return primary;
+  return resolveDisplayedVillaClass(villa, intel, intelLoaded, filters);
 }
 
 // ─── Pin SVG builders ─────────────────────────────────────────────────────────
