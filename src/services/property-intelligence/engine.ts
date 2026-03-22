@@ -531,19 +531,20 @@ export class PropertyIntelligenceEngine {
       ...candidate.polygon,
       ...candidate.edges.map((edge) => edge.mid),
     ];
+    const backBearing = (frontBearing + 180) % 360;
 
     return backEdges.some((edge) => {
-      const hasRearAlignedPolygonPoint = candidatePoints.some((point) =>
-        Geo.sideFB(Geo.bearingFrom(edge.mid, point), frontBearing) === 'back'
+      const samplePoints = this._sampleEdgePoints(edge);
+      const hasRearAlignedPolygonPoint = samplePoints.some((sample) =>
+        candidatePoints.some((point) => this._projectPointOntoBearing(sample, point, backBearing).along > 0.5)
       );
 
       if (!hasRearAlignedPolygonPoint) return false;
 
-      return this._sampleEdgePoints(edge).some((sample) => {
-        const rearCandidatePoints = candidatePoints.filter((point) =>
-          Geo.distanceM(sample, point) > 0.5
-          && Geo.sideFB(Geo.bearingFrom(sample, point), frontBearing) === 'back'
-        );
+      return samplePoints.some((sample) => {
+        const rearCandidatePoints = candidatePoints
+          .map((point) => ({ point, ...this._projectPointOntoBearing(sample, point, backBearing) }))
+          .filter(({ along }) => along > 0.5);
 
         if (rearCandidatePoints.length === 0) {
           return false;
@@ -554,11 +555,14 @@ export class PropertyIntelligenceEngine {
           return false;
         }
 
-        const nearestCandidatePoint = rearCandidatePoints.reduce((closest, point) => (
-          Geo.distanceM(sample, point) < Geo.distanceM(sample, closest) ? point : closest
-        ));
-        const nearestCandidateDistance = Geo.distanceM(sample, nearestCandidatePoint);
-        const candidateBearing = Geo.bearingFrom(sample, nearestCandidatePoint);
+        const nearestCandidateAlong = rearCandidatePoints.reduce((min, point) => Math.min(min, point.along), Number.POSITIVE_INFINITY);
+        const lateralTolerance = Math.max(
+          8,
+          Math.min(
+            20,
+            rearCandidatePoints.reduce((min, point) => Math.min(min, point.lateral), Number.POSITIVE_INFINITY) + 2,
+          ),
+        );
 
         const hasRearBlocker = blockers.some((blocker) => {
           if (blocker.plot.id === candidate.plot.id || blocker.polygon == null) return false;
@@ -577,18 +581,14 @@ export class PropertyIntelligenceEngine {
             blocker.centroid,
             ...blocker.polygon,
             ...blocker.edges.map((blockerEdge) => blockerEdge.mid),
-          ].filter((point) => {
-            if (Geo.distanceM(sample, point) <= 0.5) return false;
-            if (Geo.sideFB(Geo.bearingFrom(sample, point), frontBearing) !== 'back') return false;
+          ];
 
-            const blockerBearing = Geo.bearingFrom(sample, point);
-            const bearingDelta = Math.abs(((blockerBearing - candidateBearing + 540) % 360) - 180);
-            if (bearingDelta > 22) return false;
-
-            return Geo.distanceM(sample, point) < nearestCandidateDistance - 0.25;
+          return blockerPoints.some((point) => {
+            const projection = this._projectPointOntoBearing(sample, point, backBearing);
+            if (projection.along <= 0.5) return false;
+            if (projection.along >= nearestCandidateAlong - 0.25) return false;
+            return projection.lateral <= lateralTolerance;
           });
-
-          return blockerPoints.length > 0;
         });
 
         if (hasRearBlocker) return false;
@@ -603,6 +603,26 @@ export class PropertyIntelligenceEngine {
       edge.a[0] + ((edge.b[0] - edge.a[0]) * t),
       edge.a[1] + ((edge.b[1] - edge.a[1]) * t),
     ]));
+  }
+
+  private _projectPointOntoBearing(
+    origin: [number, number],
+    point: [number, number],
+    bearing: number,
+  ): { along: number; lateral: number } {
+    const refLat = origin[1] * Math.PI / 180;
+    const metersPerDegLat = 111_320;
+    const metersPerDegLng = Math.cos(refLat) * 111_320;
+    const dx = (point[0] - origin[0]) * metersPerDegLng;
+    const dy = (point[1] - origin[1]) * metersPerDegLat;
+    const radians = bearing * Math.PI / 180;
+    const ux = Math.sin(radians);
+    const uy = Math.cos(radians);
+
+    return {
+      along: (dx * ux) + (dy * uy),
+      lateral: Math.abs((-uy * dx) + (ux * dy)),
+    };
   }
 
   private _parseFrontBearing(dir?: string | null): number | null {
