@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import {
   getVillaPlotKey,
   hasVastu,
+  matchesActiveVillaClassFilters,
   mergeVillasByPlotKey,
   normalizePlotKey,
   resolveDisplayedVillaClass,
@@ -268,17 +269,7 @@ export default function PlotsPage() {
     if (villaFilters.maxSize && (villa.plot_size_sqft ?? 0) > villaFilters.maxSize) return false;
 
     if (hasExplicitClassFilter) {
-      if (!displayedClass) return false;
-
-      const allowedClassKeys = new Set<string>();
-      if (villaFilters.isCorner) allowedClassKeys.add('corner');
-      if (villaFilters.isEndUnit) allowedClassKeys.add('end_unit');
-      if (villaFilters.isSingleRow) allowedClassKeys.add('single_row');
-      if (villaFilters.isBackToBack) allowedClassKeys.add('back_to_back');
-      if (villaFilters.backsPark) allowedClassKeys.add('backs_park');
-      if (villaFilters.backsRoad) allowedClassKeys.add('backs_road');
-      if (villaFilters.backsOpenSpace) allowedClassKeys.add('open_view');
-      if (!allowedClassKeys.has(displayedClass.key)) return false;
+      if (!matchesActiveVillaClassFilters(villa, intel, villaFilters)) return false;
     }
 
     if (villaFilters.vastuCompliant) {
