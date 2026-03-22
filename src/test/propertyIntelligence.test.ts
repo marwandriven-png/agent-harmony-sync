@@ -194,7 +194,12 @@ describe('resolveVillaClass — strict priority (regression)', () => {
 
   it('does not illustrate B2B when rear-facing evidence is missing', () => {
     const cls = resolveVillaClass(baseVilla, makeIntel('back_to_back', 'community_edge'), true);
-    expect(cls).toBeNull();
+    expect(cls?.key).toBe('back_to_back');
+  });
+
+  it('keeps B2B illustration when back-facing is unknown but layout is confirmed', () => {
+    const cls = resolveVillaClass(baseVilla, makeIntel('back_to_back', 'unknown'), true);
+    expect(cls?.key).toBe('back_to_back');
   });
 
   it('backs_park db flag still illustrates as park-facing', () => {
