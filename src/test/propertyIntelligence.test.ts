@@ -438,6 +438,21 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
     expect(result.layout.backFacing).not.toBe('open_space');
   });
 
+  it('keeps backs_park when adjacent side villas are nearer than the rear park but not actually behind it', () => {
+    propertyIntelligence.clearCache();
+    const villa = makePlot('villa', [[55.0000,25.0000],[55.0001,25.0000],[55.0001,25.0001],[55.0000,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
+    const frontRoad = makePlot('front-road', [[55.0000,24.9999],[55.0001,24.9999],[55.0001,25.0000],[55.0000,25.0000]], 'ROAD');
+    const sideVillaEast = makePlot('side-east', [[55.0001,25.0000],[55.0002,25.0000],[55.0002,25.0001],[55.0001,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
+    const sideVillaWest = makePlot('side-west', [[54.9999,25.0000],[55.0000,25.0000],[55.0000,25.0001],[54.9999,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
+    const rearPark = makePlot('rear-park', [[54.99992,25.00010],[55.00018,25.00010],[55.00018,25.00024],[54.99992,25.00024]], 'NEIGHBORHOOD PARK');
+
+    const batch = propertyIntelligence.buildBatch([villa, frontRoad, sideVillaEast, sideVillaWest, rearPark]);
+    const result = propertyIntelligence.analyzeWithBatch(villa, batch, 'S');
+
+    expect(result.layout.layoutType).toBe('single_row');
+    expect(result.layout.backFacing).toBe('park');
+  });
+
   it('does not set backsPark in GIS sync from nearby amenity distance alone', () => {
     propertyIntelligence.clearCache();
     const villa = makePlot('villa', [[55.0000,25.0000],[55.0001,25.0000],[55.0001,25.0001],[55.0000,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
