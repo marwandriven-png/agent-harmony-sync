@@ -330,6 +330,12 @@ export default function PlotsPage() {
     return Array.from(unique.values());
   }, [gisResults]);
 
+  const radiusFilteredGisMatchedVillas = useMemo(() => {
+    return filteredGisMatchedVillas.filter((villa) =>
+      isVillaWithinSearchRadius(villa, villaSearchCenter, villaSearchRadius, plotCoordinateLookup)
+    );
+  }, [filteredGisMatchedVillas, plotCoordinateLookup, villaSearchCenter, villaSearchRadius]);
+
   const searchableGISVillas = useMemo(() => {
     const byPlotKey = new globalThis.Map<string, CommunityVilla>();
     radiusFilteredGisMatchedVillas.forEach((villa) => {
@@ -347,12 +353,6 @@ export default function PlotsPage() {
       .filter(hasRenderableVillaLocation)
       .filter(applyVillaFilters);
   }, [applyVillaFilters, hasRenderableVillaLocation, radiusFilteredGisMatchedVillas, searchableGISResults]);
-
-  const radiusFilteredGisMatchedVillas = useMemo(() => {
-    return filteredGisMatchedVillas.filter((villa) =>
-      isVillaWithinSearchRadius(villa, villaSearchCenter, villaSearchRadius, plotCoordinateLookup)
-    );
-  }, [filteredGisMatchedVillas, plotCoordinateLookup, villaSearchCenter, villaSearchRadius]);
 
   const radiusFilteredAllVillas = useMemo(() => {
     return filteredAllVillas.filter((villa) =>
