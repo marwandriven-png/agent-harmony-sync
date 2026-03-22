@@ -17,7 +17,7 @@ import { MapOverlayHUD } from '@/components/plots/MapOverlayHUD';
 import {
   usePlots, useDeletePlot, useRunFeasibility, type Plot,
 } from '@/hooks/usePlots';
-import { useVillas, useCommunities, useVillaListingCounts, useVillasByIds, type VillaSearchFilters, type CommunityVilla } from '@/hooks/useVillas';
+import { useVillas, useVillaListingCounts, useVillasByIds, type VillaSearchFilters, type CommunityVilla } from '@/hooks/useVillas';
 import { useVillaGISSearch } from '@/hooks/useVillaGISSearch';
 import type { PlotData } from '@/services/DDAGISService';
 import { normalizeCoordinatesForSearch } from '@/services/DDAGISService';
@@ -183,7 +183,6 @@ export default function PlotsPage() {
   const [villaManualCenter, setVillaManualCenter] = useState<{ lat: number; lng: number } | null>(null);
   const isVillaMode = activeView === 'villas';
   const { data: villas = [], isLoading: villasLoading, refetch: refetchVillas } = useVillas(villaFilters, { enabled: isVillaMode });
-  const { data: communities = [] } = useCommunities({ enabled: isVillaMode });
   const { gisResults, gisContextPlots, gisVillaIds, isSearching: isVillaGISSearching, searchGIS: searchVillaGIS, clearGISResults: clearVillaGIS, resolvedCenter } = useVillaGISSearch();
   const { data: gisMatchedVillas = [] } = useVillasByIds(gisVillaIds, { enabled: isVillaMode && gisVillaIds.length > 0 });
   
@@ -211,6 +210,12 @@ export default function PlotsPage() {
     }
     return lookup;
   }, [nearbyPlots]);
+
+  const hasRenderableVillaLocation = useCallback((villa: CommunityVilla) => {
+    if (villa.latitude != null && villa.longitude != null) return true;
+    const plotKey = getVillaPlotKey(villa);
+    return !!(plotKey && plotCoordinateLookup.has(plotKey));
+  }, [plotCoordinateLookup]);
 
   /**
    * Convert GIS result plots (PlotData) → synthetic CommunityVilla objects so the
@@ -344,30 +349,46 @@ export default function PlotsPage() {
   }, [filteredAllVillas, filteredGisMatchedVillas, matchedVillaIds]);
 
   const displayedVillas = useMemo(() => {
-    if (searchableGISResults.length === 0) return filteredCandidateVillas;
+    if (searchableGISResults.length === 0) {
+      return filteredCandidateVillas.filter(hasRenderableVillaLocation);
+    }
 
     const byPlotKey = new globalThis.Map<string, CommunityVilla>();
-    filteredCandidateVillas.forEach((villa) => {
+    filteredGisMatchedVillas.forEach((villa) => {
       const plotKey = getVillaPlotKey(villa);
       if (plotKey) byPlotKey.set(plotKey, villa);
     });
 
-    return searchableGISResults
+    const mappedResults = searchableGISResults
       .map((result) => {
         const plotKey = normalizePlotKey(result.plot.id);
         const matchedVilla = plotKey ? byPlotKey.get(plotKey) : undefined;
         return matchedVilla ?? mapGISResultToVilla(result);
       })
       .filter((villa): villa is CommunityVilla => Boolean(villa));
-  }, [filteredCandidateVillas, searchableGISResults]);
+
+    const renderedKeys = new Set(
+      mappedResults
+        .map(getVillaPlotKey)
+        .filter((plotId): plotId is string => Boolean(plotId))
+    );
+
+    const extraMatchedVillas = filteredGisMatchedVillas.filter((villa) => {
+      const plotKey = getVillaPlotKey(villa);
+      if (!plotKey || renderedKeys.has(plotKey)) return false;
+      return hasRenderableVillaLocation(villa);
+    });
+
+    return [...mappedResults, ...extraMatchedVillas];
+  }, [filteredCandidateVillas, filteredGisMatchedVillas, hasRenderableVillaLocation, searchableGISResults]);
 
   const matchedPlotIds = useMemo(() => {
     return new Set(
-      searchableGISResults
-        .map((result) => normalizePlotKey(result.plot.id))
+      displayedVillas
+        .map(getVillaPlotKey)
         .filter((plotId): plotId is string => Boolean(plotId))
     );
-  }, [searchableGISResults]);
+  }, [displayedVillas]);
 
   const renderedPlotIds = useMemo(() => {
     return new Set(
@@ -661,7 +682,7 @@ export default function PlotsPage() {
                   filters={villaFilters}
                   onFiltersChange={setVillaFilters}
                   onAISearch={handleAISearch}
-                  communities={communities}
+                  communities={[]}
                   onGISSearch={searchVillaGIS}
                   isGISSearching={isVillaGISSearching}
                   gisResults={gisResults}

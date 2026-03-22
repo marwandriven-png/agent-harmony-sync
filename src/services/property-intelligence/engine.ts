@@ -235,8 +235,14 @@ export class PropertyIntelligenceEngine {
     residential: ClassifiedPlot[], fb: number | null,
   ): { layoutType: LayoutType; backFacing: BackFacingType } {
     const resolvedFrontBearing = this._resolveFrontBearing(villaCentroid, villaEdges, roads, fb);
+    if (resolvedFrontBearing === null) {
+      return this._detectLayoutCentroid(villaCentroid, roads, parks, opens, residential, fb);
+    }
+
     const backEdges = this._backEdges(villaEdges, villaCentroid, resolvedFrontBearing);
-    const allEdges = villaEdges;
+    if (backEdges.length === 0) {
+      return this._detectLayoutCentroid(villaCentroid, roads, parks, opens, residential, fb);
+    }
 
     const backsRoad = roads.some(r  => r.edges.length && Geo.sharesBoundary(backEdges, r.edges, this.tolM));
     const backsPark = parks.some(p  => p.edges.length && Geo.sharesBoundary(backEdges, p.edges, this.tolM));
@@ -376,6 +382,22 @@ export class PropertyIntelligenceEngine {
   ): number | null {
     if (fb !== null || villaEdges.length === 0 || roads.length === 0) return fb;
 
+    const roadFacingEdges = villaEdges.filter((villaEdge) =>
+      roads.some((road) => road.edges.length > 0 && Geo.sharesBoundary([villaEdge], road.edges, this.tolM))
+    );
+
+    if (roadFacingEdges.length > 0) {
+      const avgMid: [number, number] = roadFacingEdges.reduce<[number, number]>(
+        (acc, edge) => [acc[0] + edge.mid[0], acc[1] + edge.mid[1]],
+        [0, 0],
+      );
+
+      return Geo.bearingFrom(villaCentroid, [
+        avgMid[0] / roadFacingEdges.length,
+        avgMid[1] / roadFacingEdges.length,
+      ]);
+    }
+
     let nearestRoadEdge: Edge | null = null;
     let nearestDistance = Number.POSITIVE_INFINITY;
 
@@ -393,7 +415,7 @@ export class PropertyIntelligenceEngine {
       }
     }
 
-    if (!nearestRoadEdge || !Number.isFinite(nearestDistance) || nearestDistance > 80) {
+    if (!nearestRoadEdge || !Number.isFinite(nearestDistance) || nearestDistance > 35) {
       return null;
     }
 
