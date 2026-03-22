@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 import {
   getVillaPlotKey,
   hasVastu,
-  matchesActiveVillaClassFilters,
+  matchesOrDefersActiveVillaClassFilters,
   mergeVillasByPlotKey,
   normalizePlotKey,
   resolveDisplayedVillaClass,
@@ -269,7 +269,7 @@ export default function PlotsPage() {
     if (villaFilters.maxSize && (villa.plot_size_sqft ?? 0) > villaFilters.maxSize) return false;
 
     if (hasExplicitClassFilter) {
-      if (!matchesActiveVillaClassFilters(villa, intel, villaFilters)) return false;
+      if (!matchesOrDefersActiveVillaClassFilters(villa, intel, villaFilters)) return false;
     }
 
     if (villaFilters.vastuCompliant) {

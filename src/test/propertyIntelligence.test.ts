@@ -164,6 +164,7 @@ import {
   getVillaPlotKey,
   hasVastu,
   matchesActiveVillaClassFilters,
+  matchesOrDefersActiveVillaClassFilters,
   mergeVillasByPlotKey,
   normalizePlotKey,
   resolveDisplayedVillaClass,
@@ -452,6 +453,16 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
       matchesActiveVillaClassFilters(
         baseVilla as any,
         makeIntel('back_to_back', 'park') as any,
+        { backsPark: true },
+      )
+    ).toBe(true);
+  });
+
+  it('defers active class filtering while villa intelligence is still missing', () => {
+    expect(
+      matchesOrDefersActiveVillaClassFilters(
+        baseVilla as any,
+        undefined,
         { backsPark: true },
       )
     ).toBe(true);
