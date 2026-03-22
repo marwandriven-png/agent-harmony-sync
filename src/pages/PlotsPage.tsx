@@ -336,8 +336,6 @@ export default function PlotsPage() {
   // Filter ALL villas (Supabase + synthetic GIS) through active filters
   const filteredAllVillas = useMemo(() => allVillasForIntel.filter(applyVillaFilters), [allVillasForIntel, applyVillaFilters]);
 
-  const matchedPlotIds = useMemo(() => new Set(mergedVillas?.filter(v => v.id.startsWith('gis:')).map(v => v.plot_number ?? v.plot_id ?? v.id.replace(/^gis:/, '')) ?? []), [mergedVillas]);
-
   const mergedVillas = useMemo(() => {
     const matchedSet = matchedVillaIds;
     // GIS-matched Supabase villas first, then all filtered villas (Supabase + synthetic), deduped
@@ -352,6 +350,15 @@ export default function PlotsPage() {
       return true;
     });
   }, [filteredAllVillas, filteredGisMatchedVillas, matchedVillaIds]);
+
+  const matchedPlotIds = useMemo(() => {
+    return new Set(
+      mergedVillas
+        .filter(v => v.id.startsWith('gis:'))
+        .map(v => v.plot_number ?? v.plot_id ?? v.id.replace(/^gis:/, ''))
+        .filter((plotId): plotId is string => Boolean(plotId))
+    );
+  }, [mergedVillas]);
 
   const villaIds = useMemo(() => mergedVillas.map(v => v.id), [mergedVillas]);
   const { data: listingCounts = {} } = useVillaListingCounts(villaIds, { enabled: isVillaMode && villaIds.length > 0 });
@@ -661,6 +668,7 @@ export default function PlotsPage() {
                   onClearGIS={clearVillaGIS}
                   searchCenter={villaSearchCenter}
                   matchedVillaIds={matchedVillaIds}
+                  matchedPlotIds={matchedPlotIds}
                   searchRadius={villaSearchRadius}
                   onSearchRadiusChange={setVillaSearchRadius}
                   onGoToPlotLocation={(lat, lng) => setVillaManualCenter({ lat, lng })}
