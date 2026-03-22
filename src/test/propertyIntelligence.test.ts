@@ -3,6 +3,8 @@ import { Geo, type Polygon } from '@/services/property-intelligence/geometry';
 import { classifyDistance, classifyVastu, proximityLabel, proximityColor } from '@/services/property-intelligence/classifiers';
 import { parseNaturalLanguageQuery } from '@/services/property-intelligence/nl-parser';
 import { DEFAULT_THRESHOLDS } from '@/services/property-intelligence/types';
+import { propertyIntelligence } from '@/services/property-intelligence/engine';
+import type { PlotData } from '@/services/DDAGISService';
 
 // ─── Geometry ────────────────────────────────────────────────────────────────
 describe('Geo.distanceM', () => {
@@ -238,5 +240,40 @@ describe('resolveVillaClass — strict priority (regression)', () => {
     const fills = Object.values(VILLA_CLASSES).map(c => c.fill);
     const unique = new Set(fills);
     expect(unique.size).toBe(fills.length);
+  });
+});
+
+describe('PropertyIntelligenceEngine polygon layout regression', () => {
+  const makePlot = (id: string, polygon: Polygon, landUseDetails: string): PlotData => ({
+    id,
+    area: 100,
+    gfa: 100,
+    floors: 'G+1',
+    zoning: landUseDetails,
+    location: 'Test',
+    x: polygon[0][0],
+    y: polygon[0][1],
+    color: '#000',
+    status: 'Available',
+    constructionCost: 0,
+    salePrice: 0,
+    landUseDetails,
+    isFrozen: false,
+    rawAttributes: {
+      geometry: { rings: [polygon] },
+    },
+    verificationSource: 'Demo',
+  });
+
+  it('keeps a plot single_row when it touches a road on one side and residential on the rear', () => {
+    const villa = makePlot('villa', [[0,0],[1,0],[1,1],[0,1]], 'RESIDENTIAL ATTACHED VILLAS');
+    const rearResidential = makePlot('rear', [[0,1],[1,1],[1,2],[0,2]], 'RESIDENTIAL ATTACHED VILLAS');
+    const frontRoad = makePlot('road', [[0,-1],[1,-1],[1,0],[0,0]], 'ROAD');
+
+    const batch = propertyIntelligence.buildBatch([villa, rearResidential, frontRoad]);
+    const result = propertyIntelligence.analyzeWithBatch(villa, batch, 'S');
+
+    expect(result.layout.layoutType).toBe('single_row');
+    expect(result.layout.backFacing).toBe('villa');
   });
 });
