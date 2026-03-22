@@ -172,6 +172,7 @@ import {
 import { applyIntelligenceFilters } from '@/services/property-intelligence/filter';
 import { isVillaWithinSearchRadius } from '@/services/property-intelligence/search-radius';
 import { villaGISService } from '@/services/VillaGISService';
+import { loadRadiusSearchData } from '@/hooks/useVillaGISSearch';
 
 const baseVilla = {
   id: 'test', is_corner: false, is_single_row: false,
@@ -566,5 +567,21 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
     expect(batch.parks.map((plot) => plot.plot.id)).toContain('6482996');
     expect(batch.amenities.map((plot) => plot.plot.id)).toContain('6482996');
     expect(batch.amenities.map((plot) => plot.plot.id)).toContain('club');
+  });
+
+  it('falls back to direct GIS radius search when consolidated radius results are empty', async () => {
+    const fallbackPlots = [
+      makePlot('villa-plot', [[55.0000,25.0000],[55.0001,25.0000],[55.0001,25.0001],[55.0000,25.0001]], 'RESIDENTIAL ATTACHED VILLAS'),
+      makePlot('park-plot', [[55.0000,25.0001],[55.0001,25.0001],[55.0001,25.0002],[55.0000,25.0002]], 'NEIGHBORHOOD PARK'),
+    ];
+
+    const result = await loadRadiusSearchData(25.0, 55.0, 100, 300, {
+      searchByLocationConsolidated: async () => ({ plots: [], metadata: null } as any),
+      searchByLocation: async () => fallbackPlots,
+      searchVillasNearLocation: async () => ['villa-db-1'],
+    });
+
+    expect(result.villaIds).toEqual(['villa-db-1']);
+    expect(result.plots.map((plot) => plot.id)).toEqual(['villa-plot', 'park-plot']);
   });
 });
