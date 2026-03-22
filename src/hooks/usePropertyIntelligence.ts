@@ -16,6 +16,7 @@ import type { PlotData } from '@/services/DDAGISService';
 import { propertyIntelligence, type PlotBatch } from '@/services/property-intelligence/engine';
 import { computeVillaScore } from '@/services/property-intelligence/filter';
 import type { DetectedAmenity, LayoutAnalysis, SmartTag } from '@/services/property-intelligence/types';
+import { normalizePlotKey } from '@/services/property-intelligence/unit-reference';
 
 export interface VillaIntelligence {
   villaId:       string;
@@ -56,7 +57,13 @@ export function usePropertyIntelligence(
     batchRef.current = batch;
 
     // Fast O(1) lookup: plotId → PlotData
-    const plotById = new Map<string, PlotData>(nearbyPlots.map(p => [p.id, p]));
+    const plotById = new Map<string, PlotData>();
+    nearbyPlots.forEach((plot) => {
+      const keys = [normalizePlotKey(plot.id)];
+      keys.filter((key): key is string => Boolean(key)).forEach((key) => {
+        if (!plotById.has(key)) plotById.set(key, plot);
+      });
+    });
 
     setIsProcessing(true);
     const newMap = new Map<string, VillaIntelligence>();
@@ -71,8 +78,9 @@ export function usePropertyIntelligence(
 
       for (const villa of chunk) {
         // If villa has a matching GIS plot, use polygon-aware analysis
-        const villaPlot = (villa.plot_number ? plotById.get(villa.plot_number) : null)
-          ?? (villa.plot_id ? plotById.get(villa.plot_id) : null)
+        const villaPlot = (villa.plot_number ? plotById.get(normalizePlotKey(villa.plot_number) ?? '') : null)
+          ?? (villa.plot_id ? plotById.get(normalizePlotKey(villa.plot_id) ?? '') : null)
+          ?? (villa.id.startsWith('gis:') ? plotById.get(normalizePlotKey(villa.id.replace(/^gis:/, '')) ?? '') : null)
           ?? null;
 
         // Villas without a linked GIS plot still need coordinates for centroid fallback

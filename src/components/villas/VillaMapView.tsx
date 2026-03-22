@@ -193,29 +193,11 @@ function buildPopup(
 
 const DUBAI_CENTER: [number, number] = [25.2048, 55.2708];
 
-const COMMUNITY_CENTERS: Record<string, [number, number]> = {
-  'arabian ranches':        [25.0580, 55.2700],
-  'arabian ranches 2':      [25.0500, 55.2800],
-  'arabian ranches 3':      [25.0450, 55.2750],
-  'meadows':                [25.0450, 55.1650],
-  'springs':                [25.0500, 55.1550],
-  'lakes':                  [25.0580, 55.1580],
-  'al barari':              [25.0880, 55.2800],
-  'damac hills':            [25.0300, 55.2300],
-  'dubai hills':            [25.1180, 55.2400],
-  'palm jumeirah':          [25.1124, 55.1390],
-  'jumeirah park':          [25.0400, 55.1500],
-  'mudon':                  [25.0250, 55.2700],
-  'villanova':              [25.0350, 55.2900],
-  'town square':            [25.0150, 55.2500],
-  'tilal al ghaf':          [25.0650, 55.2400],
-};
-
 export function getVillaPosition(
   villa: CommunityVilla,
   idx: number,
   plotCoordinateLookup?: Map<string, { lat: number; lng: number }>,
-): [number, number] {
+): [number, number] | null {
   if (villa.latitude && villa.longitude) return [villa.latitude, villa.longitude];
   const linkedPlotId = normalizePlotKey(
     villa.plot_number
@@ -226,13 +208,8 @@ export function getVillaPosition(
     const linkedCoords = plotCoordinateLookup?.get(linkedPlotId);
     if (linkedCoords) return [linkedCoords.lat, linkedCoords.lng];
   }
-  const key = Object.keys(COMMUNITY_CENTERS).find(k => villa.community_name.toLowerCase().includes(k));
-  if (key) {
-    const b = COMMUNITY_CENTERS[key];
-    const h = villa.villa_number.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    return [b[0] + ((h % 60) - 30) * 0.0003, b[1] + ((h % 47) - 23) * 0.0004];
-  }
-  return [DUBAI_CENTER[0] + ((idx % 50) - 25) * 0.001, DUBAI_CENTER[1] + (Math.floor(idx / 50) - 5) * 0.001];
+  void idx;
+  return null;
 }
 
 function offsetM(lat: number, lng: number, m: number, deg: number) {
@@ -344,6 +321,7 @@ export const VillaMapView = memo(function VillaMapView({
       const cls   = resolveDisplayedClass(villa, intel, intelLoaded, activeFilters);
 
       const basePos   = getVillaPosition(villa, idx, plotCoordinateLookup);
+      if (!basePos) return;
       const posKey    = `${basePos[0].toFixed(6)}:${basePos[1].toFixed(6)}`;
       const dupIndex  = duplicatePositionCounts.get(posKey) ?? 0;
       duplicatePositionCounts.set(posKey, dupIndex + 1);
@@ -408,8 +386,7 @@ export const VillaMapView = memo(function VillaMapView({
       seen.add(plotKey);
       if (renderedPlotIds?.has(plotKey)) return;
 
-      let coords = normalizeCoordinatesForSearch(r.plot.y, r.plot.x);
-      if (!coords && searchCenter) { fi++; coords = offsetM(searchCenter.lat, searchCenter.lng, 30 + fi * 12, (fi * 137.5) % 360); }
+      const coords = normalizeCoordinatesForSearch(r.plot.y, r.plot.x);
       if (!coords) return;
 
       const ck = `${coords.lat.toFixed(6)}:${coords.lng.toFixed(6)}`;
