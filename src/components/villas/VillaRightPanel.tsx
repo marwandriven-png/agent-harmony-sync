@@ -830,9 +830,13 @@ function FilterChip({ label, active, onClick, emoji }: { label: string; active: 
 
 function ActiveBadge({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
-    <Badge className="h-5 text-[9px] gap-0.5 bg-white/10 text-white border-white/20 hover:bg-white/15 cursor-pointer" onClick={onRemove}>
+    <button
+      type="button"
+      onClick={onRemove}
+      className="inline-flex items-center rounded-full border px-2.5 py-0.5 h-5 text-[9px] gap-0.5 bg-white/10 text-white border-white/20 hover:bg-white/15 cursor-pointer"
+    >
       {label} <X className="h-2.5 w-2.5" />
-    </Badge>
+    </button>
   );
 }
 
