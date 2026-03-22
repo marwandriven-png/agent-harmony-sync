@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { gisService } from './DDAGISService';
 import type { PlotData } from './DDAGISService';
 import { propertyIntelligence } from './property-intelligence/engine';
+import { classifyLandUse } from './property-intelligence/classifiers';
 import { Geo, type Polygon, type Edge } from './property-intelligence/geometry';
 
 /**
@@ -70,15 +71,14 @@ function extractPolygon(plot: PlotData): Polygon | null {
 }
 
 function classifyPlotKind(plot: PlotData): ClassifiedNearbyPlot['kind'] {
-  const landUse = (plot.landUseDetails || plot.zoning || '').toUpperCase();
-  if (landUse.includes('ROAD') || landUse.includes('STREET') || landUse.includes('HIGHWAY') || landUse.includes('SERVICE')) return 'road';
-  if (landUse.includes('PARK') || landUse.includes('GARDEN') || landUse.includes('GREEN') || landUse.includes('LANDSCAPE')) return 'park';
-  if (landUse.includes('POOL') || landUse.includes('SWIMMING')) return 'pool';
-  if (landUse.includes('SCHOOL') || landUse.includes('NURSERY') || landUse.includes('KINDERGARTEN')) return 'school';
-  if (landUse.includes('ENTRANCE') || landUse.includes('GATE') || landUse.includes('ENTRY') || landUse.includes('ACCESS')) return 'community';
-  if (landUse.includes('COMMUNITY') || landUse.includes('CLUB') || landUse.includes('CENTER') || landUse.includes('CENTRE')) return 'community';
-  if (landUse.includes('OPEN') || landUse.includes('VACANT') || landUse.includes('EMPTY')) return 'open';
-  if (landUse.includes('VILLA') || landUse.includes('RESIDENTIAL') || landUse.includes('TOWNHOUSE') || landUse.includes('HOUSE')) return 'residential';
+  const kind = classifyLandUse(plot.landUseDetails || plot.zoning || '');
+  if (kind === 'road') return 'road';
+  if (kind === 'park' || kind === 'playground') return 'park';
+  if (kind === 'pool') return 'pool';
+  if (kind === 'school') return 'school';
+  if (kind === 'community_center') return 'community';
+  if (kind === 'open_space') return 'open';
+  if (kind === 'residential') return 'residential';
   return 'other';
 }
 
@@ -317,7 +317,7 @@ class VillaGISService {
       result.isCorner = layout.positionType === 'corner';
       result.isSingleRow = layout.layoutType === 'single_row';
       result.backsRoad = layout.backFacing === 'road';
-      result.backsPark = layout.backFacing === 'park' || layout.backFacing === 'open_space';
+      result.backsPark = layout.backFacing === 'park';
 
       const villaPolygon = villaPlotMatch?.polygon ?? null;
       const villaEdges = villaPlotMatch?.edges ?? [];
