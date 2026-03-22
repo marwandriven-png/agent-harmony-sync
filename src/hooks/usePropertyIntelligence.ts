@@ -42,7 +42,7 @@ export function usePropertyIntelligence(
 
   useEffect(() => {
     let isMounted       = true;
-    let cancelRef       = { value: false };
+    const cancelRef     = { value: false };
 
     // Invalidate engine cache whenever underlying data changes
     propertyIntelligence.clearCache();
