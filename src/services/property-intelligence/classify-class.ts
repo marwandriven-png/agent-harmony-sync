@@ -61,6 +61,9 @@ export function resolveVillaClass(
   const bf  = intel?.layout.backFacing;
   const hasVastu = intel?.tags.some(t => t.label.includes('Vastu')) || !!villa.vastu_compliant;
 
+  // Explicit live B2B intel must override stale DB single-row flags.
+  if (lt === 'back_to_back' && bf === 'villa')      return VILLA_CLASSES.back_to_back;
+
   // Community illustration model: specific rear-facing row types take precedence
   // so the map matches the unit-type reference illustration.
   if (bf === 'park'        || villa.backs_park)                         return VILLA_CLASSES.backs_park;
