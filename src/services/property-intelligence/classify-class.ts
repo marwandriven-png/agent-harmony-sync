@@ -67,17 +67,17 @@ export function resolveVillaClass(
   const hasResolvedVastu = classifyVastu(resolveDirectionText(villa.facing_direction, villa.orientation, villa.vastu_details)).compliant;
   const hasVastu = intel?.tags.some(t => t.label.includes('Vastu')) || !!villa.vastu_compliant || hasResolvedVastu;
 
-  // Only illustrate the classes that are reliable in the current /plots system.
-  if (lt === 'back_to_back') {
-    return VILLA_CLASSES.back_to_back;
-  }
+  if (bf === 'park' || villa.backs_park)                                 return VILLA_CLASSES.backs_park;
+  if (bf === 'road' || villa.backs_road)                                 return VILLA_CLASSES.backs_road;
+  if (bf === 'open_space')                                               return VILLA_CLASSES.open_view;
 
-  if (bf === 'road'        || villa.backs_road)                         return VILLA_CLASSES.backs_road;
-  if (lt === 'single_row'  || villa.is_single_row)                      return VILLA_CLASSES.single_row;
+  if (lt === 'single_row' || villa.is_single_row)                        return VILLA_CLASSES.single_row;
+  if (lt === 'back_to_back')                                             return VILLA_CLASSES.back_to_back;
 
-  if (pt === 'end')                                return VILLA_CLASSES.end_unit;
+  if (pt === 'corner' || villa.is_corner)                                return VILLA_CLASSES.corner;
+  if (pt === 'end')                                                      return VILLA_CLASSES.end_unit;
 
-  if (hasVastu)                                    return VILLA_CLASSES.vastu;
+  if (hasVastu)                                                          return VILLA_CLASSES.vastu;
 
   if (!intelLoaded) return null; // intel still processing
   return null;                   // loaded, no class → no pin
