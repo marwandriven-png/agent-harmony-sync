@@ -175,8 +175,13 @@ export default function PlotsPage() {
           villa_number:          `gis:${plot.id}`,
           plot_number:           plot.id,   // ← matches nearbyPlots so engine finds polygon
           plot_id:               plot.id,
-          orientation:           null,
-          facing_direction:      null,
+          orientation:           (plot.rawAttributes?.ORIENTATION as string | undefined) ?? null,
+          facing_direction:      (plot.rawAttributes?.facingDirection as string | undefined)
+                                ?? (plot.rawAttributes?.FACING_DIRECTION as string | undefined)
+                                ?? (plot.rawAttributes?.ENTRANCE_SIDE as string | undefined)
+                                ?? (plot.rawAttributes?.ENTRANCE_DIRECTION as string | undefined)
+                                ?? (plot.rawAttributes?.ORIENTATION as string | undefined)
+                                ?? null,
           position_type:         null,
           is_corner:             false,
           is_single_row:         false,
@@ -330,6 +335,8 @@ export default function PlotsPage() {
   const matchedVillaIds = useMemo(() => new Set(filteredGisMatchedVillas.map(v => v.id)), [filteredGisMatchedVillas]);
   // Filter ALL villas (Supabase + synthetic GIS) through active filters
   const filteredAllVillas = useMemo(() => allVillasForIntel.filter(applyVillaFilters), [allVillasForIntel, applyVillaFilters]);
+
+  const matchedPlotIds = useMemo(() => new Set(mergedVillas?.filter(v => v.id.startsWith('gis:')).map(v => v.plot_number ?? v.plot_id ?? v.id.replace(/^gis:/, '')) ?? []), [mergedVillas]);
 
   const mergedVillas = useMemo(() => {
     const matchedSet = matchedVillaIds;
