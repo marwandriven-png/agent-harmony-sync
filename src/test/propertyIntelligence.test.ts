@@ -391,6 +391,17 @@ describe('unit-reference integration regression', () => {
     expect(merged[0].id).toBe('db-1');
   });
 
+  it('keeps all distinct GIS plots when each plot key is unique', () => {
+    const first = { ...baseVilla, id: 'gis:6483837', plot_number: '6483837', plot_id: '6483837', latitude: 25.06615, longitude: 55.32271 };
+    const second = { ...baseVilla, id: 'gis:6484024', plot_number: '6484024', plot_id: '6484024', latitude: 25.06624, longitude: 55.32265 };
+    const third = { ...baseVilla, id: 'gis:6482873', plot_number: '6482873', plot_id: '6482873', latitude: 25.06602, longitude: 55.32281 };
+
+    const merged = mergeVillasByPlotKey([first as any, second as any, third as any]);
+
+    expect(merged).toHaveLength(3);
+    expect(merged.map((villa) => villa.plot_number)).toEqual(['6483837', '6484024', '6482873']);
+  });
+
   it('uses plot_number / plot_id / gis id consistently for rendered pins', () => {
     expect(getVillaPlotKey({ id: 'gis:456', plot_number: null, plot_id: null } as any)).toBe('456');
     expect(getVillaPlotKey({ id: 'villa-1', plot_number: ' P-12 ', plot_id: null } as any)).toBe('p-12');

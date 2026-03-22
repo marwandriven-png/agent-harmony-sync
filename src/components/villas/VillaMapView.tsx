@@ -98,15 +98,27 @@ function buildClassPin(cls: VillaClass, selected = false): string {
 }
 
 
-/** Neutral pin for filtered matches that don't have a resolved class yet */
+/** Neutral pill pin for in-radius plots that are visible but not class-resolved yet */
 function buildFallbackMatchPin(selected = false): string {
+  const fill = '#334155';
+  const ring = '#cbd5e1';
+  const badge = 'PLT';
+  const w = 40;
+  const h = 22;
+  const r = h / 2;
   const glow = selected
-    ? 'filter:drop-shadow(0 0 6px rgba(255,255,255,0.5)) drop-shadow(0 2px 4px rgba(0,0,0,0.6))'
+    ? `filter:drop-shadow(0 0 6px ${ring}cc) drop-shadow(0 2px 4px rgba(0,0,0,0.6))`
     : 'filter:drop-shadow(0 2px 4px rgba(0,0,0,0.55))';
+  const sw = selected ? 2.5 : 1.8;
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" style="${glow}">
-    <circle cx="9" cy="9" r="6.5" fill="#0f172a" stroke="#e2e8f0" stroke-width="2" />
-    <circle cx="9" cy="9" r="2.25" fill="#ffffff" />
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h + 7}" style="${glow}">
+    <rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="${r}"
+          fill="${fill}" stroke="${ring}" stroke-width="${sw}"/>
+    <text x="${w / 2}" y="${h / 2 + 4}" text-anchor="middle"
+          font-family="system-ui,-apple-system,'Helvetica Neue',sans-serif"
+          font-size="8" font-weight="900"
+          fill="#fff" letter-spacing="-0.2">${badge}</text>
+    <polygon points="${w / 2 - 4},${h} ${w / 2 + 4},${h} ${w / 2},${h + 7}" fill="${fill}"/>
   </svg>`;
 }
 
@@ -344,8 +356,8 @@ export const VillaMapView = memo(function VillaMapView({
       const dist     = searchCenter ? haversineDistance(searchCenter.lat, searchCenter.lng, basePos[0], basePos[1]) : undefined;
 
       const html  = cls ? buildClassPin(cls, selected || isMatch) : buildFallbackMatchPin(selected || isMatch);
-      const w     = cls ? (cls.badge.length <= 2 ? 34 : 42) : 18;
-      const h     = cls ? 29 : 18;
+      const w     = cls ? (cls.badge.length <= 2 ? 34 : 42) : 40;
+      const h     = cls ? 29 : 29;
 
       const icon = L.divIcon({
         html,
@@ -365,7 +377,7 @@ export const VillaMapView = memo(function VillaMapView({
         className: 'villa-map-popup', maxWidth: 250, closeButton: true, autoPan: true,
       });
       marker.bindTooltip(
-        `<strong style="color:${cls?.fill ?? '#e2e8f0'}">${cls?.label ?? 'Matched Result'}</strong>&nbsp;&mdash;&nbsp;${
+        `<strong style="color:${cls?.fill ?? '#cbd5e1'}">${cls?.label ?? 'Neutral Plot'}</strong>&nbsp;&mdash;&nbsp;${
           villa.villa_number.startsWith('gis:') ? `Plot ${villa.plot_number}` : `Villa ${villa.villa_number}`
         }`,
         { direction: 'top', className: 'villa-tooltip', offset: [0, -h], permanent: false }
@@ -480,7 +492,7 @@ export const VillaMapView = memo(function VillaMapView({
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 shrink-0 rounded-full border-2 border-[hsl(220,20%,92%)] bg-[hsl(220,35%,12%)]" />
               <span className="text-[9px] text-[hsl(220,10%,62%)]">
-                Matched Result
+                Neutral Plot
                 <span className="text-[hsl(220,10%,38%)] ml-1">({unclassifiedCount})</span>
               </span>
             </div>

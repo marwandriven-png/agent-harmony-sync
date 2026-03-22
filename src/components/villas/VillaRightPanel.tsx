@@ -545,7 +545,7 @@ export const VillaRightPanel = memo(function VillaRightPanel({
                             )}
                             {!primaryClass && (
                               <span className="text-[8px] px-1.5 py-0.5 rounded font-black leading-none shrink-0 bg-[hsl(220,22%,16%)] text-[hsl(220,10%,72%)] border border-[hsl(220,20%,24%)]">
-                                Matched Result
+                                PLT Neutral Plot
                               </span>
                             )}
                             {isMatched && <span className="text-[8px] px-1 py-0.5 rounded bg-cyan-500/15 text-cyan-400 font-semibold shrink-0">MATCH</span>}
