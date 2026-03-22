@@ -67,21 +67,14 @@ export function resolveVillaClass(
   const hasResolvedVastu = classifyVastu(resolveDirectionText(villa.facing_direction, villa.orientation, villa.vastu_details)).compliant;
   const hasVastu = intel?.tags.some(t => t.label.includes('Vastu')) || !!villa.vastu_compliant || hasResolvedVastu;
 
-  // Explicit live B2B intel must override stale DB single-row flags.
-  // If no stronger illustrated rear-facing class exists, still show B2B.
-  if (lt === 'back_to_back' && bf !== 'park' && bf !== 'road' && bf !== 'open_space') {
+  // Only illustrate the classes that are reliable in the current /plots system.
+  if (lt === 'back_to_back') {
     return VILLA_CLASSES.back_to_back;
   }
 
-  // Community illustration model: specific rear-facing row types take precedence
-  // so the map matches the unit-type reference illustration.
-  if (bf === 'park'        || villa.backs_park)                         return VILLA_CLASSES.backs_park;
   if (bf === 'road'        || villa.backs_road)                         return VILLA_CLASSES.backs_road;
-  if (bf === 'open_space')                                              return VILLA_CLASSES.open_view;
   if (lt === 'single_row'  || (villa.is_single_row && lt !== 'back_to_back')) return VILLA_CLASSES.single_row;
 
-  // Positional overlays become the default only when no row-type class is known
-  if (pt === 'corner'      || villa.is_corner)    return VILLA_CLASSES.corner;
   if (pt === 'end')                                return VILLA_CLASSES.end_unit;
 
   if (hasVastu)                                    return VILLA_CLASSES.vastu;
