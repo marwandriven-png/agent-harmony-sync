@@ -145,6 +145,7 @@ const VASTU_MAP: Record<string, { rating: VastuRating; score: number }> = {
 export function classifyVastu(facingDirection: string | null | undefined): VastuAnalysis {
   const dir = normalizeClassifierText(facingDirection || '');
   const compact = dir.replace(/\s+/g, '');
+  const tokens = dir.split(' ').filter(Boolean);
 
   const directionAliases: Array<[keyof typeof VASTU_MAP, string[], string]> = [
     ['NE', ['NORTHEAST', 'NORTH EAST', 'NE'], 'Northeast'],
@@ -160,7 +161,9 @@ export function classifyVastu(facingDirection: string | null | undefined): Vastu
   for (const [card, aliases, dirLabel] of directionAliases) {
     const match = aliases.some((alias) => {
       const normalizedAlias = alias.replace(/\s+/g, '');
-      return compact === normalizedAlias || dir.includes(alias);
+      if (compact === normalizedAlias) return true;
+      if (dir === alias) return true;
+      return alias.length > 1 && tokens.includes(alias);
     });
 
     if (!match) continue;

@@ -526,11 +526,15 @@ export class PropertyIntelligenceEngine {
       return this._hasRearContextCandidate(villaCentroid, backEdges, candidate, frontBearing, maxGapM);
     }
 
+    const edgeTouchesPolygon = (edge: Edge, polygon: Polygon, thresholdM = 1.5) => {
+      const samples = this._sampleEdgePoints(edge);
+      return samples.some((sample) => Geo.distancePointToPolygonM(sample, polygon) <= thresholdM);
+    };
+
     const blockerSharesRearBoundary = (edge: Edge) => blockers.some((blocker) =>
       blocker.polygon != null
       && blocker.plot.id !== candidate.plot.id
-      && blocker.edges.length > 0
-      && Geo.sharedBoundaryOverlapM([edge], blocker.edges, this.tolM, 3) >= 3
+      && edgeTouchesPolygon(edge, blocker.polygon)
     );
 
     const candidatePoints: [number, number][] = [
@@ -543,8 +547,7 @@ export class PropertyIntelligenceEngine {
     return backEdges.some((edge) => {
       if (blockerSharesRearBoundary(edge)) return false;
 
-      const sharesDirectRearBoundary = candidate.edges.length > 0
-        && Geo.sharedBoundaryOverlapM([edge], candidate.edges, this.tolM, 3) >= 3;
+      const sharesDirectRearBoundary = edgeTouchesPolygon(edge, candidate.polygon);
 
       if (sharesDirectRearBoundary) {
         return true;
