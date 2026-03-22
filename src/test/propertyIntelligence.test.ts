@@ -114,6 +114,10 @@ describe('classifyLandUse', () => {
   it('does not treat landscape as park', () => expect(classifyLandUse('LANDSCAPE BUFFER')).toBe('open_space'));
   it('treats guard house as entrance/gate amenity', () => expect(classifyLandUse('GUARD HOUSE')).toBe('community_center'));
   it('detects entrance land use aliases', () => expect(isEntranceLandUse('MAIN GATE GUARD HOUSE')).toBe(true));
+  it('keeps attached villa gis plots renderable while excluding park context plots from result pins', () => {
+    expect(classifyLandUse('RESIDENTIAL | ATTACHED VILLAS | RESIDENTIAL (ATTACHED VILLAS)')).toBe('residential');
+    expect(classifyLandUse('NEIGHBORHOOD PARK | OPEN SPACE')).toBe('park');
+  });
 });
 
 // ─── NL Parser ───────────────────────────────────────────────────────────────
