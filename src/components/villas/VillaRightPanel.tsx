@@ -20,6 +20,7 @@ import { resolveVillaClass, VILLA_CLASSES, type VillaClass } from '@/components/
 import { SQFT_TO_SQM, SQM_TO_SQFT } from '@/lib/units';
 import type { VillaIntelligence } from '@/hooks/usePropertyIntelligence';
 import { hasActiveClassFilter, normalizePlotKey, resolveDisplayedVillaClass } from '@/services/property-intelligence/unit-reference';
+import { isVillaWithinSearchRadius, resolveVillaSearchCoordinates, type SearchCenterPoint } from '@/services/property-intelligence/search-radius';
 
 interface VillaRightPanelProps {
   villas: CommunityVilla[];
@@ -42,6 +43,7 @@ interface VillaRightPanelProps {
   onGoToPlotLocation?: (lat: number, lng: number, plotId: string) => void;
   intelligenceMap?: Map<string, import('@/hooks/usePropertyIntelligence').VillaIntelligence>;
   matchedPlotIds?: Set<string>;
+  plotCoordinateLookup?: Map<string, SearchCenterPoint>;
 }
 
 export const VillaRightPanel = memo(function VillaRightPanel({
@@ -49,7 +51,7 @@ export const VillaRightPanel = memo(function VillaRightPanel({
   filters, onFiltersChange, onAISearch,
   onGISSearch, isGISSearching, gisResults = [], onClearGIS,
   searchCenter, matchedVillaIds, searchRadius = 1000, onSearchRadiusChange,
-  onGoToPlotLocation, intelligenceMap, matchedPlotIds,
+  onGoToPlotLocation, intelligenceMap, matchedPlotIds, plotCoordinateLookup,
 }: VillaRightPanelProps) {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState('');
@@ -112,11 +114,13 @@ export const VillaRightPanel = memo(function VillaRightPanel({
 
   // Ranked villas for results tab
   const rankedVillas = useMemo(() => {
-    return villas.map(villa => {
-      let distance: number | undefined;
-      if (searchCenter && villa.latitude && villa.longitude) {
-        distance = haversineDistance(searchCenter.lat, searchCenter.lng, villa.latitude, villa.longitude);
-      }
+    return villas
+      .filter((villa) => isVillaWithinSearchRadius(villa, searchCenter, searchRadius, plotCoordinateLookup))
+      .map(villa => {
+        const coords = resolveVillaSearchCoordinates(villa, plotCoordinateLookup);
+        const distance = searchCenter && coords
+          ? haversineDistance(searchCenter.lat, searchCenter.lng, coords.lat, coords.lng)
+          : undefined;
       const isMatched = matchedVillaIds?.has(villa.id) ?? false;
       const intel = intelligenceMap?.get(villa.id);
       // Composite score: match status + intel score + proximity bonus
@@ -125,8 +129,9 @@ export const VillaRightPanel = memo(function VillaRightPanel({
       if (intel)       matchScore += intel.score;     // Intelligence ranking score
       if (distance != null) matchScore -= distance / 50; // Closer = better
       return { villa, distance, isMatched, matchScore, intel };
-    }).sort((a, b) => b.matchScore - a.matchScore);
-  }, [villas, searchCenter, matchedVillaIds, intelligenceMap]);
+    })
+      .sort((a, b) => b.matchScore - a.matchScore);
+  }, [villas, searchCenter, searchRadius, matchedVillaIds, intelligenceMap, plotCoordinateLookup]);
 
   const rankedPlots = useMemo(() => {
     if (hasClassFilter) return [];
@@ -151,8 +156,12 @@ export const VillaRightPanel = memo(function VillaRightPanel({
         const distance = searchCenter && coords
           ? haversineDistance(searchCenter.lat, searchCenter.lng, coords.lat, coords.lng)
           : undefined;
+        if (searchCenter && (!coords || distance == null || distance > searchRadius)) {
+          return null;
+        }
         return { result, distance };
       })
+      .filter((entry): entry is { result: GISSearchResult; distance: number | undefined } => entry !== null)
       .sort((a, b) => {
         if (a.result.confidenceScore !== b.result.confidenceScore) {
           return b.result.confidenceScore - a.result.confidenceScore;
@@ -162,7 +171,7 @@ export const VillaRightPanel = memo(function VillaRightPanel({
         }
         return 0;
       });
-  }, [gisResults, hasClassFilter, searchCenter, matchedPlotIds]);
+  }, [gisResults, hasClassFilter, searchCenter, searchRadius, matchedPlotIds]);
 
   const handleGoToPlot = useCallback((result: GISSearchResult) => {
     if (!onGoToPlotLocation) return;

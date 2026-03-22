@@ -155,6 +155,7 @@ import {
   normalizePlotKey,
   resolveDisplayedVillaClass,
 } from '@/services/property-intelligence/unit-reference';
+import { isVillaWithinSearchRadius } from '@/services/property-intelligence/search-radius';
 
 const baseVilla = {
   id: 'test', is_corner: false, is_single_row: false,
@@ -257,6 +258,49 @@ describe('resolveVillaClass — strict priority (regression)', () => {
     const fills = Object.values(VILLA_CLASSES).map(c => c.fill);
     const unique = new Set(fills);
     expect(unique.size).toBe(fills.length);
+  });
+});
+
+describe('search radius parity', () => {
+  it('keeps plot-linked villas inside radius using plot coordinates', () => {
+    const villa = {
+      ...baseVilla,
+      id: 'villa-1',
+      villa_number: '101',
+      plot_number: 'P-1',
+      plot_id: null,
+      latitude: null,
+      longitude: null,
+      community_name: 'Test',
+      sub_community: null,
+      cluster_name: null,
+      orientation: null,
+      facing_direction: null,
+      position_type: null,
+      near_pool: false,
+      near_entrance: false,
+      near_school: false,
+      near_community_center: false,
+      vastu_details: null,
+      land_usage: null,
+      plot_size_sqft: null,
+      built_up_area_sqft: null,
+      bedrooms: null,
+      floors: null,
+      year_built: null,
+      notes: null,
+      metadata: {},
+      created_by: null,
+      created_at: '',
+      updated_at: '',
+    };
+
+    const lookup = new Map([
+      ['p-1', { lat: 25.0004, lng: 55.0004 }],
+    ]);
+
+    expect(isVillaWithinSearchRadius(villa as any, { lat: 25, lng: 55 }, 100, lookup)).toBe(true);
+    expect(isVillaWithinSearchRadius(villa as any, { lat: 25, lng: 55 }, 40, lookup)).toBe(false);
   });
 });
 
