@@ -395,7 +395,20 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
     expect(result.layout.backFacing).toBe('road');
   });
 
-  it('marks rear park beyond a narrow road buffer as backs_park', () => {
+  it('marks an elongated rear park as backs_park even when the park centroid is off-axis', () => {
+    propertyIntelligence.clearCache();
+    const villa = makePlot('villa', [[55.0000,25.0000],[55.0001,25.0000],[55.0001,25.0001],[55.0000,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
+    const frontRoad = makePlot('front-road', [[55.0000,24.9999],[55.0001,24.9999],[55.0001,25.0000],[55.0000,25.0000]], 'ROAD');
+    const rearPark = makePlot('rear-park', [[54.99990,25.00010],[55.00008,25.00010],[55.00008,25.00022],[54.99990,25.00022]], 'NEIGHBORHOOD PARK');
+
+    const batch = propertyIntelligence.buildBatch([villa, frontRoad, rearPark]);
+    const result = propertyIntelligence.analyzeWithBatch(villa, batch, 'S');
+
+    expect(result.layout.layoutType).toBe('single_row');
+    expect(result.layout.backFacing).toBe('park');
+  });
+
+  it('does not mark a rear park across a road buffer as backs_park', () => {
     propertyIntelligence.clearCache();
     const villa = makePlot('villa', [[55.0000,25.0000],[55.0001,25.0000],[55.0001,25.0001],[55.0000,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
     const frontRoad = makePlot('front-road', [[55.0000,24.9999],[55.0001,24.9999],[55.0001,25.0000],[55.0000,25.0000]], 'ROAD');
@@ -406,7 +419,7 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
     const result = propertyIntelligence.analyzeWithBatch(villa, batch, 'S');
 
     expect(result.layout.layoutType).toBe('single_row');
-    expect(result.layout.backFacing).toBe('park');
+    expect(result.layout.backFacing).toBe('road');
   });
 
   it('does not mark nearby side park or landscape as backs_park just because they are in search radius', () => {
