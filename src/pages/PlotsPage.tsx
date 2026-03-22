@@ -250,7 +250,7 @@ export default function PlotsPage() {
     const displayedClass = resolveDisplayedVillaClass(villa, intel, piReady, villaFilters);
     const hasExplicitClassFilter = !!(
       villaFilters.isCorner || villaFilters.isEndUnit || villaFilters.isBackToBack || villaFilters.isSingleRow ||
-      villaFilters.backsPark || villaFilters.backsRoad || villaFilters.backsOpenSpace || villaFilters.vastuCompliant
+      villaFilters.backsPark || villaFilters.backsRoad || villaFilters.backsOpenSpace
     );
 
     if (villaFilters.bedrooms && villa.bedrooms !== villaFilters.bedrooms) return false;
@@ -268,9 +268,14 @@ export default function PlotsPage() {
       if (villaFilters.backsPark) allowedClassKeys.add('backs_park');
       if (villaFilters.backsRoad) allowedClassKeys.add('backs_road');
       if (villaFilters.backsOpenSpace) allowedClassKeys.add('open_view');
-      if (villaFilters.vastuCompliant) allowedClassKeys.add('vastu');
-
       if (!allowedClassKeys.has(displayedClass.key)) return false;
+    }
+
+    if (villaFilters.vastuCompliant) {
+      const hasVastu = !!(
+        intel?.tags.some((tag) => tag.label.includes('Vastu')) || villa.vastu_compliant
+      );
+      if (!hasVastu) return false;
     }
 
     // Amenity match
@@ -350,7 +355,7 @@ export default function PlotsPage() {
 
   const hasExplicitClassFilter = !!(
     villaFilters.isCorner || villaFilters.isEndUnit || villaFilters.isBackToBack || villaFilters.isSingleRow ||
-    villaFilters.backsPark || villaFilters.backsRoad || villaFilters.backsOpenSpace || villaFilters.vastuCompliant
+    villaFilters.backsPark || villaFilters.backsRoad || villaFilters.backsOpenSpace
   );
 
   const displayedVillas = useMemo(() => {
