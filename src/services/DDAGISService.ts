@@ -610,7 +610,11 @@ class DDAGISService {
           freezeReason: p.freeze_reason,
           constructionStatus: p.construction_status,
           siteStatus: p.site_status,
+          municipalityNumber: p.municipality_number,
           rawAttributes: {
+            LAND_NUMBER: p.land_number,
+            PLOT_ID: p.plot_id,
+            MUNICIPALITY_NUMBER: p.municipality_number,
             MAIN_LANDUSE: p.main_landuse,
             SUB_LANDUSE: p.sub_landuse,
             LANDUSE_DETAILS: p.landuse_details,

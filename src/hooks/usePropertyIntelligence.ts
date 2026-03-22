@@ -17,7 +17,7 @@ import { propertyIntelligence, type PlotBatch } from '@/services/property-intell
 import { resolveDirectionText } from '@/services/property-intelligence/classifiers';
 import { computeVillaScore } from '@/services/property-intelligence/filter';
 import type { DetectedAmenity, LayoutAnalysis, SmartTag } from '@/services/property-intelligence/types';
-import { normalizePlotKey } from '@/services/property-intelligence/unit-reference';
+import { getPlotDataKeys, normalizePlotKey } from '@/services/property-intelligence/unit-reference';
 
 export interface VillaIntelligence {
   villaId:       string;
@@ -60,7 +60,7 @@ export function usePropertyIntelligence(
     // Fast O(1) lookup: plotId → PlotData
     const plotById = new Map<string, PlotData>();
     nearbyPlots.forEach((plot) => {
-      const keys = [normalizePlotKey(plot.id)];
+      const keys = getPlotDataKeys(plot);
       keys.filter((key): key is string => Boolean(key)).forEach((key) => {
         if (!plotById.has(key)) plotById.set(key, plot);
       });

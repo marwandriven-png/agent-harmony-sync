@@ -25,6 +25,8 @@ import { parseNaturalLanguageQuery } from '@/services/PropertyIntelligenceServic
 import { usePropertyIntelligence } from '@/hooks/usePropertyIntelligence';
 import { cn } from '@/lib/utils';
 import {
+  getPlotDataKeys,
+  getPrimaryPlotDataKey,
   getVillaPlotKey,
   hasVastu,
   matchesOrDefersActiveVillaClassFilters,
@@ -49,16 +51,17 @@ function mapGISResultToVilla(
 ): CommunityVilla | null {
   const plot = result.plot;
   const coords = normalizeCoordinatesForSearch(plot.y, plot.x);
+  const canonicalPlotKey = getPrimaryPlotDataKey(plot) ?? plot.id;
   if (!coords) return null;
 
   return {
-    id:                    `${GIS_PLOT_ID_PREFIX}${plot.id}`,
+    id:                    `${GIS_PLOT_ID_PREFIX}${canonicalPlotKey}`,
     community_name:        plot.location || plot.project || 'GIS Plot',
     sub_community:         null,
     cluster_name:          null,
-    villa_number:          `${GIS_PLOT_ID_PREFIX}${plot.id}`,
-    plot_number:           plot.id,
-    plot_id:               plot.id,
+    villa_number:          `${GIS_PLOT_ID_PREFIX}${canonicalPlotKey}`,
+    plot_number:           canonicalPlotKey,
+    plot_id:               canonicalPlotKey,
     orientation:           (plot.rawAttributes?.ORIENTATION as string | undefined) ?? null,
     facing_direction:      (plot.rawAttributes?.facingDirection as string | undefined)
                           ?? (plot.rawAttributes?.FACING_DIRECTION as string | undefined)
@@ -212,7 +215,7 @@ export default function PlotsPage() {
 
     const deduped = new globalThis.Map<string, PlotData>();
     orderedPlots.forEach((plot) => {
-      const key = normalizePlotKey(plot.id) ?? plot.id;
+      const key = getPrimaryPlotDataKey(plot) ?? normalizePlotKey(plot.id) ?? plot.id;
       if (!deduped.has(key)) deduped.set(key, plot);
     });
 
@@ -223,8 +226,10 @@ export default function PlotsPage() {
     const lookup = new globalThis.Map<string, { lat: number; lng: number }>();
     for (const plot of nearbyPlots) {
       const coords = normalizeCoordinatesForSearch(plot.y, plot.x);
-      const key = normalizePlotKey(plot.id);
-      if (coords && key) lookup.set(key, coords);
+      if (!coords) continue;
+      for (const key of getPlotDataKeys(plot)) {
+        lookup.set(key, coords);
+      }
     }
     return lookup;
   }, [nearbyPlots]);
@@ -342,7 +347,7 @@ export default function PlotsPage() {
     const unique = new globalThis.Map<string, (typeof gisResults)[number]>();
 
     renderableGISResults.forEach((result) => {
-      const plotKey = normalizePlotKey(result.plot.id);
+      const plotKey = getPrimaryPlotDataKey(result.plot);
       if (!plotKey) return;
 
       const existing = unique.get(plotKey);
@@ -363,13 +368,13 @@ export default function PlotsPage() {
 
       return isVillaWithinSearchRadius(
         {
-          id: `${GIS_PLOT_ID_PREFIX}${result.plot.id}`,
+          id: `${GIS_PLOT_ID_PREFIX}${getPrimaryPlotDataKey(result.plot) ?? result.plot.id}`,
           community_name: result.plot.location || result.plot.project || 'GIS Plot',
           sub_community: null,
           cluster_name: null,
-          villa_number: `${GIS_PLOT_ID_PREFIX}${result.plot.id}`,
-          plot_number: result.plot.id,
-          plot_id: result.plot.id,
+          villa_number: `${GIS_PLOT_ID_PREFIX}${getPrimaryPlotDataKey(result.plot) ?? result.plot.id}`,
+          plot_number: getPrimaryPlotDataKey(result.plot) ?? result.plot.id,
+          plot_id: getPrimaryPlotDataKey(result.plot) ?? result.plot.id,
           orientation: null,
           facing_direction: null,
           position_type: null,
@@ -419,7 +424,7 @@ export default function PlotsPage() {
 
     return radiusFilteredSearchableGISResults
       .map((result) => {
-        const plotKey = normalizePlotKey(result.plot.id);
+        const plotKey = getPrimaryPlotDataKey(result.plot);
         const matchedVilla = plotKey ? byPlotKey.get(plotKey) : undefined;
         return matchedVilla ?? mapGISResultToVilla(result);
       })
