@@ -30,6 +30,7 @@ import {
   normalizePlotKey,
   resolveDisplayedVillaClass,
 } from '@/services/property-intelligence/unit-reference';
+import { isVillaWithinSearchRadius } from '@/services/property-intelligence/search-radius';
 
 const VillaMapView = lazy(() => import('@/components/villas/VillaMapView').then((module) => ({ default: module.VillaMapView })));
 const VillaRightPanel = lazy(() => import('@/components/villas/VillaRightPanel').then((module) => ({ default: module.VillaRightPanel })));
@@ -326,14 +327,26 @@ export default function PlotsPage() {
     return Array.from(unique.values());
   }, [gisResults]);
 
+  const radiusFilteredGisMatchedVillas = useMemo(() => {
+    return filteredGisMatchedVillas.filter((villa) =>
+      isVillaWithinSearchRadius(villa, villaSearchCenter, villaSearchRadius, plotCoordinateLookup)
+    );
+  }, [filteredGisMatchedVillas, plotCoordinateLookup, villaSearchCenter, villaSearchRadius]);
+
+  const radiusFilteredAllVillas = useMemo(() => {
+    return filteredAllVillas.filter((villa) =>
+      isVillaWithinSearchRadius(villa, villaSearchCenter, villaSearchRadius, plotCoordinateLookup)
+    );
+  }, [filteredAllVillas, plotCoordinateLookup, villaSearchCenter, villaSearchRadius]);
+
   const filteredCandidateVillas = useMemo(() => {
     const matchedSet = matchedVillaIds;
     const ordered = [
-      ...filteredGisMatchedVillas,
-      ...filteredAllVillas.filter(v => !matchedSet.has(v.id)),
+      ...radiusFilteredGisMatchedVillas,
+      ...radiusFilteredAllVillas.filter(v => !matchedSet.has(v.id)),
     ];
     return mergeVillasByPlotKey(ordered);
-  }, [filteredAllVillas, filteredGisMatchedVillas, matchedVillaIds]);
+  }, [matchedVillaIds, radiusFilteredAllVillas, radiusFilteredGisMatchedVillas]);
 
   const displayedVillas = useMemo(() => {
     if (searchableGISResults.length === 0) {
@@ -341,7 +354,7 @@ export default function PlotsPage() {
     }
 
     const byPlotKey = new globalThis.Map<string, CommunityVilla>();
-    filteredGisMatchedVillas.forEach((villa) => {
+    radiusFilteredGisMatchedVillas.forEach((villa) => {
       const plotKey = getVillaPlotKey(villa);
       if (plotKey) byPlotKey.set(plotKey, villa);
     });
@@ -360,14 +373,14 @@ export default function PlotsPage() {
         .filter((plotId): plotId is string => Boolean(plotId))
     );
 
-    const extraMatchedVillas = filteredGisMatchedVillas.filter((villa) => {
+    const extraMatchedVillas = radiusFilteredGisMatchedVillas.filter((villa) => {
       const plotKey = getVillaPlotKey(villa);
       if (!plotKey || renderedKeys.has(plotKey)) return false;
       return hasRenderableVillaLocation(villa);
     });
 
     return [...mappedResults, ...extraMatchedVillas];
-  }, [filteredCandidateVillas, filteredGisMatchedVillas, hasRenderableVillaLocation, searchableGISResults]);
+  }, [filteredCandidateVillas, hasRenderableVillaLocation, radiusFilteredGisMatchedVillas, searchableGISResults]);
 
   const matchedPlotIds = useMemo(() => {
     return new Set(
@@ -675,12 +688,13 @@ export default function PlotsPage() {
                   gisResults={gisResults}
                   onClearGIS={clearVillaGIS}
                   searchCenter={villaSearchCenter}
-                  matchedVillaIds={matchedVillaIds}
+                   matchedVillaIds={new Set(radiusFilteredGisMatchedVillas.map(v => v.id))}
                   matchedPlotIds={matchedPlotIds}
                   searchRadius={villaSearchRadius}
                   onSearchRadiusChange={setVillaSearchRadius}
                   onGoToPlotLocation={(lat, lng) => setVillaManualCenter({ lat, lng })}
                   intelligenceMap={intelligenceMap}
+                   plotCoordinateLookup={plotCoordinateLookup}
                 />
               </Suspense>
             ) : detailPlot ? (
