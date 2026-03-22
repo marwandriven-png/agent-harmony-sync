@@ -201,8 +201,13 @@ describe('resolveVillaClass — strict priority (regression)', () => {
     expect(cls3?.key).toBe('corner');
   });
 
-  it('End Unit position → end_unit', () => {
+  it('End Unit with rear road classification → backs_road', () => {
     const cls = resolveVillaClass(baseVilla, makeIntel('unknown', 'road', 'end'), true);
+    expect(cls?.key).toBe('backs_road');
+  });
+
+  it('End Unit with no row classification → end_unit', () => {
+    const cls = resolveVillaClass(baseVilla, makeIntel('unknown', 'community_edge', 'end'), true);
     expect(cls?.key).toBe('end_unit');
   });
 
