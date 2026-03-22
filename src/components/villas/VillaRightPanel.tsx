@@ -19,6 +19,7 @@ import { normalizeCoordinatesForSearch } from '@/services/DDAGISService';
 import { resolveVillaClass, VILLA_CLASSES, type VillaClass } from '@/components/villas/VillaMapView';
 import { SQFT_TO_SQM, SQM_TO_SQFT } from '@/lib/units';
 import type { VillaIntelligence } from '@/hooks/usePropertyIntelligence';
+import { hasActiveClassFilter, normalizePlotKey } from '@/services/property-intelligence/unit-reference';
 
 interface VillaRightPanelProps {
   villas: CommunityVilla[];
@@ -70,6 +71,7 @@ export const VillaRightPanel = memo(function VillaRightPanel({
 
   const activeCount = Object.values(filters).filter(v => v !== undefined && v !== '' && v !== 'all' && v !== false).length;
   const activeSearchRadius = searchRadius;
+  const hasClassFilter = hasActiveClassFilter(filters);
 
   const handleAISearch = () => {
     if (aiQuery.trim()) onAISearch(aiQuery.trim());
@@ -127,15 +129,19 @@ export const VillaRightPanel = memo(function VillaRightPanel({
   }, [villas, searchCenter, matchedVillaIds, intelligenceMap]);
 
   const rankedPlots = useMemo(() => {
+    if (hasClassFilter) return [];
+
     const unique = new Map<string, GISSearchResult>();
 
     gisResults.forEach((result) => {
-      if (matchedPlotIds?.has(result.plot.id)) return;
+      const plotKey = normalizePlotKey(result.plot.id);
+      if (!plotKey) return;
+      if (matchedPlotIds?.has(plotKey)) return;
       // Exclude plots with zero or missing GFA
       if (!result.plot.gfa || result.plot.gfa <= 0) return;
-      const existing = unique.get(result.plot.id);
+      const existing = unique.get(plotKey);
       if (!existing || result.confidenceScore > existing.confidenceScore) {
-        unique.set(result.plot.id, result);
+        unique.set(plotKey, result);
       }
     });
 
@@ -156,7 +162,7 @@ export const VillaRightPanel = memo(function VillaRightPanel({
         }
         return 0;
       });
-  }, [gisResults, searchCenter, matchedPlotIds]);
+  }, [gisResults, hasClassFilter, searchCenter, matchedPlotIds]);
 
   const handleGoToPlot = useCallback((result: GISSearchResult) => {
     if (!onGoToPlotLocation) return;
@@ -183,7 +189,7 @@ export const VillaRightPanel = memo(function VillaRightPanel({
               Villa Intelligence
             </h2>
             <span className="text-[11px] text-[hsl(220,10%,50%)]">
-              {villas.length} villas • Smart Search
+              {totalResultCount} results • Smart Search
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -193,7 +199,7 @@ export const VillaRightPanel = memo(function VillaRightPanel({
               </button>
             )}
             <div className="h-6 min-w-[28px] rounded-md bg-[#BFFF00] text-black flex items-center justify-center text-[11px] font-bold tabular-nums">
-              {villas.length}
+              {totalResultCount}
             </div>
           </div>
         </div>

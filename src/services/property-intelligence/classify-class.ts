@@ -44,10 +44,10 @@ export interface ClassifiableIntel {
  * Resolve the single primary classification for a villa.
  *
  * Priority (strict, no coexistence allowed):
- *  1. back_to_back  — highest, overrides everything
- *  2. backs_park / backs_road / open_view — illustrated row types
- *  3. single_row    — generic single-row fallback when no rear subtype is known
- *  4. corner / end  — positional overlays, shown by default only if no row type exists
+ *  1. backs_park / backs_road / open_view — illustrated rear-facing types
+ *  2. single_row    — generic single-row fallback when no rear subtype is known
+ *  3. back_to_back  — only when rear truly resolves to another villa row
+ *  4. corner / end  — positional overlays, shown only if no row type exists
  *  5. vastu         — lowest non-default
  *  null             — no classification (no pin)
  */
@@ -61,15 +61,13 @@ export function resolveVillaClass(
   const bf  = intel?.layout.backFacing;
   const hasVastu = intel?.tags.some(t => t.label.includes('Vastu')) || !!villa.vastu_compliant;
 
-  // B2B is absolute highest — nothing overrides it
-  if (lt === 'back_to_back')                       return VILLA_CLASSES.back_to_back;
-
   // Community illustration model: specific rear-facing row types take precedence
-  // over generic single-row so the map matches the unit-type reference.
+  // so the map matches the unit-type reference illustration.
   if (bf === 'park'        || villa.backs_park)    return VILLA_CLASSES.backs_park;
   if (bf === 'road'        || villa.backs_road)    return VILLA_CLASSES.backs_road;
   if (bf === 'open_space')                         return VILLA_CLASSES.open_view;
   if (lt === 'single_row'  || villa.is_single_row) return VILLA_CLASSES.single_row;
+  if (lt === 'back_to_back')                       return VILLA_CLASSES.back_to_back;
 
   // Positional overlays become the default only when no row-type class is known
   if (pt === 'corner'      || villa.is_corner)    return VILLA_CLASSES.corner;

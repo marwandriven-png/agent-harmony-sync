@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, lazy, Suspense } from 'react';
-import { RefreshCw, Target, Plus, Loader2, Map, Satellite, Home, Building2 } from 'lucide-react';
+import { RefreshCw, Target, Plus, Loader2, Map, Satellite, Home } from 'lucide-react';
 import proj4 from 'proj4';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { LandMatchingWizard } from '@/components/plots/LandMatchingWizard';
@@ -23,7 +23,6 @@ import type { PlotData } from '@/services/DDAGISService';
 import { normalizeCoordinatesForSearch } from '@/services/DDAGISService';
 import { parseNaturalLanguageQuery } from '@/services/PropertyIntelligenceService';
 import { usePropertyIntelligence } from '@/hooks/usePropertyIntelligence';
-import { MOCK_COMMUNITIES, convertMockCommunityToPlots } from '@/data/mock/communities';
 import { cn } from '@/lib/utils';
 import {
   getVillaPlotKey,
@@ -36,6 +35,7 @@ import {
   matchesSingleRow,
   mergeVillasByPlotKey,
   hasVastu,
+  normalizePlotKey,
 } from '@/services/property-intelligence/unit-reference';
 
 const VillaMapView = lazy(() => import('@/components/villas/VillaMapView').then((module) => ({ default: module.VillaMapView })));
@@ -132,29 +132,27 @@ export default function PlotsPage() {
   const { gisResults, gisContextPlots, gisVillaIds, isSearching: isVillaGISSearching, searchGIS: searchVillaGIS, clearGISResults: clearVillaGIS, resolvedCenter } = useVillaGISSearch();
   const { data: gisMatchedVillas = [] } = useVillasByIds(gisVillaIds, { enabled: isVillaMode && gisVillaIds.length > 0 });
   
-  // Property Intelligence Layer logic
-  // Merge GIS results with any selected mock community plots for richer PI detection
-  const [selectedMockCommunityId, setSelectedMockCommunityId] = useState<string>('');
-
-  const mockCommunityPlots = useMemo<PlotData[]>(() => {
-    if (!selectedMockCommunityId) return [];
-    const community = MOCK_COMMUNITIES[selectedMockCommunityId];
-    return community ? convertMockCommunityToPlots(community) : [];
-  }, [selectedMockCommunityId]);
-
   const nearbyPlots = useMemo<PlotData[]>(() => {
-    const gisPlots = gisContextPlots.length > 0 ? gisContextPlots : gisResults.map(r => r.plot);
-    if (mockCommunityPlots.length === 0) return gisPlots;
-    // Merge, preferring real GIS plots where IDs collide
-    const ids = new Set(gisPlots.map(p => p.id));
-    return [...gisPlots, ...mockCommunityPlots.filter(p => !ids.has(p.id))];
-  }, [gisContextPlots, gisResults, mockCommunityPlots]);
+    const orderedPlots = [
+      ...(gisContextPlots.length > 0 ? gisContextPlots : []),
+      ...gisResults.map((result) => result.plot),
+    ];
+
+    const deduped = new globalThis.Map<string, PlotData>();
+    orderedPlots.forEach((plot) => {
+      const key = normalizePlotKey(plot.id) ?? plot.id;
+      if (!deduped.has(key)) deduped.set(key, plot);
+    });
+
+    return Array.from(deduped.values());
+  }, [gisContextPlots, gisResults]);
 
   const plotCoordinateLookup = useMemo(() => {
     const lookup = new globalThis.Map<string, { lat: number; lng: number }>();
     for (const plot of nearbyPlots) {
       const coords = normalizeCoordinatesForSearch(plot.y, plot.x);
-      if (coords) lookup.set(plot.id, coords);
+      const key = normalizePlotKey(plot.id);
+      if (coords && key) lookup.set(key, coords);
     }
     return lookup;
   }, [nearbyPlots]);
@@ -237,29 +235,6 @@ export default function PlotsPage() {
     isVillaMode ? nearbyPlots : [],
   );
 
-  // When a mock community is selected: clear stale filters and load that community's villas
-  const handleMockCommunityChange = useCallback((communityId: string) => {
-    setSelectedMockCommunityId(communityId);
-    if (communityId) {
-      const community = MOCK_COMMUNITIES[communityId];
-      if (community) {
-        // Reset filters to just this community — clears any stale Single Row / Vastu / Plot filters
-        setVillaFilters({ community: community.name });
-        // Center map on this community
-        setVillaManualCenter({ lat: community.centerLat, lng: community.centerLng });
-        // Trigger GIS radius search centered on community
-        searchVillaGIS({
-          googleLocation: `${community.centerLat}, ${community.centerLng}`,
-          radiusMeters: 2000,
-        });
-      }
-    } else {
-      // Cleared — reset everything
-      setVillaFilters({});
-      setVillaManualCenter(null);
-    }
-  }, [searchVillaGIS]);
-
   const villaSearchCenter = villaManualCenter || resolvedCenter;
 
   // Client-side filter function for GIS-matched villas (apply active filters)
@@ -335,7 +310,24 @@ export default function PlotsPage() {
   // Filter ALL villas (Supabase + synthetic GIS) through active filters
   const filteredAllVillas = useMemo(() => allVillasForIntel.filter(applyVillaFilters), [allVillasForIntel, applyVillaFilters]);
 
-  const mergedVillas = useMemo(() => {
+  const searchableGISResults = useMemo(() => {
+    const unique = new globalThis.Map<string, (typeof gisResults)[number]>();
+
+    gisResults.forEach((result) => {
+      const plotKey = normalizePlotKey(result.plot.id);
+      if (!plotKey) return;
+      if (!result.plot.gfa || result.plot.gfa <= 0) return;
+
+      const existing = unique.get(plotKey);
+      if (!existing || result.confidenceScore > existing.confidenceScore) {
+        unique.set(plotKey, result);
+      }
+    });
+
+    return Array.from(unique.values());
+  }, [gisResults]);
+
+  const filteredCandidateVillas = useMemo(() => {
     const matchedSet = matchedVillaIds;
     const ordered = [
       ...filteredGisMatchedVillas,
@@ -344,23 +336,37 @@ export default function PlotsPage() {
     return mergeVillasByPlotKey(ordered);
   }, [filteredAllVillas, filteredGisMatchedVillas, matchedVillaIds]);
 
+  const displayedVillas = useMemo(() => {
+    if (searchableGISResults.length === 0) return filteredCandidateVillas;
+
+    const byPlotKey = new globalThis.Map<string, CommunityVilla>();
+    filteredCandidateVillas.forEach((villa) => {
+      const plotKey = getVillaPlotKey(villa);
+      if (plotKey) byPlotKey.set(plotKey, villa);
+    });
+
+    return searchableGISResults
+      .map((result) => byPlotKey.get(normalizePlotKey(result.plot.id) ?? ''))
+      .filter((villa): villa is CommunityVilla => Boolean(villa));
+  }, [filteredCandidateVillas, searchableGISResults]);
+
   const matchedPlotIds = useMemo(() => {
     return new Set(
-      mergedVillas
+      displayedVillas
         .map(getVillaPlotKey)
         .filter((plotId): plotId is string => Boolean(plotId))
     );
-  }, [mergedVillas]);
+  }, [displayedVillas]);
 
   const renderedPlotIds = useMemo(() => {
     return new Set(
-      mergedVillas
+      displayedVillas
         .map(getVillaPlotKey)
         .filter((plotId): plotId is string => Boolean(plotId))
     );
-  }, [mergedVillas]);
+  }, [displayedVillas]);
 
-  const villaIds = useMemo(() => mergedVillas.map(v => v.id), [mergedVillas]);
+  const villaIds = useMemo(() => displayedVillas.map(v => v.id), [displayedVillas]);
   const { data: listingCounts = {} } = useVillaListingCounts(villaIds, { enabled: isVillaMode && villaIds.length > 0 });
 
   // Plot logic
@@ -529,7 +535,7 @@ export default function PlotsPage() {
           <div className="absolute inset-0">
             <Suspense fallback={<div className="h-full w-full bg-[hsl(220,25%,8%)]" />}>
               <VillaMapView
-                villas={mergedVillas}
+                villas={displayedVillas}
                 selectedVillaId={selectedVillaId}
                 onSelectVilla={handleSelectVilla}
                 onRadiusSearch={handleRadiusSearch}
@@ -594,24 +600,6 @@ export default function PlotsPage() {
 
             <div className="flex-1" />
 
-            {/* Mock Community Switcher */}
-            {isVillaMode && (
-              <div className="flex items-center gap-1.5">
-                <Building2 className="h-3 w-3 text-[hsl(220,10%,50%)]" />
-                <select
-                  value={selectedMockCommunityId}
-                  onChange={e => handleMockCommunityChange(e.target.value)}
-                  className="bg-[hsl(220,22%,12%)] border border-[hsl(220,20%,18%)] text-[hsl(220,10%,70%)] text-[10px] font-medium rounded-md px-2 py-1 h-7 cursor-pointer hover:border-[hsl(220,20%,35%)] transition-colors outline-none"
-                  title="Load a mock community for GIS property intelligence testing"
-                >
-                  <option value="">— Mock Community —</option>
-                  {Object.values(MOCK_COMMUNITIES).map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
             {!isVillaMode && (
               <>
                 <Button size="sm" variant="ghost"
@@ -654,7 +642,7 @@ export default function PlotsPage() {
             {isVillaMode ? (
               <Suspense fallback={<div className="h-full bg-[hsl(220,25%,8%)] border-l border-[hsl(220,20%,16%)]" />}>
                 <VillaRightPanel
-                  villas={mergedVillas}
+                  villas={displayedVillas}
                   selectedVillaId={selectedVillaId}
                   onSelectVilla={handleSelectVilla}
                   listingCounts={listingCounts}

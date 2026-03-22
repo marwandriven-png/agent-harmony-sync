@@ -3,7 +3,7 @@
  *
  * Rules:
  *  1. Every classification has ONE distinct color + short text label
- *  2. Plots with NO classification → NO PIN rendered (when intel is loaded)
+ *  2. Plots with NO classification → neutral fallback pin
  *  3. When a class filter is active → show ONLY pins matching that class
  *     (GIS orange diamonds also hidden when a class filter is on)
  *  4. No emoji icons for Open View / Backs Open (renders as broken image on some systems)
@@ -32,6 +32,7 @@ import { haversineDistance } from '@/lib/geo';
 import { VILLA_CLASSES as _VILLA_CLASSES, resolveVillaClass as _resolveVillaClass, type VillaClass } from '@/services/property-intelligence/classify-class';
 import {
   hasActiveClassFilter,
+  normalizePlotKey,
   resolveDisplayedVillaClass,
 } from '@/services/property-intelligence/unit-reference';
 
@@ -216,7 +217,11 @@ export function getVillaPosition(
   plotCoordinateLookup?: Map<string, { lat: number; lng: number }>,
 ): [number, number] {
   if (villa.latitude && villa.longitude) return [villa.latitude, villa.longitude];
-  const linkedPlotId = villa.plot_number ?? villa.plot_id ?? (villa.villa_number.startsWith('gis:') ? villa.villa_number.replace(/^gis:/, '') : null);
+  const linkedPlotId = normalizePlotKey(
+    villa.plot_number
+      ?? villa.plot_id
+      ?? (villa.villa_number.startsWith('gis:') ? villa.villa_number.replace(/^gis:/, '') : null)
+  );
   if (linkedPlotId) {
     const linkedCoords = plotCoordinateLookup?.get(linkedPlotId);
     if (linkedCoords) return [linkedCoords.lat, linkedCoords.lng];
@@ -389,14 +394,19 @@ export const VillaMapView = memo(function VillaMapView({
     if (!gl) return;
     gl.clearLayers();
 
+    if (hasActiveClassFilter(activeFilters)) return;
+
     const seen     = new Set<string>();
     const dupCount = new Map<string, number>();
     let fi = 0;
 
     gisResults.forEach(r => {
-      if (seen.has(r.plot.id)) return;
-      seen.add(r.plot.id);
-      if (renderedPlotIds?.has(r.plot.id)) return;
+      const plotKey = normalizePlotKey(r.plot.id);
+      if (!plotKey) return;
+      if (!r.plot.gfa || r.plot.gfa <= 0) return;
+      if (seen.has(plotKey)) return;
+      seen.add(plotKey);
+      if (renderedPlotIds?.has(plotKey)) return;
 
       let coords = normalizeCoordinatesForSearch(r.plot.y, r.plot.x);
       if (!coords && searchCenter) { fi++; coords = offsetM(searchCenter.lat, searchCenter.lng, 30 + fi * 12, (fi * 137.5) % 360); }
@@ -433,7 +443,7 @@ export const VillaMapView = memo(function VillaMapView({
 
       gl.addLayer(marker);
     });
-  }, [gisResults, searchCenter, renderedPlotIds]);
+  }, [gisResults, searchCenter, renderedPlotIds, activeFilters]);
 
   // ── Amenity icons ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -480,7 +490,14 @@ export const VillaMapView = memo(function VillaMapView({
   // ── Build legend (only active classes) ────────────────────────────────
   const filterOn    = hasActiveClassFilter(activeFilters);
   const classCounts: Record<string, number> = {};
-  const residualGisCount = gisResults.filter(result => !renderedPlotIds?.has(result.plot.id)).length;
+  const residualGisCount = filterOn
+    ? 0
+    : gisResults.filter((result) => {
+        const plotKey = normalizePlotKey(result.plot.id);
+        if (!plotKey) return false;
+        if (!result.plot.gfa || result.plot.gfa <= 0) return false;
+        return !renderedPlotIds?.has(plotKey);
+      }).length;
   let unclassifiedCount = 0;
   if (intelligenceMap) {
     const intelLoaded = intelligenceMap.size > 0;

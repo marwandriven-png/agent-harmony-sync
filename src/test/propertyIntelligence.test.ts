@@ -147,6 +147,7 @@ import { resolveVillaClass, VILLA_CLASSES } from '@/services/property-intelligen
 import {
   getVillaPlotKey,
   mergeVillasByPlotKey,
+  normalizePlotKey,
   resolveDisplayedVillaClass,
 } from '@/services/property-intelligence/unit-reference';
 
@@ -161,22 +162,21 @@ const makeIntel = (lt: 'back_to_back'|'single_row'|'unknown', bf: string, pt = '
 });
 
 describe('resolveVillaClass — strict priority (regression)', () => {
-  it('B2B overrides open_space backFacing (was showing Open View — Bug #1)', () => {
-    const cls = resolveVillaClass(baseVilla, makeIntel('back_to_back', 'open_space'), true);
-    expect(cls?.key).toBe('back_to_back');
-    expect(cls?.key).not.toBe('open_view');
+  it('rear-facing illustrated class overrides B2B when backFacing resolves to park', () => {
+    const cls = resolveVillaClass(baseVilla, makeIntel('back_to_back', 'park'), true);
+    expect(cls?.key).toBe('backs_park');
   });
 
-  it('B2B overrides is_single_row DB flag (stale DB does not override live intel)', () => {
+  it('B2B still overrides stale db single-row flags when rear stays villa-facing', () => {
     const villa = { ...baseVilla, is_single_row: true };
     const cls = resolveVillaClass(villa, makeIntel('back_to_back', 'villa'), true);
     expect(cls?.key).toBe('back_to_back');
   });
 
-  it('B2B overrides backs_park DB flag', () => {
+  it('backs_park db flag still illustrates as park-facing', () => {
     const villa = { ...baseVilla, backs_park: true };
-    const cls = resolveVillaClass(villa, makeIntel('back_to_back', 'villa'), true);
-    expect(cls?.key).toBe('back_to_back');
+    const cls = resolveVillaClass(villa, makeIntel('back_to_back', 'park'), true);
+    expect(cls?.key).toBe('backs_park');
   });
 
   it('Single Row with park backFacing → backs_park pin', () => {
@@ -261,8 +261,13 @@ describe('unit-reference integration regression', () => {
 
   it('uses plot_number / plot_id / gis id consistently for rendered pins', () => {
     expect(getVillaPlotKey({ id: 'gis:456', plot_number: null, plot_id: null } as any)).toBe('456');
-    expect(getVillaPlotKey({ id: 'villa-1', plot_number: 'P-12', plot_id: null } as any)).toBe('P-12');
-    expect(getVillaPlotKey({ id: 'villa-2', plot_number: null, plot_id: 'plot-9' } as any)).toBe('plot-9');
+    expect(getVillaPlotKey({ id: 'villa-1', plot_number: ' P-12 ', plot_id: null } as any)).toBe('p-12');
+    expect(getVillaPlotKey({ id: 'villa-2', plot_number: null, plot_id: 'Plot-9' } as any)).toBe('plot-9');
+  });
+
+  it('normalizes raw plot keys for map/list parity', () => {
+    expect(normalizePlotKey(' 6482941 ')).toBe('6482941');
+    expect(normalizePlotKey(' Plot-A1 ')).toBe('plot-a1');
   });
 
   it('returns filtered display class from shared resolver', () => {
@@ -298,15 +303,23 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
     verificationSource: 'Demo',
   });
 
-  it('keeps a plot single_row when it touches a road on one side and residential on the rear', () => {
+  it('keeps a plot single_row when the rear side faces a road buffer', () => {
     const villa = makePlot('villa', [[55.0000,25.0000],[55.0001,25.0000],[55.0001,25.0001],[55.0000,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
-    const rearResidential = makePlot('rear', [[55.0000,25.0001],[55.0001,25.0001],[55.0001,25.0002],[55.0000,25.0002]], 'RESIDENTIAL ATTACHED VILLAS');
-    const frontRoad = makePlot('road', [[55.0000,24.9999],[55.0001,24.9999],[55.0001,25.0000],[55.0000,25.0000]], 'ROAD');
+    const rearRoad = makePlot('road', [[55.0000,25.0001],[55.0001,25.0001],[55.0001,25.0002],[55.0000,25.0002]], 'ROAD');
+    const sideResidential = makePlot('rear', [[55.0001,25.0000],[55.0002,25.0000],[55.0002,25.0001],[55.0001,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
 
-    const batch = propertyIntelligence.buildBatch([villa, rearResidential, frontRoad]);
+    const batch = propertyIntelligence.buildBatch([villa, rearRoad, sideResidential]);
     const result = propertyIntelligence.analyzeWithBatch(villa, batch, 'S');
 
     expect(result.layout.layoutType).toBe('single_row');
-    expect(result.layout.backFacing).not.toBe('unknown');
+    expect(result.layout.backFacing).toBe('road');
+  });
+
+  it('dedupes db and gis records with case-insensitive plot ids', () => {
+    const synthetic = { ...baseVilla, id: 'gis:ABC-1', plot_number: ' ABC-1 ', plot_id: ' ABC-1 ', latitude: 25.2, longitude: 55.2, facing_direction: null, bedrooms: null, plot_size_sqft: null };
+    const db = { ...baseVilla, id: 'db-1', plot_number: 'abc-1', plot_id: 'abc-1', latitude: 25.2, longitude: 55.2, facing_direction: 'N', bedrooms: 4, plot_size_sqft: 3000 };
+    const merged = mergeVillasByPlotKey([synthetic as any, db as any]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].id).toBe('db-1');
   });
 });
