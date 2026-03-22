@@ -63,10 +63,10 @@ export function resolveVillaClass(
 
   // Community illustration model: specific rear-facing row types take precedence
   // so the map matches the unit-type reference illustration.
-  if (bf === 'park'        || villa.backs_park)    return VILLA_CLASSES.backs_park;
-  if (bf === 'road'        || villa.backs_road)    return VILLA_CLASSES.backs_road;
-  if (bf === 'open_space')                         return VILLA_CLASSES.open_view;
-  if (lt === 'single_row'  || villa.is_single_row) return VILLA_CLASSES.single_row;
+  if (bf === 'park'        || villa.backs_park)                         return VILLA_CLASSES.backs_park;
+  if (bf === 'road'        || villa.backs_road)                         return VILLA_CLASSES.backs_road;
+  if (bf === 'open_space')                                              return VILLA_CLASSES.open_view;
+  if (lt === 'single_row'  || (villa.is_single_row && lt !== 'back_to_back')) return VILLA_CLASSES.single_row;
   if (lt === 'back_to_back')                       return VILLA_CLASSES.back_to_back;
 
   // Positional overlays become the default only when no row-type class is known
