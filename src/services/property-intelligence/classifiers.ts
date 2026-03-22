@@ -29,13 +29,19 @@ const PARK_TERMS = [
   /\bPARK\b/,
   /\bGARDEN\b/,
   /\bGREEN(?:\s+BELT|\s+AREA|\s+SPACE|S)?\b/,
-  /\bLANDSCAP(?:E|ED|ING)\b/,
   /\bRECREAT(?:ION|IONAL)\b/,
   /\bLAKE\b/,
   /\bLAGOON\b/,
   /\bPOND\b/,
   /\bWATER\s+FEATURE\b/,
   /\bWADI\b/,
+];
+
+const LANDSCAPE_TERMS = [
+  /\bLANDSCAP(?:E|ED|ING)\b/,
+  /\bSTREETSCAP(?:E|ING)\b/,
+  /\bPLANT(?:ED|ING)?\b/,
+  /\bMEDIAN\b/,
 ];
 
 const COMMUNITY_CENTER_TERMS = [
@@ -198,6 +204,7 @@ export function classifyLandUse(landUse: string): AmenityType | 'residential' | 
   if (matchesAny(lu, PARK_TERMS)) return 'park';
   if (matchesAny(lu, ROAD_TERMS)) return 'road';
   if (matchesAny(lu, RESIDENTIAL_TERMS)) return 'residential';
+  if (matchesAny(lu, LANDSCAPE_TERMS)) return 'open_space';
   if (matchesAny(lu, OPEN_SPACE_TERMS)) return 'open_space';
   return null;
 }

@@ -111,6 +111,7 @@ describe('classifyLandUse', () => {
   it('normalizes neighborhood park as park', () => expect(classifyLandUse('NEIGHBORHOOD PARK')).toBe('park'));
   it('keeps play area as playground amenity', () => expect(classifyLandUse('KIDS PLAY AREA')).toBe('playground'));
   it('normalizes clubhouse as community center', () => expect(classifyLandUse('COMMUNITY CLUBHOUSE')).toBe('community_center'));
+  it('does not treat landscape as park', () => expect(classifyLandUse('LANDSCAPE BUFFER')).toBe('open_space'));
 });
 
 // ─── NL Parser ───────────────────────────────────────────────────────────────

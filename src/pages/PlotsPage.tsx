@@ -336,6 +336,24 @@ export default function PlotsPage() {
     );
   }, [filteredGisMatchedVillas, plotCoordinateLookup, villaSearchCenter, villaSearchRadius]);
 
+  const searchableGISVillas = useMemo(() => {
+    const byPlotKey = new globalThis.Map<string, CommunityVilla>();
+    radiusFilteredGisMatchedVillas.forEach((villa) => {
+      const plotKey = getVillaPlotKey(villa);
+      if (plotKey) byPlotKey.set(plotKey, villa);
+    });
+
+    return searchableGISResults
+      .map((result) => {
+        const plotKey = normalizePlotKey(result.plot.id);
+        const matchedVilla = plotKey ? byPlotKey.get(plotKey) : undefined;
+        return matchedVilla ?? mapGISResultToVilla(result);
+      })
+      .filter((villa): villa is CommunityVilla => Boolean(villa))
+      .filter(hasRenderableVillaLocation)
+      .filter(applyVillaFilters);
+  }, [applyVillaFilters, hasRenderableVillaLocation, radiusFilteredGisMatchedVillas, searchableGISResults]);
+
   const radiusFilteredAllVillas = useMemo(() => {
     return filteredAllVillas.filter((villa) =>
       isVillaWithinSearchRadius(villa, villaSearchCenter, villaSearchRadius, plotCoordinateLookup)
@@ -357,27 +375,19 @@ export default function PlotsPage() {
   );
 
   const displayedVillas = useMemo(() => {
-    if (searchableGISResults.length === 0 || hasExplicitClassFilter) {
+    if (searchableGISResults.length === 0) {
       return filteredCandidateVillas.filter(hasRenderableVillaLocation);
     }
 
-    const byPlotKey = new globalThis.Map<string, CommunityVilla>();
-    radiusFilteredGisMatchedVillas.forEach((villa) => {
-      const plotKey = getVillaPlotKey(villa);
-      if (plotKey) byPlotKey.set(plotKey, villa);
-    });
-
-    const mappedResults = searchableGISResults
-      .map((result) => {
-        const plotKey = normalizePlotKey(result.plot.id);
-        const matchedVilla = plotKey ? byPlotKey.get(plotKey) : undefined;
-        return matchedVilla ?? mapGISResultToVilla(result);
-      })
-      .filter((villa): villa is CommunityVilla => Boolean(villa))
-      .filter(hasRenderableVillaLocation);
+    if (hasExplicitClassFilter) {
+      return mergeVillasByPlotKey([
+        ...filteredCandidateVillas.filter(hasRenderableVillaLocation),
+        ...searchableGISVillas,
+      ]);
+    }
 
     const renderedKeys = new Set(
-      mappedResults
+      searchableGISVillas
         .map(getVillaPlotKey)
         .filter((plotId): plotId is string => Boolean(plotId))
     );
@@ -388,8 +398,8 @@ export default function PlotsPage() {
       return hasRenderableVillaLocation(villa);
     });
 
-    return [...mappedResults, ...extraMatchedVillas];
-  }, [filteredCandidateVillas, hasExplicitClassFilter, hasRenderableVillaLocation, radiusFilteredGisMatchedVillas, searchableGISResults]);
+    return [...searchableGISVillas, ...extraMatchedVillas];
+  }, [filteredCandidateVillas, hasExplicitClassFilter, hasRenderableVillaLocation, radiusFilteredGisMatchedVillas, searchableGISVillas, searchableGISResults.length]);
 
   const matchedPlotIds = useMemo(() => {
     return new Set(
