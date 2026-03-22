@@ -347,30 +347,69 @@ export class PropertyIntelligenceEngine {
     roads: ClassifiedPlot[], residential: ClassifiedPlot[], fb: number | null,
   ): PositionType {
     const resolvedFrontBearing = this._resolveFrontBearing(villaCentroid, villaEdges, roads, fb);
+    const roadFacingEdges = villaEdges.filter((edge) =>
+      roads.some((road) => this._measureRoadFacingStrength(edge, road) >= 3)
+    );
 
     // Corner: 2+ distinct sides of the plot border a road
     const roadSides = new Set<string>();
-    for (const road of roads) {
-      if (!road.edges.length) continue;
-      for (const ve of villaEdges) {
-        for (const re of road.edges) {
-          if (Geo.sharedBoundaryOverlapM([ve], [re], this.tolM, 3) >= 3) {
-            const bearing = Geo.bearingFrom(villaCentroid, ve.mid);
-            const side = resolvedFrontBearing !== null
-              ? Geo.sideFB(bearing, resolvedFrontBearing)
-              : String(Math.floor(((bearing + 45) % 360) / 90));
-            roadSides.add(side);
-          }
-        }
-      }
+    for (const ve of roadFacingEdges) {
+      const bearing = Geo.bearingFrom(villaCentroid, ve.mid);
+      const side = resolvedFrontBearing !== null
+        ? Geo.sideFB(bearing, resolvedFrontBearing)
+        : String(Math.floor(((bearing + 45) % 360) / 90));
+      roadSides.add(side);
     }
     if (roadSides.size >= 2) return 'corner';
 
-    // End Unit: 0 or 1 residential neighbours sharing boundary
-    const resCount = residential.filter(r =>
+    const meaningfulResidentialNeighbours = residential.filter((r) =>
       r.edges.length > 0 && Geo.sharedBoundaryOverlapM(villaEdges, r.edges, this.tolM, 6) >= 6
     ).length;
-    if (resCount <= 1) return 'end';
+
+    if (meaningfulResidentialNeighbours === 0 && roadFacingEdges.length <= 1) {
+      return 'end';
+    }
+
+    if (meaningfulResidentialNeighbours <= 1 && roadFacingEdges.length === 0) {
+      return 'end';
+    }
+
+    if (meaningfulResidentialNeighbours <= 1 && roadSides.size === 1 && roadFacingEdges.length === 1) {
+      return 'middle';
+    }
+
+    if (meaningfulResidentialNeighbours <= 1 && roadSides.size === 1 && roadFacingEdges.length === 0) {
+      return 'end';
+    }
+
+    if (meaningfulResidentialNeighbours <= 1 && roads.some((road) => {
+      if (road.polygon == null) return false;
+      return villaEdges.some((edge) => this._measureRoadExposure(edge, Geo.bearingFrom(villaCentroid, edge.mid), road)?.support);
+    })) {
+      return 'middle';
+    }
+
+    if (roadSides.size >= 2) return 'corner';
+
+    if (meaningfulResidentialNeighbours <= 1) {
+      const frontAndBackRoadExposure = ['front', 'back'].every((side) =>
+        villaEdges.some((edge) => {
+          const bearing = Geo.bearingFrom(villaCentroid, edge.mid);
+          const edgeSide = resolvedFrontBearing !== null
+            ? Geo.sideFB(bearing, resolvedFrontBearing)
+            : null;
+
+          if (edgeSide !== side) return false;
+
+          return roads.some((road) => this._measureRoadFacingStrength(edge, road) >= 3);
+        })
+      );
+
+      if (!frontAndBackRoadExposure) {
+        return 'end';
+      }
+    }
+
     return 'middle';
   }
 
@@ -499,6 +538,22 @@ export class PropertyIntelligenceEngine {
     }
 
     return support > 0 ? { support, minDistance } : null;
+  }
+
+  private _measureRoadFacingStrength(edge: Edge, road: ClassifiedPlot): number {
+    const sharedBoundary = road.edges.length > 0
+      ? Geo.sharedBoundaryOverlapM([edge], road.edges, this.tolM, 3)
+      : 0;
+
+    if (sharedBoundary > 0) return sharedBoundary;
+
+    const edgeBearing = Geo.bearingFrom(edge.a, edge.b);
+    const forwardBearing = (edgeBearing + 90) % 360;
+    const reverseBearing = (edgeBearing + 270) % 360;
+    const forwardExposure = this._measureRoadExposure(edge, forwardBearing, road)?.support ?? 0;
+    const reverseExposure = this._measureRoadExposure(edge, reverseBearing, road)?.support ?? 0;
+
+    return Math.max(forwardExposure, reverseExposure);
   }
 
   private _pushBearingCandidate(candidates: number[], bearing: number) {
