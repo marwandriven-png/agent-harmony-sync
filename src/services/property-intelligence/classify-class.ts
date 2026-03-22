@@ -70,7 +70,6 @@ export function resolveVillaClass(
   if (bf === 'road'        || villa.backs_road)                         return VILLA_CLASSES.backs_road;
   if (bf === 'open_space')                                              return VILLA_CLASSES.open_view;
   if (lt === 'single_row'  || (villa.is_single_row && lt !== 'back_to_back')) return VILLA_CLASSES.single_row;
-  if (lt === 'back_to_back')                       return VILLA_CLASSES.back_to_back;
 
   // Positional overlays become the default only when no row-type class is known
   if (pt === 'corner'      || villa.is_corner)    return VILLA_CLASSES.corner;
