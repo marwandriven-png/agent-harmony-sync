@@ -330,6 +330,56 @@ export default function PlotsPage() {
     return Array.from(unique.values());
   }, [gisResults]);
 
+  const radiusFilteredSearchableGISResults = useMemo(() => {
+    if (!villaSearchCenter) return searchableGISResults;
+
+    return searchableGISResults.filter((result) => {
+      const coords = normalizeCoordinatesForSearch(result.plot.y, result.plot.x);
+      if (!coords) return false;
+
+      return isVillaWithinSearchRadius(
+        {
+          id: `${GIS_PLOT_ID_PREFIX}${result.plot.id}`,
+          community_name: result.plot.location || result.plot.project || 'GIS Plot',
+          sub_community: null,
+          cluster_name: null,
+          villa_number: `${GIS_PLOT_ID_PREFIX}${result.plot.id}`,
+          plot_number: result.plot.id,
+          plot_id: result.plot.id,
+          orientation: null,
+          facing_direction: null,
+          position_type: null,
+          is_corner: false,
+          is_single_row: false,
+          backs_park: false,
+          backs_road: false,
+          near_pool: false,
+          near_entrance: false,
+          near_school: false,
+          near_community_center: false,
+          vastu_compliant: null,
+          vastu_details: null,
+          latitude: coords.lat,
+          longitude: coords.lng,
+          land_usage: result.plot.zoning || null,
+          plot_size_sqft: null,
+          built_up_area_sqft: null,
+          bedrooms: null,
+          floors: null,
+          year_built: null,
+          notes: null,
+          metadata: null,
+          created_by: null,
+          created_at: '',
+          updated_at: '',
+        },
+        villaSearchCenter,
+        villaSearchRadius,
+        plotCoordinateLookup,
+      );
+    });
+  }, [plotCoordinateLookup, searchableGISResults, villaSearchCenter, villaSearchRadius]);
+
   const radiusFilteredGisMatchedVillas = useMemo(() => {
     return filteredGisMatchedVillas.filter((villa) =>
       isVillaWithinSearchRadius(villa, villaSearchCenter, villaSearchRadius, plotCoordinateLookup)
@@ -343,7 +393,7 @@ export default function PlotsPage() {
       if (plotKey) byPlotKey.set(plotKey, villa);
     });
 
-    return searchableGISResults
+    return radiusFilteredSearchableGISResults
       .map((result) => {
         const plotKey = normalizePlotKey(result.plot.id);
         const matchedVilla = plotKey ? byPlotKey.get(plotKey) : undefined;
@@ -352,7 +402,7 @@ export default function PlotsPage() {
       .filter((villa): villa is CommunityVilla => Boolean(villa))
       .filter(hasRenderableVillaLocation)
       .filter(applyVillaFilters);
-  }, [applyVillaFilters, hasRenderableVillaLocation, radiusFilteredGisMatchedVillas, searchableGISResults]);
+  }, [applyVillaFilters, hasRenderableVillaLocation, radiusFilteredGisMatchedVillas, radiusFilteredSearchableGISResults]);
 
   const radiusFilteredAllVillas = useMemo(() => {
     return filteredAllVillas.filter((villa) =>
@@ -375,31 +425,17 @@ export default function PlotsPage() {
   );
 
   const displayedVillas = useMemo(() => {
-    if (searchableGISResults.length === 0) {
-      return filteredCandidateVillas.filter(hasRenderableVillaLocation);
+    const baseCandidates = filteredCandidateVillas.filter(hasRenderableVillaLocation);
+
+    if (radiusFilteredSearchableGISResults.length === 0) {
+      return baseCandidates;
     }
 
-    if (hasExplicitClassFilter) {
-      return mergeVillasByPlotKey([
-        ...filteredCandidateVillas.filter(hasRenderableVillaLocation),
-        ...searchableGISVillas,
-      ]);
-    }
-
-    const renderedKeys = new Set(
-      searchableGISVillas
-        .map(getVillaPlotKey)
-        .filter((plotId): plotId is string => Boolean(plotId))
-    );
-
-    const extraMatchedVillas = radiusFilteredGisMatchedVillas.filter((villa) => {
-      const plotKey = getVillaPlotKey(villa);
-      if (!plotKey || renderedKeys.has(plotKey)) return false;
-      return hasRenderableVillaLocation(villa);
-    });
-
-    return [...searchableGISVillas, ...extraMatchedVillas];
-  }, [filteredCandidateVillas, hasExplicitClassFilter, hasRenderableVillaLocation, radiusFilteredGisMatchedVillas, searchableGISVillas, searchableGISResults.length]);
+    return mergeVillasByPlotKey([
+      ...searchableGISVillas,
+      ...baseCandidates,
+    ]);
+  }, [filteredCandidateVillas, hasRenderableVillaLocation, radiusFilteredSearchableGISResults.length, searchableGISVillas]);
 
   const matchedPlotIds = useMemo(() => {
     return new Set(

@@ -2,12 +2,12 @@
  * VillaMapView v3 — Strict class-based pin rendering
  *
  * Rules:
- *  1. Every classification has ONE distinct color + short text label
- *  2. Plots with NO classification → neutral fallback pin
- *  3. When a class filter is active → show ONLY pins matching that class
- *     (GIS orange diamonds also hidden when a class filter is on)
- *  4. No emoji icons for Open View / Backs Open (renders as broken image on some systems)
- *  5. All colors are pure CSS — no emoji fallback
+ *  1. Every in-radius result gets exactly one marker from the shared result dataset
+ *  2. Plots with NO classification render as a neutral fallback pin
+ *  3. Class filters use the same resolved class source as the sidebar/results
+ *  4. Residual GIS diamonds appear only for truly unrepresented plots
+ *  5. No emoji icons for Open View / Backs Open (renders as broken image on some systems)
+ *  6. All colors are pure CSS — no emoji fallback
  *
  * Classification color palette:
  *   Back-to-Back  → #ef4444  (red)    badge: B2B
