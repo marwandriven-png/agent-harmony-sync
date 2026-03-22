@@ -534,12 +534,9 @@ export default function PlotsPage() {
     const newFilters: VillaSearchFilters = {};
     if (piFilters.layoutType === 'single_row') newFilters.isSingleRow = true;
     if (piFilters.layoutType === 'back_to_back') newFilters.isBackToBack = true;
-    if (piFilters.position === 'corner') newFilters.isCorner = true;
     if (piFilters.position === 'end') newFilters.isEndUnit = true;
     if (piFilters.vastuCompliant) newFilters.vastuCompliant = true;
     if (piFilters.backFacing === 'road') newFilters.backsRoad = true;
-    if (piFilters.backFacing === 'park') newFilters.backsPark = true;
-    if (piFilters.backFacing === 'open_space') newFilters.backsOpenSpace = true;
     if (piFilters.nearAmenity) newFilters.nearAmenity = piFilters.nearAmenity;
     if (piFilters.maxDistance) newFilters.maxDistance = piFilters.maxDistance;
     // Vastu direction from NL parser (e.g. "east facing" → vastuDirection: 'E')
