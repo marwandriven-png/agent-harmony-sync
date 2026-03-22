@@ -128,6 +128,47 @@ export function hasActiveClassFilter(filters: VillaSearchFilters | undefined): b
   );
 }
 
+export type VillaClassKey = keyof typeof VILLA_CLASSES;
+
+export function getMatchedVillaClassKeys(
+  villa: CommunityVilla,
+  intel: VillaIntelligence | undefined,
+): Set<VillaClassKey> {
+  const matched = new Set<VillaClassKey>();
+
+  if (matchesBacksPark(villa, intel)) matched.add('backs_park');
+  if (matchesBacksRoad(villa, intel)) matched.add('backs_road');
+  if (matchesOpenView(intel)) matched.add('open_view');
+  if (matchesCorner(villa, intel)) matched.add('corner');
+  if (matchesEndUnit(villa, intel)) matched.add('end_unit');
+  if (matchesBackToBack(intel)) matched.add('back_to_back');
+  if (matchesSingleRow(villa, intel)) matched.add('single_row');
+  if (hasVastu(villa, intel)) matched.add('vastu');
+
+  return matched;
+}
+
+export function matchesActiveVillaClassFilters(
+  villa: CommunityVilla,
+  intel: VillaIntelligence | undefined,
+  filters: VillaSearchFilters | undefined,
+): boolean {
+  if (!filters || !hasActiveClassFilter(filters)) return true;
+
+  const matched = getMatchedVillaClassKeys(villa, intel);
+
+  if (filters.backsPark && matched.has('backs_park')) return true;
+  if (filters.backsRoad && matched.has('backs_road')) return true;
+  if (filters.backsOpenSpace && matched.has('open_view')) return true;
+  if (filters.isCorner && matched.has('corner')) return true;
+  if (filters.isEndUnit && matched.has('end_unit')) return true;
+  if (filters.isBackToBack && matched.has('back_to_back')) return true;
+  if (filters.isSingleRow && matched.has('single_row')) return true;
+  if (filters.vastuCompliant && matched.has('vastu')) return true;
+
+  return false;
+}
+
 export function resolveDisplayedVillaClass(
   villa: CommunityVilla,
   intel: VillaIntelligence | undefined,
@@ -138,16 +179,17 @@ export function resolveDisplayedVillaClass(
 
   if (!filters || !hasActiveClassFilter(filters)) return primary;
 
+  const matched = getMatchedVillaClassKeys(villa, intel);
   const matchedFilteredClass: VillaClass[] = [];
 
-  if (filters.backsPark && matchesBacksPark(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.backs_park);
-  if (filters.backsRoad && matchesBacksRoad(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.backs_road);
-  if (filters.backsOpenSpace && matchesOpenView(intel)) matchedFilteredClass.push(VILLA_CLASSES.open_view);
-  if (filters.isCorner && matchesCorner(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.corner);
-  if (filters.isEndUnit && matchesEndUnit(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.end_unit);
-  if (filters.isBackToBack && matchesBackToBack(intel)) matchedFilteredClass.push(VILLA_CLASSES.back_to_back);
-  if (filters.isSingleRow && matchesSingleRow(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.single_row);
-  if (filters.vastuCompliant && hasVastu(villa, intel)) matchedFilteredClass.push(VILLA_CLASSES.vastu);
+  if (filters.backsPark && matched.has('backs_park')) matchedFilteredClass.push(VILLA_CLASSES.backs_park);
+  if (filters.backsRoad && matched.has('backs_road')) matchedFilteredClass.push(VILLA_CLASSES.backs_road);
+  if (filters.backsOpenSpace && matched.has('open_view')) matchedFilteredClass.push(VILLA_CLASSES.open_view);
+  if (filters.isCorner && matched.has('corner')) matchedFilteredClass.push(VILLA_CLASSES.corner);
+  if (filters.isEndUnit && matched.has('end_unit')) matchedFilteredClass.push(VILLA_CLASSES.end_unit);
+  if (filters.isBackToBack && matched.has('back_to_back')) matchedFilteredClass.push(VILLA_CLASSES.back_to_back);
+  if (filters.isSingleRow && matched.has('single_row')) matchedFilteredClass.push(VILLA_CLASSES.single_row);
+  if (filters.vastuCompliant && matched.has('vastu')) matchedFilteredClass.push(VILLA_CLASSES.vastu);
 
   if (matchedFilteredClass.length > 0) return matchedFilteredClass[0];
 
