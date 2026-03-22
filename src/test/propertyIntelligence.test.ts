@@ -546,6 +546,20 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
     expect(result.layout.backFacing).toBe('villa');
   });
 
+  it('classifies park-ring villas as backs_park even when a side road is closer than the true frontage', () => {
+    propertyIntelligence.clearCache();
+    const villa = makePlot('villa', [[55.00000,25.00000],[55.00010,25.00000],[55.00010,25.00010],[55.00000,25.00010]], 'RESIDENTIAL ATTACHED VILLAS');
+    const trueFrontRoad = makePlot('true-front-road', [[55.00000,24.99988],[55.00010,24.99988],[55.00010,24.99998],[55.00000,24.99998]], 'ROAD');
+    const sideRoad = makePlot('side-road', [[55.00010,25.00001],[55.00013,25.00001],[55.00013,25.00007],[55.00010,25.00007]], 'ROAD');
+    const rearPark = makePlot('rear-park', [[55.00000,25.00010],[55.00010,25.00010],[55.00010,25.00022],[55.00000,25.00022]], 'NEIGHBORHOOD PARK');
+
+    const batch = propertyIntelligence.buildBatch([villa, trueFrontRoad, sideRoad, rearPark]);
+    const result = propertyIntelligence.analyzeWithBatch(villa, batch, null);
+
+    expect(result.layout.layoutType).toBe('single_row');
+    expect(result.layout.backFacing).toBe('park');
+  });
+
   it('keeps B2B when a park exists behind the opposing residential row', () => {
     propertyIntelligence.clearCache();
     const villa = makePlot('villa', [[55.00000,25.00000],[55.00010,25.00000],[55.00010,25.00010],[55.00000,25.00010]], 'RESIDENTIAL ATTACHED VILLAS');
