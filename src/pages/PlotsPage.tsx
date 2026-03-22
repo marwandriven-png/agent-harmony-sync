@@ -50,7 +50,6 @@ function mapGISResultToVilla(
   const plot = result.plot;
   const coords = normalizeCoordinatesForSearch(plot.y, plot.x);
   if (!coords) return null;
-  if (!plot.gfa || plot.gfa <= 0) return null;
 
   return {
     id:                    `${GIS_PLOT_ID_PREFIX}${plot.id}`,
@@ -319,7 +318,6 @@ export default function PlotsPage() {
     gisResults.forEach((result) => {
       const plotKey = normalizePlotKey(result.plot.id);
       if (!plotKey) return;
-      if (!result.plot.gfa || result.plot.gfa <= 0) return;
 
       const existing = unique.get(plotKey);
       if (!existing || result.confidenceScore > existing.confidenceScore) {

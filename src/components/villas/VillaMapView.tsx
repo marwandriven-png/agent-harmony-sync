@@ -408,7 +408,6 @@ export const VillaMapView = memo(function VillaMapView({
     gisResults.forEach(r => {
       const plotKey = normalizePlotKey(r.plot.id);
       if (!plotKey) return;
-      if (!r.plot.gfa || r.plot.gfa <= 0) return;
       if (seen.has(plotKey)) return;
       seen.add(plotKey);
       if (renderedPlotIds?.has(plotKey)) return;
@@ -503,7 +502,6 @@ export const VillaMapView = memo(function VillaMapView({
     : gisResults.filter((result) => {
         const plotKey = normalizePlotKey(result.plot.id);
         if (!plotKey) return false;
-        if (!result.plot.gfa || result.plot.gfa <= 0) return false;
         return !renderedPlotIds?.has(plotKey);
       }).length;
   let unclassifiedCount = 0;
