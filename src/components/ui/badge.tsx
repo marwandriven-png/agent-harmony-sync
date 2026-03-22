@@ -26,12 +26,16 @@ export interface BadgeProps
   children?: React.ReactNode;
 }
 
-function Badge({ className, variant, children, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props}>
-      {children}
-    </div>
-  );
-}
+const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
+  ({ className, variant, children, ...props }, ref) => {
+    return (
+      <div ref={ref} className={cn(badgeVariants({ variant }), className)} {...props}>
+        {children}
+      </div>
+    );
+  }
+);
+
+Badge.displayName = 'Badge';
 
 export { Badge, badgeVariants };
