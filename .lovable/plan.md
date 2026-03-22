@@ -1,85 +1,49 @@
 
-Goal: fix the wrong villa classes on `/plots`, make map/list/filter behavior use the same class logic, and remove mock/demo access from the whole project.
+Goal: fix the “Backs Park” class so the villas inside the marked area appear in match results only when their rear boundary truly faces a park, not just because a park is nearby.
 
-What I found
-- The current `/plots` pipeline is not failing in one place; it has 3 separate mismatches:
-  1. `engine.ts` still over-labels `back_to_back` because rear-neighbour detection is too loose.
-  2. Filters in `PlotsPage.tsx` use raw helpers like `matchesBackToBack()` instead of the shared displayed-class resolver, so a plot can be visually “Backs Park / Backs Road” but still be filtered/count as B2B.
-  3. Geometry adjacency is too permissive: `Geo.sharesBoundary()` treats point/corner touches like a shared rear wall, which is a major source of false B2B and wrong end-unit results.
-- The screenshot matches that: many units that should be “single row + backs road” or “single row end unit” are currently classified/counting as B2B.
-- There is still project-wide mock/demo code outside `/plots` (`src/store/crmStore.ts`, demo naming in GIS/test data, etc.), so “remove from all project” is broader than the villa module.
+What I found:
+- The current filter/result pipeline on `/plots` is mostly wired correctly:
+  - `applyVillaFilters()` uses `matchesOrDefersActiveVillaClassFilters()`
+  - `resolveDisplayedVillaClass()` is shared between map pins and results
+- The likely bug is in the spatial classifier, not the UI filter:
+  - `engine.ts` marks `backsPark` using `_hasRearContextCandidate(...)`
+  - that helper still relies heavily on the candidate centroid plus a broad polygon distance check
+  - for irregular/large park polygons, a villa can be truly rear-facing while the centroid sits off-axis, so the class is missed
+- Your clarification matters: Backs Park should mean `direct rear park only` — not “near park” and not “rear park across a buffer”.
 
-Implementation plan
+Implementation plan:
+1. Tighten the spatial rule for Backs Park in `src/services/property-intelligence/engine.ts`
+   - Refactor `_hasRearContextCandidate()` so park classification is based on true rear-edge relationship to the park polygon, not centroid bias.
+   - Require the park polygon itself to align behind at least one rear edge.
+   - Remove/limit permissive fallback behavior that can miss or over-generalize elongated park shapes.
+   - Keep landscape/open-space separate from park.
 
-1. Fix the actual classification bug at the geometry level
-- Tighten boundary logic in `src/services/property-intelligence/geometry.ts` so corner-only contact does not count as a shared boundary.
-- Add a stricter “shared wall overlap” check for residential rear adjacency and use that for B2B detection.
-- Keep point/near-distance checks only as fallback, not as proof of a rear shared wall.
+2. Preserve class parity between results and pins
+   - Keep `resolveDisplayedVillaClass()` as the single display source of truth.
+   - Verify that a villa with `layoutType: 'back_to_back'` or `single_row` can still resolve to `backs_park` when rear-facing park is confirmed, since facing and layout are independent dimensions.
+   - Ensure no “No classes detected” case happens for true rear-park villas once intelligence is computed.
 
-2. Tighten engine-side front/rear detection
-- Refine `src/services/property-intelligence/engine.ts` so front bearing is resolved from the true road-facing side first.
-- Only classify B2B when:
-  - the rear side is confidently identified,
-  - the rear side shares meaningful wall overlap with residential,
-  - and there is no rear road/park/open-space separator.
-- Make polygon and centroid fallback agree on the same stricter rule.
+3. Add regression tests in `src/test/propertyIntelligence.test.ts`
+   - Add a polygon test where:
+     - the park is directly behind the villa and should classify as `backFacing: 'park'`
+     - the park polygon is offset/elongated so centroid-only logic would fail
+   - Add a negative test where a side park does not classify as Backs Park.
+   - Add a resolver/filter parity test confirming Backs Park appears in class-filtered results.
 
-3. Make filters and counts use the same class source of truth
-- Refactor `src/pages/PlotsPage.tsx` to stop using raw `matchesBackToBack / matchesSingleRow / matchesEndUnit` as the main class-filter truth.
-- Use the shared displayed-class resolver from `unit-reference.ts` for:
-  - filtering,
-  - result counting,
-  - matched plot IDs,
-  - rendered plot IDs.
-- This will make B2B filter return only true B2B display-class results, not plots whose raw layout says B2B but should illustrate as PK/RD/SR.
+4. Validate the `/plots` search flow after the patch
+   - Confirm the red-circled villas are included when `Backs Park` is active.
+   - Confirm landscape/open space does not leak into park results.
+   - Confirm results count, sidebar matches, and map pins stay in sync.
 
-4. Align map pins, legend, and right-panel cards
-- Update `src/components/villas/VillaMapView.tsx` and `src/components/villas/VillaRightPanel.tsx` so:
-  - primary class badge = shared displayed class,
-  - legend counts = same resolver,
-  - result cards = same resolver,
-  - neutral pins remain only for truly unclassified matched results.
-- Keep secondary tags optional, but do not let them override the primary displayed class.
-
-5. Re-check class hierarchy against your illustration
-- Keep the visual priority strict:
-  - `backs_park / backs_road / open_view`
-  - then `single_row`
-  - then `back_to_back`
-  - then `corner / end_unit`
-  - then `vastu`
-- Also preserve “end unit excludes corner”.
-
-6. Remove mock/demo access from the whole project
-- Audit and remove runtime mock/demo sources across the app, starting with:
-  - `src/store/crmStore.ts`
-  - any remaining demo/mock helpers in GIS/property services
-  - demo terminology that appears in runtime code paths
-- Replace with empty states or real backend-driven defaults so no section depends on fabricated data.
-- Keep tests using synthetic fixtures if needed, but rename/remove “demo” runtime semantics so the shipped app has no mock access path.
-
-7. Add regression coverage for the exact bugs shown
-- Extend `src/test/propertyIntelligence.test.ts` to cover:
-  - corner-touch must not count as B2B,
-  - rear road separator keeps a unit single-row,
-  - displayed class and filter class are identical,
-  - one plot key = one result card + one rendered pin,
-  - end-unit/corner cases from the illustrated pattern.
-- Add a test around the shared resolver so future edits cannot reintroduce B2B overreach.
-
-Files most likely to change
-- `src/services/property-intelligence/geometry.ts`
-- `src/services/property-intelligence/engine.ts`
-- `src/services/property-intelligence/classify-class.ts`
-- `src/services/property-intelligence/unit-reference.ts`
-- `src/pages/PlotsPage.tsx`
-- `src/components/villas/VillaMapView.tsx`
-- `src/components/villas/VillaRightPanel.tsx`
-- `src/store/crmStore.ts`
-- `src/test/propertyIntelligence.test.ts`
-
-Expected outcome
-- Units like the ones in your screenshot stop collapsing into B2B.
-- “single row + backs road”, “single row end unit”, and park-backed rows render with the correct primary class.
-- Filters, sidebar totals, legend totals, and map pins all agree.
-- Mock/demo runtime data is removed project-wide.
+Technical notes:
+- Main files:
+  - `src/services/property-intelligence/engine.ts`
+  - `src/services/property-intelligence/unit-reference.ts` (verify only)
+  - `src/services/property-intelligence/classify-class.ts` (verify priority only)
+  - `src/pages/PlotsPage.tsx` (verify parity only)
+  - `src/test/propertyIntelligence.test.ts`
+- Intended behavior after fix:
+  - direct rear park = `Backs Park`
+  - side park = not `Backs Park`
+  - nearby park only = not `Backs Park`
+  - landscape = not `Backs Park`
