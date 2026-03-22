@@ -190,34 +190,34 @@ export function useVillaGISSearch() {
                 center = normalizedCenter;
 
                 // Search villas within the exact user radius
-                const nearbyVillaIds = await villaGISService.searchVillasNearLocation(
-                  normalizedCenter.lat,
-                  normalizedCenter.lng,
-                  radiusMeters,
-                );
+                const [nearbyVillaIds, consolidated] = await Promise.all([
+                  villaGISService.searchVillasNearLocation(
+                    normalizedCenter.lat,
+                    normalizedCenter.lng,
+                    radiusMeters,
+                  ),
+                  gisService.searchByLocationConsolidated(
+                    normalizedCenter.lat,
+                    normalizedCenter.lng,
+                    contextRadiusMeters,
+                  ).catch(() => ({ plots: [], metadata: null })),
+                ]);
+
                 for (const id of nearbyVillaIds) {
                   villaIdSet.add(id);
                 }
 
-                // Fetch broader surrounding GIS context for classification accuracy
-                try {
-                  const { plots: nearbyPlots } = await gisService.searchByLocationConsolidated(
-                    normalizedCenter.lat,
-                    normalizedCenter.lng,
-                    contextRadiusMeters,
-                  );
-                  for (const np of nearbyPlots) {
-                    addContextPlot(np);
-                    if (!resultIds.has(np.id)) {
-                      resultIds.add(np.id);
-                      results.push({
-                        plot: np,
-                        source: 'gis-location',
-                        confidenceScore: 70,
-                      });
-                    }
+                for (const np of consolidated.plots) {
+                  addContextPlot(np);
+                  if (!resultIds.has(np.id)) {
+                    resultIds.add(np.id);
+                    results.push({
+                      plot: np,
+                      source: 'gis-location',
+                      confidenceScore: 70,
+                    });
                   }
-                } catch { /* continue */ }
+                }
               }
             }
           }
@@ -271,13 +271,20 @@ export function useVillaGISSearch() {
           if (coords) {
             center = coords;
 
-            const { plots: nearbyPlots } = await gisService.searchByLocationConsolidated(
-              coords.lat,
-              coords.lng,
-              contextRadiusMeters,
-            );
+            const [consolidated, nearbyVillaIds] = await Promise.all([
+              gisService.searchByLocationConsolidated(
+                coords.lat,
+                coords.lng,
+                contextRadiusMeters,
+              ),
+              villaGISService.searchVillasNearLocation(
+                coords.lat,
+                coords.lng,
+                radiusMeters,
+              ),
+            ]);
 
-            for (const np of nearbyPlots) {
+            for (const np of consolidated.plots) {
               addContextPlot(np);
               if (!resultIds.has(np.id)) {
                 resultIds.add(np.id);
@@ -288,12 +295,6 @@ export function useVillaGISSearch() {
                 });
               }
             }
-
-            const nearbyVillaIds = await villaGISService.searchVillasNearLocation(
-              coords.lat,
-              coords.lng,
-              radiusMeters,
-            );
 
             for (const id of nearbyVillaIds) {
               villaIdSet.add(id);

@@ -50,6 +50,15 @@ const COMMUNITY_CENTER_TERMS = [
   /\bCLUBHOUSE\b/,
 ];
 
+const ENTRANCE_TERMS = [
+  /\bENTRANCE\b/,
+  /\bENTRY\b/,
+  /\bGATE\b/,
+  /\bGUARD\s+HOUSE\b/,
+  /\bSECURITY\s+(?:GATE|HOUSE|CABIN)\b/,
+  /\bACCESS\b/,
+];
+
 const ROAD_TERMS = [
   /\bROAD\b/,
   /\bSTREET\b/,
@@ -198,6 +207,7 @@ export function classifyLandUse(landUse: string): AmenityType | 'residential' | 
   if (lu.includes('MOSQUE') || lu.includes('MASJID')) return 'mosque';
   if (lu.includes('MALL') || lu.includes('SHOPPING')) return 'mall';
   if (matchesAny(lu, PLAYGROUND_TERMS)) return 'playground';
+  if (matchesAny(lu, ENTRANCE_TERMS)) return 'community_center';
   if (matchesAny(lu, COMMUNITY_CENTER_TERMS)) return 'community_center';
   if (lu.includes('HOSPITAL') || lu.includes('CLINIC') || lu.includes('HEALTH')) return 'healthcare';
   if (lu.includes('RETAIL') || lu.includes('COMMERCIAL') || lu.includes('SHOP')) return 'retail';
@@ -213,4 +223,10 @@ export function isParkFacingLandUse(landUse: string): boolean {
   const lu = normalizeClassifierText(landUse);
   if (!lu) return false;
   return matchesAny(lu, PARK_TERMS) || matchesAny(lu, PLAYGROUND_TERMS);
+}
+
+export function isEntranceLandUse(landUse: string): boolean {
+  const lu = normalizeClassifierText(landUse);
+  if (!lu) return false;
+  return matchesAny(lu, ENTRANCE_TERMS);
 }

@@ -32,6 +32,7 @@ import {
   resolveDisplayedVillaClass,
 } from '@/services/property-intelligence/unit-reference';
 import { isVillaWithinSearchRadius } from '@/services/property-intelligence/search-radius';
+import { isEntranceLandUse } from '@/services/property-intelligence/classifiers';
 
 const VillaMapView = lazy(() => import('@/components/villas/VillaMapView').then((module) => ({ default: module.VillaMapView })));
 const VillaRightPanel = lazy(() => import('@/components/villas/VillaRightPanel').then((module) => ({ default: module.VillaRightPanel })));
@@ -237,8 +238,16 @@ export default function PlotsPage() {
     return [...villas, ...syntheticVillasFromGIS.filter(v => !supabaseIds.has(v.id))];
   }, [villas, syntheticVillasFromGIS]);
 
+  const villasForIntelligence = useMemo<CommunityVilla[]>(() => {
+    if (!villaSearchCenter) return allVillasForIntel;
+    const intelligenceRadius = Math.max(villaSearchRadius + 150, 250);
+    return allVillasForIntel.filter((villa) =>
+      isVillaWithinSearchRadius(villa, villaSearchCenter, intelligenceRadius, plotCoordinateLookup)
+    );
+  }, [allVillasForIntel, plotCoordinateLookup, villaSearchCenter, villaSearchRadius]);
+
   const { intelligenceMap, allAmenities, isProcessing: piIsProcessing } = usePropertyIntelligence(
-    isVillaMode ? allVillasForIntel : [],
+    isVillaMode ? villasForIntelligence : [],
     isVillaMode ? nearbyPlots : [],
   );
 
@@ -281,7 +290,7 @@ export default function PlotsPage() {
       if (!villa.near_pool && piReady && !intel.amenities.some(a => a.type === 'pool' && a.distanceMeters <= 220)) return false;
     }
     if (villaFilters.nearEntrance) {
-      if (!villa.near_entrance && piReady && !intel.amenities.some(a => (a.type === 'community_center' || a.name.toLowerCase().includes('gate') || a.name.toLowerCase().includes('entrance')) && a.distanceMeters <= 160)) return false;
+      if (!villa.near_entrance && piReady && !intel.amenities.some(a => (a.type === 'community_center' || isEntranceLandUse(a.name)) && a.distanceMeters <= 160)) return false;
     }
     if (villaFilters.nearSchool) {
       if (!villa.near_school && piReady && !intel.amenities.some(a => a.type === 'school' && a.distanceMeters <= 500)) return false;
