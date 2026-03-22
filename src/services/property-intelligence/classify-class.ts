@@ -73,7 +73,7 @@ export function resolveVillaClass(
   }
 
   if (bf === 'road'        || villa.backs_road)                         return VILLA_CLASSES.backs_road;
-  if (lt === 'single_row'  || (villa.is_single_row && lt !== 'back_to_back')) return VILLA_CLASSES.single_row;
+  if (lt === 'single_row'  || villa.is_single_row)                      return VILLA_CLASSES.single_row;
 
   if (pt === 'end')                                return VILLA_CLASSES.end_unit;
 
