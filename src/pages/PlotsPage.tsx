@@ -33,7 +33,7 @@ import {
   resolveDisplayedVillaClass,
 } from '@/services/property-intelligence/unit-reference';
 import { isVillaWithinSearchRadius } from '@/services/property-intelligence/search-radius';
-import { isEntranceLandUse } from '@/services/property-intelligence/classifiers';
+import { classifyLandUse, isEntranceLandUse } from '@/services/property-intelligence/classifiers';
 
 const VillaMapView = lazy(() => import('@/components/villas/VillaMapView').then((module) => ({ default: module.VillaMapView })));
 const VillaRightPanel = lazy(() => import('@/components/villas/VillaRightPanel').then((module) => ({ default: module.VillaRightPanel })));
@@ -96,6 +96,32 @@ function mapGISResultToVilla(
     created_at:            new Date().toISOString(),
     updated_at:            new Date().toISOString(),
   } satisfies CommunityVilla;
+}
+
+function getGISPlotLandUseText(plot: PlotData): string {
+  const rawLandUseDetails = typeof plot.rawAttributes?.LANDUSE_DETAILS === 'string'
+    ? plot.rawAttributes.LANDUSE_DETAILS
+    : null;
+  const rawSubLandUse = typeof plot.rawAttributes?.SUB_LANDUSE === 'string'
+    ? plot.rawAttributes.SUB_LANDUSE
+    : null;
+  const rawMainLandUse = typeof plot.rawAttributes?.MAIN_LANDUSE === 'string'
+    ? plot.rawAttributes.MAIN_LANDUSE
+    : null;
+
+  return [
+    plot.landUseDetails,
+    rawLandUseDetails,
+    rawSubLandUse,
+    rawMainLandUse,
+    plot.zoning,
+  ]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join(' | ');
+}
+
+function isRenderableResidentialGISPlot(plot: PlotData): boolean {
+  return classifyLandUse(getGISPlotLandUseText(plot)) === 'residential';
 }
 
 proj4.defs('EPSG:3997', '+proj=tmerc +lat_0=0 +lon_0=55.33333333333334 +k=1 +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
@@ -222,12 +248,16 @@ export default function PlotsPage() {
    * conversion the engine has nothing to classify and `intelligenceMap` stays empty,
    * leaving all pins the same red color and "0 villas" shown in the panel.
    */
+  const renderableGISResults = useMemo(() => {
+    return gisResults.filter((result) => isRenderableResidentialGISPlot(result.plot));
+  }, [gisResults]);
+
   const syntheticVillasFromGIS = useMemo<CommunityVilla[]>(() => {
-    if (gisResults.length === 0) return [];
-    return gisResults
+    if (renderableGISResults.length === 0) return [];
+    return renderableGISResults
       .map(mapGISResultToVilla)
       .filter((v): v is NonNullable<typeof v> => v !== null) as CommunityVilla[];
-  }, [gisResults]);
+  }, [renderableGISResults]);
 
   /**
    * Merge Supabase villas with synthetic GIS villas (deduped by id).
@@ -315,7 +345,7 @@ export default function PlotsPage() {
   const searchableGISResults = useMemo(() => {
     const unique = new globalThis.Map<string, (typeof gisResults)[number]>();
 
-    gisResults.forEach((result) => {
+    renderableGISResults.forEach((result) => {
       const plotKey = normalizePlotKey(result.plot.id);
       if (!plotKey) return;
 
@@ -326,7 +356,7 @@ export default function PlotsPage() {
     });
 
     return Array.from(unique.values());
-  }, [gisResults]);
+  }, [renderableGISResults]);
 
   const radiusFilteredSearchableGISResults = useMemo(() => {
     if (!villaSearchCenter) return searchableGISResults;
@@ -430,10 +460,14 @@ export default function PlotsPage() {
     ]);
   }, [filteredCandidateVillas, hasRenderableVillaLocation, radiusFilteredSearchableGISResults.length, searchableGISVillas]);
 
-  const displayedMatchedVillaIds = useMemo(
-    () => new Set(radiusFilteredGisMatchedVillas.map((villa) => villa.id)),
-    [radiusFilteredGisMatchedVillas],
-  );
+  const displayedMatchedVillaIds = useMemo(() => {
+    const displayedIds = new Set(displayedVillas.map((villa) => villa.id));
+    return new Set(
+      radiusFilteredGisMatchedVillas
+        .filter((villa) => displayedIds.has(villa.id))
+        .map((villa) => villa.id),
+    );
+  }, [displayedVillas, radiusFilteredGisMatchedVillas]);
 
   const villaIds = useMemo(() => displayedVillas.map(v => v.id), [displayedVillas]);
   const { data: listingCounts = {} } = useVillaListingCounts(villaIds, { enabled: isVillaMode && villaIds.length > 0 });
