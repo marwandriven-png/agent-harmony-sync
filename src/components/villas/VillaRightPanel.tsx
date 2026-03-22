@@ -377,15 +377,10 @@ export const VillaRightPanel = memo(function VillaRightPanel({
                 {showPosition && (
                   <div className="space-y-1.5">
                     <div className="grid grid-cols-2 gap-1.5 mb-1.5">
-                      <FilterChip label="Corner" active={!!filters.isCorner} onClick={() => toggleFilter('isCorner')} emoji="◻" />
                       <FilterChip label="End Unit" active={!!filters.isEndUnit} onClick={() => toggleFilter('isEndUnit')} emoji="↔️" />
                       <FilterChip label="Single Row" active={!!filters.isSingleRow} onClick={() => toggleFilter('isSingleRow')} emoji="▬" />
                       <FilterChip label="Back-to-Back" active={!!filters.isBackToBack} onClick={() => toggleFilter('isBackToBack')} emoji="🏘" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <FilterChip label="Backs Park" active={!!filters.backsPark} onClick={() => toggleFilter('backsPark')} emoji="🌳" />
                       <FilterChip label="Backs Road" active={!!filters.backsRoad} onClick={() => toggleFilter('backsRoad')} emoji="🛣" />
-                      <FilterChip label="Open View" active={!!filters.backsOpenSpace} onClick={() => toggleFilter('backsOpenSpace')} emoji="🏞️" />
                     </div>
                   </div>
                 )}
@@ -519,13 +514,10 @@ export const VillaRightPanel = memo(function VillaRightPanel({
                     {filters.community && <ActiveBadge label={filters.community} onRemove={() => updateFilter('community', undefined)} />}
                     {filters.plotNumber && <ActiveBadge label={`Plot: ${filters.plotNumber}`} onRemove={() => updateFilter('plotNumber', undefined)} />}
                     {filters.googleLocation && <ActiveBadge label="📍 Location" onRemove={() => updateFilter('googleLocation', undefined)} />}
-                    {filters.isCorner && <ActiveBadge label={VILLA_CLASSES.corner.label} onRemove={() => updateFilter('isCorner', undefined)} />}
                     {filters.isEndUnit && <ActiveBadge label={VILLA_CLASSES.end_unit.label} onRemove={() => updateFilter('isEndUnit', undefined)} />}
                     {filters.isSingleRow && <ActiveBadge label={VILLA_CLASSES.single_row.label} onRemove={() => updateFilter('isSingleRow', undefined)} />}
                     {filters.isBackToBack && <ActiveBadge label={VILLA_CLASSES.back_to_back.label} onRemove={() => updateFilter('isBackToBack', undefined)} />}
-                    {filters.backsPark && <ActiveBadge label={VILLA_CLASSES.backs_park.label} onRemove={() => updateFilter('backsPark', undefined)} />}
                     {filters.backsRoad && <ActiveBadge label={VILLA_CLASSES.backs_road.label} onRemove={() => updateFilter('backsRoad', undefined)} />}
-                    {filters.backsOpenSpace && <ActiveBadge label={VILLA_CLASSES.open_view.label} onRemove={() => updateFilter('backsOpenSpace', undefined)} />}
                     {filters.vastuCompliant && <ActiveBadge label={VILLA_CLASSES.vastu.label} onRemove={() => updateFilter('vastuCompliant', undefined)} />}
                     {filters.nearPool && <ActiveBadge label="Pool" onRemove={() => updateFilter('nearPool', undefined)} />}
                     {filters.nearEntrance && <ActiveBadge label="Entrance" onRemove={() => updateFilter('nearEntrance', undefined)} />}
