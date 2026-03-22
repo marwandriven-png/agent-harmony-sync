@@ -47,6 +47,61 @@ type LandOSView = 'map' | 'villas';
 import { SQM_TO_SQFT } from '@/lib/units';
 const GIS_PLOT_ID_PREFIX = 'gis:';
 
+function mapGISResultToVilla(
+  result: { plot: PlotData; confidenceScore: number; source: string },
+): CommunityVilla | null {
+  const plot = result.plot;
+  const coords = normalizeCoordinatesForSearch(plot.y, plot.x);
+  if (!coords) return null;
+  if (!plot.gfa || plot.gfa <= 0) return null;
+
+  return {
+    id:                    `${GIS_PLOT_ID_PREFIX}${plot.id}`,
+    community_name:        plot.location || plot.project || 'GIS Plot',
+    sub_community:         null,
+    cluster_name:          null,
+    villa_number:          `${GIS_PLOT_ID_PREFIX}${plot.id}`,
+    plot_number:           plot.id,
+    plot_id:               plot.id,
+    orientation:           (plot.rawAttributes?.ORIENTATION as string | undefined) ?? null,
+    facing_direction:      (plot.rawAttributes?.facingDirection as string | undefined)
+                          ?? (plot.rawAttributes?.FACING_DIRECTION as string | undefined)
+                          ?? (plot.rawAttributes?.ENTRANCE_SIDE as string | undefined)
+                          ?? (plot.rawAttributes?.ENTRANCE_DIRECTION as string | undefined)
+                          ?? (plot.rawAttributes?.ORIENTATION as string | undefined)
+                          ?? null,
+    position_type:         null,
+    is_corner:             false,
+    is_single_row:         false,
+    backs_park:            false,
+    backs_road:            false,
+    near_pool:             false,
+    near_entrance:         false,
+    near_school:           false,
+    near_community_center: false,
+    vastu_compliant:       null,
+    vastu_details:         null,
+    latitude:              coords.lat,
+    longitude:             coords.lng,
+    land_usage:            plot.zoning || null,
+    plot_size_sqft:        plot.area ? Math.round(plot.area * SQM_TO_SQFT) : null,
+    built_up_area_sqft:    plot.gfa ? Math.round(plot.gfa * SQM_TO_SQFT) : null,
+    bedrooms:              null,
+    floors:                null,
+    year_built:            null,
+    notes:                 null,
+    metadata:              {
+      gisPlot: true,
+      confidenceScore: result.confidenceScore,
+      source: result.source,
+      neutralFallback: true,
+    } as Record<string, unknown>,
+    created_by:            null,
+    created_at:            new Date().toISOString(),
+    updated_at:            new Date().toISOString(),
+  } satisfies CommunityVilla;
+}
+
 proj4.defs('EPSG:3997', '+proj=tmerc +lat_0=0 +lon_0=55.33333333333334 +k=1 +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
 
 function toWgs84FromDda(x: number, y: number): { lat: number; lng: number } | null {
@@ -169,55 +224,7 @@ export default function PlotsPage() {
   const syntheticVillasFromGIS = useMemo<CommunityVilla[]>(() => {
     if (gisResults.length === 0) return [];
     return gisResults
-      .map(r => {
-        const plot = r.plot;
-        // Use normalizeCoordinatesForSearch — handles all DDA/WGS84 coordinate cases
-        // This is the same function used by VillaMapView to place GIS pins correctly
-        const coords = normalizeCoordinatesForSearch(plot.y, plot.x);
-        if (!coords) return null;
-        // Exclude plots with zero or missing GFA — no buildable data
-        if (!plot.gfa || plot.gfa <= 0) return null;
-        return {
-          id:                    `gis:${plot.id}`,
-          community_name:        plot.location || plot.project || 'GIS Plot',
-          sub_community:         null,
-          cluster_name:          null,
-          villa_number:          `gis:${plot.id}`,
-          plot_number:           plot.id,   // ← matches nearbyPlots so engine finds polygon
-          plot_id:               plot.id,
-          orientation:           (plot.rawAttributes?.ORIENTATION as string | undefined) ?? null,
-          facing_direction:      (plot.rawAttributes?.facingDirection as string | undefined)
-                                ?? (plot.rawAttributes?.FACING_DIRECTION as string | undefined)
-                                ?? (plot.rawAttributes?.ENTRANCE_SIDE as string | undefined)
-                                ?? (plot.rawAttributes?.ENTRANCE_DIRECTION as string | undefined)
-                                ?? (plot.rawAttributes?.ORIENTATION as string | undefined)
-                                ?? null,
-          position_type:         null,
-          is_corner:             false,
-          is_single_row:         false,
-          backs_park:            false,
-          backs_road:            false,
-          near_pool:             false,
-          near_entrance:         false,
-          near_school:           false,
-          near_community_center: false,
-          vastu_compliant:       null,
-          vastu_details:         null,
-          latitude:              coords.lat,
-          longitude:             coords.lng,
-          land_usage:            plot.zoning || null,
-          plot_size_sqft:        plot.area ? Math.round(plot.area * SQM_TO_SQFT) : null,
-          built_up_area_sqft:    plot.gfa  ? Math.round(plot.gfa  * SQM_TO_SQFT) : null,
-          bedrooms:              null,
-          floors:                null,
-          year_built:            null,
-          notes:                 null,
-          metadata:              { gisPlot: true, confidenceScore: r.confidenceScore, source: r.source } as Record<string, unknown>,
-          created_by:            null,
-          created_at:            new Date().toISOString(),
-          updated_at:            new Date().toISOString(),
-        } satisfies CommunityVilla;
-      })
+      .map(mapGISResultToVilla)
       .filter((v): v is NonNullable<typeof v> => v !== null) as CommunityVilla[];
   }, [gisResults]);
 
@@ -346,17 +353,21 @@ export default function PlotsPage() {
     });
 
     return searchableGISResults
-      .map((result) => byPlotKey.get(normalizePlotKey(result.plot.id) ?? ''))
+      .map((result) => {
+        const plotKey = normalizePlotKey(result.plot.id);
+        const matchedVilla = plotKey ? byPlotKey.get(plotKey) : undefined;
+        return matchedVilla ?? mapGISResultToVilla(result);
+      })
       .filter((villa): villa is CommunityVilla => Boolean(villa));
   }, [filteredCandidateVillas, searchableGISResults]);
 
   const matchedPlotIds = useMemo(() => {
     return new Set(
-      displayedVillas
-        .map(getVillaPlotKey)
+      searchableGISResults
+        .map((result) => normalizePlotKey(result.plot.id))
         .filter((plotId): plotId is string => Boolean(plotId))
     );
-  }, [displayedVillas]);
+  }, [searchableGISResults]);
 
   const renderedPlotIds = useMemo(() => {
     return new Set(

@@ -173,6 +173,11 @@ describe('resolveVillaClass — strict priority (regression)', () => {
     expect(cls?.key).toBe('back_to_back');
   });
 
+  it('does not illustrate B2B when rear-facing evidence is missing', () => {
+    const cls = resolveVillaClass(baseVilla, makeIntel('back_to_back', 'community_edge'), true);
+    expect(cls).toBeNull();
+  });
+
   it('backs_park db flag still illustrates as park-facing', () => {
     const villa = { ...baseVilla, backs_park: true };
     const cls = resolveVillaClass(villa, makeIntel('back_to_back', 'park'), true);
