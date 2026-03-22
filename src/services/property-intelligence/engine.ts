@@ -263,8 +263,9 @@ export class PropertyIntelligenceEngine {
       (road.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, road.edges, this.tolM, 3) >= 3)
       || this._hasRearContextCandidate(villaCentroid, backEdges, road, resolvedFrontBearing, 18)
     );
+    const rearSeparators = [...roads, ...opens, ...residential];
     const backsPark = parks.some((park) =>
-      this._hasDirectRearPolygonExposure(villaCentroid, backEdges, park, resolvedFrontBearing, 12)
+      this._hasDirectRearPolygonExposure(villaCentroid, backEdges, park, resolvedFrontBearing, 12, rearSeparators)
     );
     const backsOpen = opens.some((open) =>
       (open.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, open.edges, this.tolM, 3) >= 3)
@@ -519,6 +520,7 @@ export class PropertyIntelligenceEngine {
     candidate: ClassifiedPlot,
     frontBearing: number,
     maxGapM: number,
+    blockers: ClassifiedPlot[] = [],
   ): boolean {
     if (candidate.polygon == null) {
       return this._hasRearContextCandidate(villaCentroid, backEdges, candidate, frontBearing, maxGapM);
@@ -538,9 +540,30 @@ export class PropertyIntelligenceEngine {
       if (!hasRearAlignedPolygonPoint) return false;
 
       return this._sampleEdgePoints(edge).some((sample) => {
-        if (Geo.distancePointToPolygonM(sample, candidate.polygon!) > maxGapM) {
+        const candidateDistance = Geo.distancePointToPolygonM(sample, candidate.polygon!);
+        if (candidateDistance > maxGapM) {
           return false;
         }
+
+        const hasRearBlocker = blockers.some((blocker) => {
+          if (blocker.plot.id === candidate.plot.id || blocker.polygon == null) return false;
+
+          const blockerDistance = Geo.distancePointToPolygonM(sample, blocker.polygon);
+          if (blockerDistance >= candidateDistance - 0.25) return false;
+
+          const blockerPoints: [number, number][] = [
+            blocker.centroid,
+            ...blocker.polygon,
+            ...blocker.edges.map((blockerEdge) => blockerEdge.mid),
+          ];
+
+          return blockerPoints.some((point) =>
+            Geo.distanceM(sample, point) > 0.5
+            && Geo.sideFB(Geo.bearingFrom(sample, point), frontBearing) === 'back'
+          );
+        });
+
+        if (hasRearBlocker) return false;
 
         return candidatePoints.some((point) =>
           Geo.distanceM(sample, point) > 0.5
