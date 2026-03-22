@@ -348,8 +348,13 @@ export default function PlotsPage() {
     return mergeVillasByPlotKey(ordered);
   }, [matchedVillaIds, radiusFilteredAllVillas, radiusFilteredGisMatchedVillas]);
 
+  const hasExplicitClassFilter = !!(
+    villaFilters.isCorner || villaFilters.isEndUnit || villaFilters.isBackToBack || villaFilters.isSingleRow ||
+    villaFilters.backsPark || villaFilters.backsRoad || villaFilters.backsOpenSpace || villaFilters.vastuCompliant
+  );
+
   const displayedVillas = useMemo(() => {
-    if (searchableGISResults.length === 0) {
+    if (searchableGISResults.length === 0 || hasExplicitClassFilter) {
       return filteredCandidateVillas.filter(hasRenderableVillaLocation);
     }
 
@@ -365,7 +370,8 @@ export default function PlotsPage() {
         const matchedVilla = plotKey ? byPlotKey.get(plotKey) : undefined;
         return matchedVilla ?? mapGISResultToVilla(result);
       })
-      .filter((villa): villa is CommunityVilla => Boolean(villa));
+      .filter((villa): villa is CommunityVilla => Boolean(villa))
+      .filter(hasRenderableVillaLocation);
 
     const renderedKeys = new Set(
       mappedResults
@@ -380,7 +386,7 @@ export default function PlotsPage() {
     });
 
     return [...mappedResults, ...extraMatchedVillas];
-  }, [filteredCandidateVillas, hasRenderableVillaLocation, radiusFilteredGisMatchedVillas, searchableGISResults]);
+  }, [filteredCandidateVillas, hasExplicitClassFilter, hasRenderableVillaLocation, radiusFilteredGisMatchedVillas, searchableGISResults]);
 
   const matchedPlotIds = useMemo(() => {
     return new Set(
