@@ -540,10 +540,25 @@ export class PropertyIntelligenceEngine {
       if (!hasRearAlignedPolygonPoint) return false;
 
       return this._sampleEdgePoints(edge).some((sample) => {
+        const rearCandidatePoints = candidatePoints.filter((point) =>
+          Geo.distanceM(sample, point) > 0.5
+          && Geo.sideFB(Geo.bearingFrom(sample, point), frontBearing) === 'back'
+        );
+
+        if (rearCandidatePoints.length === 0) {
+          return false;
+        }
+
         const candidateDistance = Geo.distancePointToPolygonM(sample, candidate.polygon!);
         if (candidateDistance > maxGapM) {
           return false;
         }
+
+        const nearestCandidatePoint = rearCandidatePoints.reduce((closest, point) => (
+          Geo.distanceM(sample, point) < Geo.distanceM(sample, closest) ? point : closest
+        ));
+        const nearestCandidateDistance = Geo.distanceM(sample, nearestCandidatePoint);
+        const candidateBearing = Geo.bearingFrom(sample, nearestCandidatePoint);
 
         const hasRearBlocker = blockers.some((blocker) => {
           if (blocker.plot.id === candidate.plot.id || blocker.polygon == null) return false;
@@ -555,20 +570,23 @@ export class PropertyIntelligenceEngine {
             blocker.centroid,
             ...blocker.polygon,
             ...blocker.edges.map((blockerEdge) => blockerEdge.mid),
-          ];
+          ].filter((point) => {
+            if (Geo.distanceM(sample, point) <= 0.5) return false;
+            if (Geo.sideFB(Geo.bearingFrom(sample, point), frontBearing) !== 'back') return false;
 
-          return blockerPoints.some((point) =>
-            Geo.distanceM(sample, point) > 0.5
-            && Geo.sideFB(Geo.bearingFrom(sample, point), frontBearing) === 'back'
-          );
+            const blockerBearing = Geo.bearingFrom(sample, point);
+            const bearingDelta = Math.abs(((blockerBearing - candidateBearing + 540) % 360) - 180);
+            if (bearingDelta > 22) return false;
+
+            return Geo.distanceM(sample, point) < nearestCandidateDistance - 0.25;
+          });
+
+          return blockerPoints.length > 0;
         });
 
         if (hasRearBlocker) return false;
 
-        return candidatePoints.some((point) =>
-          Geo.distanceM(sample, point) > 0.5
-          && Geo.sideFB(Geo.bearingFrom(sample, point), frontBearing) === 'back'
-        );
+        return rearCandidatePoints.length > 0;
       });
     });
   }
