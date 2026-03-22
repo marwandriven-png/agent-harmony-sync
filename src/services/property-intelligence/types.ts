@@ -90,9 +90,8 @@ export const TAG_COLORS: Record<string, string> = {
   'End Unit':        '#BD93F9',
   'Backs Park':      '#26E8C8',
   'Backs Road':      '#F1FA8C',
-  'Backs Open Land': '#FFB347',
   'Open View':       '#38BDF8',
-  'Vastu ✓':         '#FF79C6',
+  'Vastu Compliant': '#FF79C6',
 };
 
 // ─── NL Search Filters (normalized) ───
