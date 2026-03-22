@@ -169,6 +169,16 @@ export function matchesActiveVillaClassFilters(
   return false;
 }
 
+export function matchesOrDefersActiveVillaClassFilters(
+  villa: CommunityVilla,
+  intel: VillaIntelligence | undefined,
+  filters: VillaSearchFilters | undefined,
+): boolean {
+  if (!filters || !hasActiveClassFilter(filters)) return true;
+  if (!intel) return true;
+  return matchesActiveVillaClassFilters(villa, intel, filters);
+}
+
 export function resolveDisplayedVillaClass(
   villa: CommunityVilla,
   intel: VillaIntelligence | undefined,
