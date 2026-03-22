@@ -11,10 +11,9 @@
  * any geometry operations. Engine now correctly uses polygon boundaries.
  *
  * Classification priority (strict, no conflicts):
- *   1. Back-to-Back (rear boundary touches residential) → B2B ONLY
- *   2. Corner (2+ road sides) or End Unit (≤1 residential neighbour)
- *   3. Single Row (rear doesn't touch residential)
- *   4. Back-facing: Park > Road > Open Space > Community Edge
+ *   1. Rear-facing type: Park > Road > Open Space
+ *   2. Single Row / Back-to-Back from true rear adjacency only
+ *   3. Corner (2+ road sides) or End Unit (≤1 residential neighbour)
  *   5. Vastu (from facing direction, independent of layout)
  *
  * B2B and Single Row are MUTUALLY EXCLUSIVE — engine enforces this.
@@ -227,8 +226,7 @@ export class PropertyIntelligenceEngine {
 
   /**
    * Polygon-aware layout detection.
-   * Rule: B2B iff rear boundary touches a residential polygon with NO road/park buffer.
-   * B2B and Single Row are mutually exclusive — B2B wins.
+   * Rule: B2B iff the rear boundary touches a residential polygon with no rear buffer.
    */
   private _detectLayoutPolygon(
     villaCentroid: [number, number],
@@ -245,14 +243,9 @@ export class PropertyIntelligenceEngine {
     const backsOpen = opens.some(o  => o.edges.length && Geo.sharesBoundary(backEdges, o.edges, this.tolM));
     const backsRes  = residential.some(r => r.edges.length && Geo.sharesBoundary(backEdges, r.edges, this.tolM));
 
-    const touchesRoad = roads.some(r => r.edges.length && Geo.sharesBoundary(allEdges, r.edges, this.tolM));
-    const touchesPark = parks.some(p => p.edges.length && Geo.sharesBoundary(allEdges, p.edges, this.tolM));
-    const touchesOpen = opens.some(o => o.edges.length && Geo.sharesBoundary(allEdges, o.edges, this.tolM));
-    const touchesAnyOpenBuffer = touchesRoad || touchesPark || touchesOpen;
-
-    // B2B ONLY when rear touches residential AND no road/park/open space buffer
+    // B2B ONLY when the rear touches residential AND no rear road / park / open buffer exists.
     const layoutType: LayoutType =
-      (backsRes && !touchesAnyOpenBuffer) ? 'back_to_back' : 'single_row';
+      (backsRes && !backsRoad && !backsPark && !backsOpen) ? 'back_to_back' : 'single_row';
 
     // Back-facing priority: Road > Park > Open > Residential > Edge
     let backFacing: BackFacingType = 'community_edge';
@@ -266,33 +259,19 @@ export class PropertyIntelligenceEngine {
 
   /**
    * Centroid-based layout detection (fallback when no polygon data).
-   * Uses directional distance to nearby plots to infer rear adjacency.
+   * Uses only tight rear-direction checks to avoid false B2B density guesses.
    */
   private _detectLayoutCentroid(
     vc: [number, number],
     roads: ClassifiedPlot[], parks: ClassifiedPlot[], opens: ClassifiedPlot[],
     residential: ClassifiedPlot[], fb: number | null,
   ): { layoutType: LayoutType; backFacing: BackFacingType } {
-    /**
-     * Centroid heuristic for when no polygon data is available.
-     *
-     * Key rules (enforced strictly):
-     *  1. B2B and Single Row are MUTUALLY EXCLUSIVE.
-     *  2. B2B = rear has residential plot AND no road/park/open buffer in THAT direction.
-     *  3. Single Row = rear has NO residential adjacency.
-     *  4. Roads must be within TIGHTER radius than residential to count as buffer.
-     *     (Otherwise a road 50m away masks B2B detection for residential 20m away.)
-     *
-     * Without facing direction (fb=null), we analyse all nearby plots but
-     * give priority to plots that are CLOSER (more likely to be truly adjacent).
-     */
-
-    // Residential: look for plots that are close enough to share a boundary (~10-25m)
+    // Residential: look for plots that are close enough to plausibly share a rear boundary.
     const REAR_RES_MIN = 10;
-    const REAR_RES_MAX = 40; // tighter than before (was 45)
+    const REAR_RES_MAX = 34;
 
-    // Buffer (road/park) must be within the SAME tight radius to count as separator
-    const BUFFER_MAX = 35;   // tighter than before (was 55m for roads)
+    // Rear separators must be very close to count as true buffers.
+    const BUFFER_MAX = 28;
 
     const inRear = (candidates: ClassifiedPlot[], minD: number, maxD: number) =>
       candidates.filter(c => {
@@ -307,21 +286,8 @@ export class PropertyIntelligenceEngine {
     const rearPark = inRear(parks, 5, BUFFER_MAX).length > 0;
     const rearOpen = inRear(opens, 5, BUFFER_MAX).length > 0;
 
-    /**
-     * Additional density check: if there are many residential plots nearby
-     * (≥4 within 50m in ANY direction), this is a dense residential area
-     * where back-to-back rows are highly probable even without clear rear detection.
-     * Only applies when fb is null (no facing direction available).
-     */
-    const nearbyResCount = fb === null
-      ? residential.filter(c => Geo.distanceM(vc, c.centroid) < 50).length
-      : 0;
-    const isDenseResidential = nearbyResCount >= 4;
-
-    // STRICT B2B rule: residential is in rear AND no buffer between them
-    // Dense area fallback: if ≥4 residential plots nearby and no clear open space → B2B
-    const isB2B = (rearRes && !rearRoad && !rearPark && !rearOpen)
-               || (isDenseResidential && !rearRoad && !rearPark && !rearOpen && rearRes);
+    // STRICT B2B rule: residential is in the rear and there is no rear buffer.
+    const isB2B = rearRes && !rearRoad && !rearPark && !rearOpen;
 
     const layoutType: LayoutType = isB2B ? 'back_to_back' : 'single_row';
 

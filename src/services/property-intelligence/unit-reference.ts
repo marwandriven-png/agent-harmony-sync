@@ -37,10 +37,19 @@ export function isSyntheticGisVilla(villa: Pick<CommunityVilla, 'id'>): boolean 
   return villa.id.startsWith('gis:');
 }
 
+export function normalizePlotKey(value: string | null | undefined): string | null {
+  const normalized = value?.trim().toLowerCase();
+  return normalized ? normalized : null;
+}
+
 export function getVillaPlotKey(
   villa: Pick<CommunityVilla, 'id' | 'plot_number' | 'plot_id'>,
 ): string | null {
-  return villa.plot_number ?? villa.plot_id ?? (isSyntheticGisVilla(villa) ? villa.id.replace(/^gis:/, '') : null);
+  return normalizePlotKey(
+    villa.plot_number
+      ?? villa.plot_id
+      ?? (isSyntheticGisVilla(villa) ? villa.id.replace(/^gis:/, '') : null)
+  );
 }
 
 function getVillaQualityScore(villa: CommunityVilla): number {
