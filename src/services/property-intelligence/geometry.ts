@@ -84,6 +84,39 @@ const segmentDistanceMeters = (a: Edge, b: Edge): number => {
   );
 };
 
+const sharedSegmentOverlapMeters = (a: Edge, b: Edge, toleranceMeters: number): number => {
+  const refLat = (a.a[1] + a.b[1] + b.a[1] + b.b[1]) / 4;
+  if (segmentDistanceMeters(a, b) > toleranceMeters) return 0;
+
+  const [ax1, ay1] = toMeters(a.a, refLat);
+  const [ax2, ay2] = toMeters(a.b, refLat);
+  const [bx1, by1] = toMeters(b.a, refLat);
+  const [bx2, by2] = toMeters(b.b, refLat);
+
+  const avx = ax2 - ax1;
+  const avy = ay2 - ay1;
+  const bvx = bx2 - bx1;
+  const bvy = by2 - by1;
+
+  const aLen = Math.hypot(avx, avy);
+  const bLen = Math.hypot(bvx, bvy);
+  if (aLen < 0.001 || bLen < 0.001) return 0;
+
+  const alignment = Math.abs((avx * bvx + avy * bvy) / (aLen * bLen));
+  if (alignment < 0.96) return 0;
+
+  const ux = avx / aLen;
+  const uy = avy / aLen;
+  const project = (x: number, y: number) => ((x - ax1) * ux) + ((y - ay1) * uy);
+
+  const aStart = 0;
+  const aEnd = aLen;
+  const bStart = Math.min(project(bx1, by1), project(bx2, by2));
+  const bEnd = Math.max(project(bx1, by1), project(bx2, by2));
+
+  return Math.max(0, Math.min(aEnd, bEnd) - Math.max(aStart, bStart));
+};
+
 export const Geo = {
   /** Calculate centroid of a polygon */
   centroid(poly: Polygon): [number, number] {
@@ -161,14 +194,20 @@ export const Geo = {
   },
 
   /** Check if two sets of edges share a boundary using segment proximity, not just midpoints */
-  sharesBoundary(edgesA: Edge[], edgesB: Edge[], toleranceMeters: number = 9): boolean {
+  sharedBoundaryOverlapM(edgesA: Edge[], edgesB: Edge[], toleranceMeters: number = 9, minOverlapMeters: number = 3): number {
+    let bestOverlap = 0;
     for (const a of edgesA) {
       for (const b of edgesB) {
-        if (Geo.distanceM(a.mid, b.mid) < toleranceMeters) return true;
-        if (segmentDistanceMeters(a, b) <= toleranceMeters) return true;
+        const overlap = sharedSegmentOverlapMeters(a, b, toleranceMeters);
+        if (overlap > bestOverlap) bestOverlap = overlap;
       }
     }
-    return false;
+    return bestOverlap >= minOverlapMeters ? bestOverlap : 0;
+  },
+
+  /** Check if two sets of edges share a meaningful wall, not just a point/corner touch */
+  sharesBoundary(edgesA: Edge[], edgesB: Edge[], toleranceMeters: number = 9, minOverlapMeters: number = 3): boolean {
+    return Geo.sharedBoundaryOverlapM(edgesA, edgesB, toleranceMeters, minOverlapMeters) >= minOverlapMeters;
   },
 
   /** Convert compass bearing to cardinal direction */

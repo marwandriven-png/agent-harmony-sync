@@ -6,7 +6,7 @@ interface CacheEntry<T> {
   value: T;
 }
 
-export type VerificationSource = 'DDA' | 'DLD' | 'Demo' | 'Manual';
+export type VerificationSource = 'DDA' | 'DLD' | 'Manual';
 
 export interface PlotData {
   id: string;
@@ -32,7 +32,7 @@ export interface PlotData {
   constructionStatus?: string;
   siteStatus?: string;
   rawAttributes?: Record<string, unknown>;
-  // DLD Fallback fields
+  // Verification fields
   verificationSource: VerificationSource;
   verificationDate?: string;
   municipalityNumber?: string;
@@ -588,12 +588,12 @@ class DDAGISService {
         const rawPlots: any[] = result.data?.plots ?? [];
 
         const plots: PlotData[] = rawPlots.map((p: any, index: number) => ({
-          id: p.land_number || p.plot_id || `PLOT_${index}`,
+          id: p.land_number || p.plot_id || p.municipality_number || `unknown-${index + 1}`,
           area: p.area_sqm || 0,
           gfa: p.gfa_sqm || 0,
           floors: p.max_height_floors || 'N/A',
           zoning: this.getZoningCategory(p.main_landuse, p.sub_landuse),
-          location: p.project_name || p.entity_name || p.area || 'Dubai',
+          location: p.project_name || p.entity_name || p.area || '',
           x: p.longitude || 0,
           y: p.latitude || 0,
           color: this.getZoningColor(p.main_landuse, p.sub_landuse),
@@ -660,6 +660,14 @@ class DDAGISService {
     return features.map((feature, index) => {
       const attrs = feature.attributes;
       const geometry = feature.geometry;
+      const parseNumber = (value: unknown): number | null => {
+        if (typeof value === 'number' && Number.isFinite(value)) return value;
+        if (typeof value === 'string' && value.trim()) {
+          const parsed = Number(value);
+          return Number.isFinite(parsed) ? parsed : null;
+        }
+        return null;
+      };
 
       const mainLanduse = attrs.MAIN_LANDUSE as string | undefined;
       const subLanduse = attrs.SUB_LANDUSE as string | undefined;
@@ -669,8 +677,8 @@ class DDAGISService {
       const gfaSqft = attrs.GFA_SQFT as number | undefined;
 
       // Calculate centroid from geometry rings if available
-      let centroidX = 495261 + (index % 10) * 80;
-      let centroidY = 2766577 + Math.floor(index / 10) * 60;
+      let centroidX = parseNumber(geometry?.x) ?? parseNumber(attrs.X_COORDINATE) ?? parseNumber(attrs.CENTROID_X) ?? 0;
+      let centroidY = parseNumber(geometry?.y) ?? parseNumber(attrs.Y_COORDINATE) ?? parseNumber(attrs.CENTROID_Y) ?? 0;
 
       if (geometry?.rings && geometry.rings.length > 0) {
         const ring = geometry.rings[0];
@@ -683,12 +691,12 @@ class DDAGISService {
       }
 
       return {
-        id: (attrs.PLOT_NUMBER as string) || `PLOT_${index}`,
-        area: areaSqm || (areaSqft ? areaSqft / 10.764 : 850),
-        gfa: gfaSqm || (gfaSqft ? gfaSqft / 10.764 : 1275),
+        id: (attrs.PLOT_NUMBER as string) || (attrs.LAND_NUMBER as string) || String(attrs.OBJECTID ?? `unknown-${index + 1}`),
+        area: areaSqm || (areaSqft ? areaSqft / 10.764 : 0),
+        gfa: gfaSqm || (gfaSqft ? gfaSqft / 10.764 : 0),
         floors: (attrs.MAX_HEIGHT_FLOORS as string) || 'G+1',
         zoning: this.getZoningCategory(mainLanduse, subLanduse),
-        location: (attrs.PROJECT_NAME as string) || (attrs.ENTITY_NAME as string) || 'Dubai South',
+        location: (attrs.PROJECT_NAME as string) || (attrs.ENTITY_NAME as string) || (attrs.LAND_NAME as string) || '',
         x: centroidX,
         y: centroidY,
         color: this.getZoningColor(mainLanduse, subLanduse),
@@ -698,7 +706,7 @@ class DDAGISService {
           attrs.SITE_STATUS as string | undefined
         ),
         constructionCost: this.getConstructionCost(mainLanduse),
-        salePrice: this.getSalePrice(mainLanduse, areaSqm || 850),
+        salePrice: this.getSalePrice(mainLanduse, areaSqm || 0),
         developer: attrs.DEVELOPER_NAME as string | undefined,
         project: attrs.PROJECT_NAME as string | undefined,
         entity: attrs.ENTITY_NAME as string | undefined,

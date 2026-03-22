@@ -26,16 +26,9 @@ import { usePropertyIntelligence } from '@/hooks/usePropertyIntelligence';
 import { cn } from '@/lib/utils';
 import {
   getVillaPlotKey,
-  matchesBackToBack,
-  matchesBacksPark,
-  matchesBacksRoad,
-  matchesCorner,
-  matchesEndUnit,
-  matchesOpenView,
-  matchesSingleRow,
   mergeVillasByPlotKey,
-  hasVastu,
   normalizePlotKey,
+  resolveDisplayedVillaClass,
 } from '@/services/property-intelligence/unit-reference';
 
 const VillaMapView = lazy(() => import('@/components/villas/VillaMapView').then((module) => ({ default: module.VillaMapView })));
@@ -250,34 +243,33 @@ export default function PlotsPage() {
   const villaSearchCenter = villaManualCenter || resolvedCenter;
 
   // Client-side filter function for GIS-matched villas (apply active filters)
-  const applyVillaFilters = useCallback((villa: typeof villas[0]): boolean => {
+  const applyVillaFilters = useCallback((villa: CommunityVilla): boolean => {
     const intel = intelligenceMap.get(villa.id);
     const piReady = intel !== undefined;
+    const displayedClass = resolveDisplayedVillaClass(villa, intel, piReady, villaFilters);
+    const hasExplicitClassFilter = !!(
+      villaFilters.isCorner || villaFilters.isEndUnit || villaFilters.isBackToBack || villaFilters.isSingleRow ||
+      villaFilters.backsPark || villaFilters.backsRoad || villaFilters.backsOpenSpace || villaFilters.vastuCompliant
+    );
 
     if (villaFilters.bedrooms && villa.bedrooms !== villaFilters.bedrooms) return false;
     if (villaFilters.minSize && (villa.plot_size_sqft ?? 0) < villaFilters.minSize) return false;
     if (villaFilters.maxSize && (villa.plot_size_sqft ?? 0) > villaFilters.maxSize) return false;
 
-    if (villaFilters.isCorner) {
-      if (!matchesCorner(villa, intel)) return false;
-    }
-    if (villaFilters.isSingleRow) {
-      if (!matchesSingleRow(villa, intel)) return false;
-    }
-    if (villaFilters.isBackToBack) {
-      if (!matchesBackToBack(intel)) return false;
-    }
-    if (villaFilters.isEndUnit) {
-      if (!matchesEndUnit(villa, intel)) return false;
-    }
-    if (villaFilters.backsPark) {
-      if (!matchesBacksPark(villa, intel)) return false;
-    }
-    if (villaFilters.backsRoad) {
-      if (!matchesBacksRoad(villa, intel)) return false;
-    }
-    if (villaFilters.backsOpenSpace) {
-      if (!matchesOpenView(intel)) return false;
+    if (hasExplicitClassFilter) {
+      if (!displayedClass) return false;
+
+      const allowedClassKeys = new Set<string>();
+      if (villaFilters.isCorner) allowedClassKeys.add('corner');
+      if (villaFilters.isEndUnit) allowedClassKeys.add('end_unit');
+      if (villaFilters.isSingleRow) allowedClassKeys.add('single_row');
+      if (villaFilters.isBackToBack) allowedClassKeys.add('back_to_back');
+      if (villaFilters.backsPark) allowedClassKeys.add('backs_park');
+      if (villaFilters.backsRoad) allowedClassKeys.add('backs_road');
+      if (villaFilters.backsOpenSpace) allowedClassKeys.add('open_view');
+      if (villaFilters.vastuCompliant) allowedClassKeys.add('vastu');
+
+      if (!allowedClassKeys.has(displayedClass.key)) return false;
     }
 
     // Amenity match
@@ -289,11 +281,6 @@ export default function PlotsPage() {
     }
     if (villaFilters.nearSchool) {
       if (!villa.near_school && piReady && !intel.amenities.some(a => a.type === 'school' && a.distanceMeters <= 500)) return false;
-    }
-
-    // Vastu match
-    if (villaFilters.vastuCompliant) {
-      if (!hasVastu(villa, intel)) return false;
     }
 
     // PI Amenity proximity search ("Villa near mall")

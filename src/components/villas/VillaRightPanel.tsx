@@ -19,7 +19,7 @@ import { normalizeCoordinatesForSearch } from '@/services/DDAGISService';
 import { resolveVillaClass, VILLA_CLASSES, type VillaClass } from '@/components/villas/VillaMapView';
 import { SQFT_TO_SQM, SQM_TO_SQFT } from '@/lib/units';
 import type { VillaIntelligence } from '@/hooks/usePropertyIntelligence';
-import { hasActiveClassFilter, normalizePlotKey } from '@/services/property-intelligence/unit-reference';
+import { hasActiveClassFilter, normalizePlotKey, resolveDisplayedVillaClass } from '@/services/property-intelligence/unit-reference';
 
 interface VillaRightPanelProps {
   villas: CommunityVilla[];
@@ -680,7 +680,7 @@ export const VillaRightPanel = memo(function VillaRightPanel({
                     const listings = listingCounts[villa.id] || 0;
                     const intel = intelligenceMap?.get(villa.id);
                     const intelLoaded = (intelligenceMap?.size ?? 0) > 0;
-                    const primaryClass = resolveVillaClass(villa, intel, intelLoaded);
+                    const primaryClass = resolveDisplayedVillaClass(villa, intel, intelLoaded, filters);
                     const indicators = intel ? getIndicatorsFromIntel(intel) : getIndicators(villa);
                     const classTags   = indicators.filter(i => !i.label.match(/\d+m\)/));
                     const amenityTags = indicators.filter(i => i.label.match(/\d+m\)/) || i.label.toLowerCase().startsWith('near'));
@@ -709,6 +709,11 @@ export const VillaRightPanel = memo(function VillaRightPanel({
                               <span className="text-[8px] px-1.5 py-0.5 rounded font-black leading-none shrink-0"
                                 style={{ background:`${primaryClass.fill}22`, color:primaryClass.fill, border:`1px solid ${primaryClass.fill}44` }}>
                                 {primaryClass.badge} {primaryClass.label}
+                              </span>
+                            )}
+                            {!primaryClass && (
+                              <span className="text-[8px] px-1.5 py-0.5 rounded font-black leading-none shrink-0 bg-[hsl(220,22%,16%)] text-[hsl(220,10%,72%)] border border-[hsl(220,20%,24%)]">
+                                Matched Result
                               </span>
                             )}
                             {isMatched && <span className="text-[8px] px-1 py-0.5 rounded bg-cyan-500/15 text-cyan-400 font-semibold shrink-0">MATCH</span>}
