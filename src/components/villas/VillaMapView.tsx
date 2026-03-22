@@ -220,6 +220,23 @@ function offsetM(lat: number, lng: number, m: number, deg: number) {
   return { lat: f2 * 180 / Math.PI, lng: l2 * 180 / Math.PI };
 }
 
+function positionBucketKey(lat: number, lng: number): string {
+  return `${lat.toFixed(5)}:${lng.toFixed(5)}`;
+}
+
+function spreadOverlappingMarker(lat: number, lng: number, overlapIndex: number, overlapCount: number) {
+  if (overlapCount <= 1) return { lat, lng };
+
+  const ringCapacity = 8;
+  const ringIndex = Math.floor(overlapIndex / ringCapacity);
+  const slotIndex = overlapIndex % ringCapacity;
+  const itemsInRing = Math.min(ringCapacity, overlapCount - ringIndex * ringCapacity);
+  const angle = (360 / itemsInRing) * slotIndex - 90;
+  const radiusMeters = 10 + ringIndex * 8;
+
+  return offsetM(lat, lng, radiusMeters, angle);
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export const VillaMapView = memo(function VillaMapView({
@@ -314,20 +331,30 @@ export const VillaMapView = memo(function VillaMapView({
     markerMapRef.current.clear();
 
     const intelLoaded = (intelligenceMap?.size ?? 0) > 0;
-    const duplicatePositionCounts = new Map<string, number>();
+    const basePositions = new Map<string, [number, number]>();
+    const groupedVillaIds = new Map<string, string[]>();
+
+    villas.forEach((villa, idx) => {
+      const basePos = getVillaPosition(villa, idx, plotCoordinateLookup);
+      if (!basePos) return;
+
+      basePositions.set(villa.id, basePos);
+      const bucketKey = positionBucketKey(basePos[0], basePos[1]);
+      const group = groupedVillaIds.get(bucketKey) ?? [];
+      group.push(villa.id);
+      groupedVillaIds.set(bucketKey, group);
+    });
 
     villas.forEach((villa, idx) => {
       const intel = intelligenceMap?.get(villa.id);
       const cls   = resolveDisplayedClass(villa, intel, intelLoaded, activeFilters);
 
-      const basePos   = getVillaPosition(villa, idx, plotCoordinateLookup);
+      const basePos   = basePositions.get(villa.id) ?? getVillaPosition(villa, idx, plotCoordinateLookup);
       if (!basePos) return;
-      const posKey    = `${basePos[0].toFixed(6)}:${basePos[1].toFixed(6)}`;
-      const dupIndex  = duplicatePositionCounts.get(posKey) ?? 0;
-      duplicatePositionCounts.set(posKey, dupIndex + 1);
-      const posObject = dupIndex > 0
-        ? offsetM(basePos[0], basePos[1], dupIndex * 7, (dupIndex * 47) % 360)
-        : { lat: basePos[0], lng: basePos[1] };
+      const posKey    = positionBucketKey(basePos[0], basePos[1]);
+      const groupedIds = groupedVillaIds.get(posKey) ?? [villa.id];
+      const overlapIndex = Math.max(0, groupedIds.indexOf(villa.id));
+      const posObject = spreadOverlappingMarker(basePos[0], basePos[1], overlapIndex, groupedIds.length);
       const pos: [number, number] = [posObject.lat, posObject.lng];
       const isMatch  = matchedVillaIds?.has(villa.id) ?? false;
       const selected = villa.id === selectedVillaId;
@@ -388,13 +415,17 @@ export const VillaMapView = memo(function VillaMapView({
 
       const coords = normalizeCoordinatesForSearch(r.plot.y, r.plot.x);
       if (!coords) return;
+      const centerDistance = searchCenter
+        ? haversineDistance(searchCenter.lat, searchCenter.lng, coords.lat, coords.lng)
+        : undefined;
+      if (searchCenter && (centerDistance == null || centerDistance > searchRadius)) return;
 
       const ck = `${coords.lat.toFixed(6)}:${coords.lng.toFixed(6)}`;
       const di = dupCount.get(ck) ?? 0;
       dupCount.set(ck, di + 1);
       const { lat, lng } = di > 0 ? offsetM(coords.lat, coords.lng, di * 8, (di * 47) % 360) : coords;
       const sz = 18;
-      const d  = searchCenter ? haversineDistance(searchCenter.lat, searchCenter.lng, lat, lng) : undefined;
+      const d  = centerDistance;
 
       const marker = L.marker([lat, lng], {
         icon: L.divIcon({ html: buildGisDiamond(), className: 'villa-gis-pin', iconSize: [sz, sz], iconAnchor: [sz / 2, sz / 2] }),
@@ -420,7 +451,7 @@ export const VillaMapView = memo(function VillaMapView({
 
       gl.addLayer(marker);
     });
-  }, [gisResults, searchCenter, renderedPlotIds, activeFilters]);
+  }, [gisResults, searchCenter, searchRadius, renderedPlotIds, activeFilters]);
 
   // ── Amenity icons ──────────────────────────────────────────────────────
   useEffect(() => {

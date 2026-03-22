@@ -626,7 +626,7 @@ export default function PlotsPage() {
                 searchCenter={villaSearchCenter}
                 searchRadius={villaSearchRadius}
                 matchedVillaIds={matchedVillaIds}
-                gisResults={gisResults}
+                gisResults={radiusFilteredSearchableGISResults}
                 amenities={allAmenities}
                 intelligenceMap={intelligenceMap}
                 activeFilters={villaFilters}
@@ -737,7 +737,7 @@ export default function PlotsPage() {
                   communities={[]}
                   onGISSearch={searchVillaGIS}
                   isGISSearching={isVillaGISSearching}
-                  gisResults={gisResults}
+                  gisResults={radiusFilteredSearchableGISResults}
                   onClearGIS={clearVillaGIS}
                   searchCenter={villaSearchCenter}
                    matchedVillaIds={new Set(radiusFilteredGisMatchedVillas.map(v => v.id))}
