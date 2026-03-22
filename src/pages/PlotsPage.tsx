@@ -33,7 +33,7 @@ import {
   resolveDisplayedVillaClass,
 } from '@/services/property-intelligence/unit-reference';
 import { isVillaWithinSearchRadius } from '@/services/property-intelligence/search-radius';
-import { classifyLandUse, isEntranceLandUse } from '@/services/property-intelligence/classifiers';
+import { isEntranceLandUse } from '@/services/property-intelligence/classifiers';
 
 const VillaMapView = lazy(() => import('@/components/villas/VillaMapView').then((module) => ({ default: module.VillaMapView })));
 const VillaRightPanel = lazy(() => import('@/components/villas/VillaRightPanel').then((module) => ({ default: module.VillaRightPanel })));
@@ -118,10 +118,6 @@ function getGISPlotLandUseText(plot: PlotData): string {
   ]
     .filter((value): value is string => Boolean(value?.trim()))
     .join(' | ');
-}
-
-function isRenderableResidentialGISPlot(plot: PlotData): boolean {
-  return classifyLandUse(getGISPlotLandUseText(plot)) === 'residential';
 }
 
 proj4.defs('EPSG:3997', '+proj=tmerc +lat_0=0 +lon_0=55.33333333333334 +k=1 +x_0=500000 +y_0=0 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
@@ -249,7 +245,7 @@ export default function PlotsPage() {
    * leaving all pins the same red color and "0 villas" shown in the panel.
    */
   const renderableGISResults = useMemo(() => {
-    return gisResults.filter((result) => isRenderableResidentialGISPlot(result.plot));
+    return gisResults;
   }, [gisResults]);
 
   const syntheticVillasFromGIS = useMemo<CommunityVilla[]>(() => {
