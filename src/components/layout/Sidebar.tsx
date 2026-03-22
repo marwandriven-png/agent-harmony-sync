@@ -5,8 +5,6 @@ import xEstateLogo from '@/assets/x-estate-logo.svg';
 import { 
   LayoutDashboard, 
   Users, 
-  Phone, 
-  
   Calendar, 
   CheckSquare,
   Building2,
@@ -16,10 +14,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Map,
-  Megaphone,
-  UserPlus,
-  List,
-  
 } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -28,11 +22,6 @@ import { toast } from 'sonner';
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/leads', icon: Users, label: 'Leads Pipeline' },
-  { to: '/lead-generation', icon: UserPlus, label: 'Lead Generation' },
-  { to: '/all-leads', icon: List, label: 'Leads Exports' },
-  { to: '/outreach', icon: Megaphone, label: 'Outreach Center' },
-  { to: '/cold-calls', icon: Phone, label: 'Cold Calls' },
-  
   { to: '/calendar', icon: Calendar, label: 'Calendar' },
   { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
   { to: '/properties', icon: Building2, label: 'Properties' },
