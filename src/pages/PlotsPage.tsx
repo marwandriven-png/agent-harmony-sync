@@ -360,6 +360,14 @@ export default function PlotsPage() {
     );
   }, [mergedVillas]);
 
+  const renderedPlotIds = useMemo(() => {
+    return new Set(
+      mergedVillas
+        .map(v => v.plot_number ?? v.plot_id ?? (v.id.startsWith('gis:') ? v.id.replace(/^gis:/, '') : null))
+        .filter((plotId): plotId is string => Boolean(plotId))
+    );
+  }, [mergedVillas]);
+
   const villaIds = useMemo(() => mergedVillas.map(v => v.id), [mergedVillas]);
   const { data: listingCounts = {} } = useVillaListingCounts(villaIds, { enabled: isVillaMode && villaIds.length > 0 });
 
@@ -541,6 +549,7 @@ export default function PlotsPage() {
                 intelligenceMap={intelligenceMap}
                 activeFilters={villaFilters}
                 plotCoordinateLookup={plotCoordinateLookup}
+                renderedPlotIds={renderedPlotIds}
               />
             </Suspense>
           </div>

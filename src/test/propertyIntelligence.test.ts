@@ -174,21 +174,19 @@ describe('resolveVillaClass — strict priority (regression)', () => {
     expect(cls?.key).toBe('back_to_back');
   });
 
-  it('Single Row with park backFacing → single_row pin (SR is primary, Backs Park is sub-filter)', () => {
-    // resolveVillaClass returns single_row because lt='single_row' takes priority.
-    // Backs Park is detected via backFacing for filter matching, not as the pin class.
+  it('Single Row with park backFacing → backs_park pin', () => {
     const cls = resolveVillaClass(baseVilla, makeIntel('single_row', 'park'), true);
-    expect(cls?.key).toBe('single_row');
+    expect(cls?.key).toBe('backs_park');
   });
 
-  it('Single Row with road backFacing → single_row pin (backs_road is DB-flag path)', () => {
+  it('Single Row with road backFacing → backs_road pin', () => {
     const cls = resolveVillaClass(baseVilla, makeIntel('single_row', 'road'), true);
-    expect(cls?.key).toBe('single_row');
+    expect(cls?.key).toBe('backs_road');
   });
 
-  it('Single Row with open_space → single_row pin (open_view reached only via DB backs_park/road flags or unknown lt)', () => {
+  it('Single Row with open_space → open_view pin', () => {
     const cls = resolveVillaClass(baseVilla, makeIntel('single_row', 'open_space'), true);
-    expect(cls?.key).toBe('single_row');
+    expect(cls?.key).toBe('open_view');
   });
 
   it('Single Row with villa backFacing → single_row pin', () => {
@@ -196,16 +194,20 @@ describe('resolveVillaClass — strict priority (regression)', () => {
     expect(cls?.key).toBe('single_row');
   });
 
-  it('Corner position → corner (regardless of layout)', () => {
-    const cls = resolveVillaClass(baseVilla, makeIntel('single_row', 'park', 'corner'), true);
-    // B2B not set, so layout=single_row → then position=corner is NOT reached (backs_park wins)
-    // Actually single_row returns first... let's test with no layout:
+  it('Corner with no row classification → corner', () => {
     const cls2 = resolveVillaClass(baseVilla, makeIntel('unknown', 'park', 'corner'), true);
-    expect(cls2?.key).toBe('corner');
+    expect(cls2?.key).toBe('backs_park');
+    const cls3 = resolveVillaClass(baseVilla, makeIntel('unknown', 'community_edge', 'corner'), true);
+    expect(cls3?.key).toBe('corner');
   });
 
-  it('End Unit position → end_unit', () => {
+  it('End Unit with rear road classification → backs_road', () => {
     const cls = resolveVillaClass(baseVilla, makeIntel('unknown', 'road', 'end'), true);
+    expect(cls?.key).toBe('backs_road');
+  });
+
+  it('End Unit with no row classification → end_unit', () => {
+    const cls = resolveVillaClass(baseVilla, makeIntel('unknown', 'community_edge', 'end'), true);
     expect(cls?.key).toBe('end_unit');
   });
 

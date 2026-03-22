@@ -45,9 +45,9 @@ export interface ClassifiableIntel {
  *
  * Priority (strict, no coexistence allowed):
  *  1. back_to_back  — highest, overrides everything
- *  2. single_row    — confirmed rear is non-residential
- *  3. corner / end  — positional
- *  4. backs_park / backs_road / open_view — single-row sub-classification
+ *  2. backs_park / backs_road / open_view — illustrated row types
+ *  3. single_row    — generic single-row fallback when no rear subtype is known
+ *  4. corner / end  — positional overlays, shown by default only if no row type exists
  *  5. vastu         — lowest non-default
  *  null             — no classification (no pin)
  */
@@ -63,19 +63,17 @@ export function resolveVillaClass(
 
   // B2B is absolute highest — nothing overrides it
   if (lt === 'back_to_back')                       return VILLA_CLASSES.back_to_back;
-  if (lt === 'single_row')                         return VILLA_CLASSES.single_row;
 
-  // Positional (only when layout is not B2B/SR from intel)
-  if (pt === 'corner'      || villa.is_corner)    return VILLA_CLASSES.corner;
-  if (pt === 'end')                                return VILLA_CLASSES.end_unit;
-
-  // Back-facing sub-classification for single-row villas
+  // Community illustration model: specific rear-facing row types take precedence
+  // over generic single-row so the map matches the unit-type reference.
   if (bf === 'park'        || villa.backs_park)    return VILLA_CLASSES.backs_park;
   if (bf === 'road'        || villa.backs_road)    return VILLA_CLASSES.backs_road;
   if (bf === 'open_space')                         return VILLA_CLASSES.open_view;
+  if (lt === 'single_row'  || villa.is_single_row) return VILLA_CLASSES.single_row;
 
-  // DB flag fallback (when intel hasn't run yet for this villa)
-  if (villa.is_single_row)                         return VILLA_CLASSES.single_row;
+  // Positional overlays become the default only when no row-type class is known
+  if (pt === 'corner'      || villa.is_corner)    return VILLA_CLASSES.corner;
+  if (pt === 'end')                                return VILLA_CLASSES.end_unit;
 
   if (hasVastu)                                    return VILLA_CLASSES.vastu;
 
