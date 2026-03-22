@@ -177,6 +177,7 @@ import { applyIntelligenceFilters } from '@/services/property-intelligence/filte
 import { isVillaWithinSearchRadius } from '@/services/property-intelligence/search-radius';
 import { villaGISService } from '@/services/VillaGISService';
 import { loadRadiusSearchData } from '@/hooks/useVillaGISSearch';
+import { getVillaPosition } from '@/components/villas/VillaMapView';
 
 const baseVilla = {
   id: 'test', is_corner: false, is_single_row: false,
@@ -288,6 +289,46 @@ describe('resolveVillaClass — strict priority (regression)', () => {
 });
 
 describe('search radius parity', () => {
+  it('renders matched villas using linked plot coordinates before stale villa coordinates', () => {
+    const villa = {
+      ...baseVilla,
+      id: 'villa-stale',
+      villa_number: '301',
+      plot_number: 'P-301',
+      plot_id: null,
+      latitude: 25.2,
+      longitude: 55.2,
+      community_name: 'Test',
+      sub_community: null,
+      cluster_name: null,
+      orientation: null,
+      facing_direction: null,
+      position_type: null,
+      near_pool: false,
+      near_entrance: false,
+      near_school: false,
+      near_community_center: false,
+      vastu_details: null,
+      land_usage: null,
+      plot_size_sqft: null,
+      built_up_area_sqft: null,
+      bedrooms: null,
+      floors: null,
+      year_built: null,
+      notes: null,
+      metadata: {},
+      created_by: null,
+      created_at: '',
+      updated_at: '',
+    };
+
+    const lookup = new Map([
+      ['p-301', { lat: 25.0003, lng: 55.0003 }],
+    ]);
+
+    expect(getVillaPosition(villa as any, 0, lookup)).toEqual([25.0003, 55.0003]);
+  });
+
   it('keeps plot-linked villas inside radius using plot coordinates', () => {
     const villa = {
       ...baseVilla,
