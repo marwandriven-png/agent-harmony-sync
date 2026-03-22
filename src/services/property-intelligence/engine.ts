@@ -244,10 +244,10 @@ export class PropertyIntelligenceEngine {
       return this._detectLayoutCentroid(villaCentroid, roads, parks, opens, residential, fb);
     }
 
-    const backsRoad = roads.some(r  => r.edges.length && Geo.sharesBoundary(backEdges, r.edges, this.tolM));
-    const backsPark = parks.some(p  => p.edges.length && Geo.sharesBoundary(backEdges, p.edges, this.tolM));
-    const backsOpen = opens.some(o  => o.edges.length && Geo.sharesBoundary(backEdges, o.edges, this.tolM));
-    const backsRes  = residential.some(r => r.edges.length && Geo.sharesBoundary(backEdges, r.edges, this.tolM));
+    const backsRoad = roads.some(r => r.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, r.edges, this.tolM, 3) >= 3);
+    const backsPark = parks.some(p => p.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, p.edges, this.tolM, 3) >= 3);
+    const backsOpen = opens.some(o => o.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, o.edges, this.tolM, 3) >= 3);
+    const backsRes = residential.some(r => r.edges.length > 0 && Geo.sharedBoundaryOverlapM(backEdges, r.edges, this.tolM, 6) >= 6);
 
     // B2B ONLY when the rear touches residential AND no rear road / park / open buffer exists.
     const layoutType: LayoutType =
@@ -272,6 +272,11 @@ export class PropertyIntelligenceEngine {
     roads: ClassifiedPlot[], parks: ClassifiedPlot[], opens: ClassifiedPlot[],
     residential: ClassifiedPlot[], fb: number | null,
   ): { layoutType: LayoutType; backFacing: BackFacingType } {
+    const resolvedFrontBearing = fb ?? this._inferCentroidFrontBearing(vc, roads);
+    if (resolvedFrontBearing === null) {
+      return { layoutType: 'single_row', backFacing: 'community_edge' };
+    }
+
     // Residential: look for plots that are close enough to plausibly share a rear boundary.
     const REAR_RES_MIN = 10;
     const REAR_RES_MAX = 34;
@@ -283,8 +288,7 @@ export class PropertyIntelligenceEngine {
       candidates.filter(c => {
         const d = Geo.distanceM(vc, c.centroid);
         if (d < minD || d > maxD) return false;
-        if (fb === null) return true;
-        return Geo.sideFB(Geo.bearingFrom(vc, c.centroid), fb) === 'back';
+        return Geo.sideFB(Geo.bearingFrom(vc, c.centroid), resolvedFrontBearing) === 'back';
       });
 
     const rearRes  = inRear(residential, REAR_RES_MIN, REAR_RES_MAX).length > 0;
@@ -326,7 +330,7 @@ export class PropertyIntelligenceEngine {
       if (!road.edges.length) continue;
       for (const ve of villaEdges) {
         for (const re of road.edges) {
-          if (Geo.distanceM(ve.mid, re.mid) < this.tolM) {
+          if (Geo.sharedBoundaryOverlapM([ve], [re], this.tolM, 3) >= 3) {
             const bearing = Geo.bearingFrom(villaCentroid, ve.mid);
             const side = resolvedFrontBearing !== null
               ? Geo.sideFB(bearing, resolvedFrontBearing)
@@ -340,7 +344,7 @@ export class PropertyIntelligenceEngine {
 
     // End Unit: 0 or 1 residential neighbours sharing boundary
     const resCount = residential.filter(r =>
-      r.edges.length > 0 && Geo.sharesBoundary(villaEdges, r.edges, this.tolM)
+      r.edges.length > 0 && Geo.sharedBoundaryOverlapM(villaEdges, r.edges, this.tolM, 6) >= 6
     ).length;
     if (resCount <= 1) return 'end';
     return 'middle';
@@ -383,7 +387,7 @@ export class PropertyIntelligenceEngine {
     if (fb !== null || villaEdges.length === 0 || roads.length === 0) return fb;
 
     const roadFacingEdges = villaEdges.filter((villaEdge) =>
-      roads.some((road) => road.edges.length > 0 && Geo.sharesBoundary([villaEdge], road.edges, this.tolM))
+      roads.some((road) => road.edges.length > 0 && Geo.sharedBoundaryOverlapM([villaEdge], road.edges, this.tolM, 3) >= 3)
     );
 
     if (roadFacingEdges.length > 0) {
@@ -420,6 +424,25 @@ export class PropertyIntelligenceEngine {
     }
 
     return Geo.bearingFrom(villaCentroid, nearestRoadEdge.mid);
+  }
+
+  private _inferCentroidFrontBearing(
+    villaCentroid: [number, number],
+    roads: ClassifiedPlot[],
+  ): number | null {
+    let nearestRoad: ClassifiedPlot | null = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (const road of roads) {
+      const distance = Geo.distanceM(villaCentroid, road.centroid);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestRoad = road;
+      }
+    }
+
+    if (!nearestRoad || nearestDistance > 70) return null;
+    return Geo.bearingFrom(villaCentroid, nearestRoad.centroid);
   }
 
   private _countAdjacent(

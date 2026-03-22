@@ -43,6 +43,11 @@ describe('Geo.sharesBoundary', () => {
     const B: Polygon = [[1,0],[2,0],[2,1],[1,1]];
     expect(Geo.sharesBoundary(Geo.edges(A), Geo.edges(B), 111_000)).toBe(true);
   });
+  it('corner-touching polygons do not count as a shared boundary', () => {
+    const A: Polygon = [[0,0],[1,0],[1,1],[0,1]];
+    const B: Polygon = [[1,1],[2,1],[2,2],[1,2]];
+    expect(Geo.sharesBoundary(Geo.edges(A), Geo.edges(B), 111_000)).toBe(false);
+  });
   it('non-adjacent polygons do not share boundary', () => {
     const A: Polygon = [[0,0],[0.001,0],[0.001,0.001],[0,0.001]];
     const C: Polygon = [[0.1,0.1],[0.2,0.1],[0.2,0.2],[0.1,0.2]];
@@ -305,7 +310,7 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
     rawAttributes: {
       geometry: { rings: [polygon] },
     },
-    verificationSource: 'Demo',
+    verificationSource: 'Manual',
   });
 
   it('keeps a plot single_row when the rear side faces a road buffer', () => {
@@ -318,6 +323,18 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
 
     expect(result.layout.layoutType).toBe('single_row');
     expect(result.layout.backFacing).toBe('road');
+  });
+
+  it('does not mark B2B when rear residential only touches at one corner', () => {
+    const villa = makePlot('villa', [[55.0000,25.0000],[55.0001,25.0000],[55.0001,25.0001],[55.0000,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
+    const frontRoad = makePlot('front-road', [[55.0000,24.9999],[55.0001,24.9999],[55.0001,25.0000],[55.0000,25.0000]], 'ROAD');
+    const cornerTouchRear = makePlot('corner-rear', [[55.0001,25.0001],[55.0002,25.0001],[55.0002,25.0002],[55.0001,25.0002]], 'RESIDENTIAL ATTACHED VILLAS');
+
+    const batch = propertyIntelligence.buildBatch([villa, frontRoad, cornerTouchRear]);
+    const result = propertyIntelligence.analyzeWithBatch(villa, batch, 'N');
+
+    expect(result.layout.layoutType).toBe('single_row');
+    expect(result.layout.backFacing).not.toBe('villa');
   });
 
   it('dedupes db and gis records with case-insensitive plot ids', () => {
