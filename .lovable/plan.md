@@ -1,67 +1,114 @@
 
-Goal: fix `/plots` so every in-radius result is visible on the map, and make `Backs Park`, `Back-to-Back`, and `Corner Unit` filters classify and return the correct villas.
+Goal: fix the current `/plots` build breakage and complete the radius/class filtering cleanup so the map only shows plots inside the selected radius, class filters work on the same dataset as the sidebar, and marker rendering stays in sync.
 
 What I found:
-- Do I know what the issue is? Yes — it looks like 2 separate bugs:
-  1. Map/result parity bug: the page builds pins from multiple sources (`displayedVillas`, residual GIS pins, matched plot IDs), so some in-radius plots are dropped or hidden.
-  2. Classification bug: the spatial engine is collapsing too many villas into `End Unit`, so `Backs Park`, `Back-to-Back`, and `Corner` rarely survive into filters/results.
-- The screenshot confirms this: the legend shows `End Unit (24)` while the community layout should contain mixed classes.
-- The current class filter behavior already matches your preference (`Any selected class`), so the issue is not the filter operator — it is bad upstream classification plus inconsistent map rendering.
-- The current fallback-pin behavior is split across two layers:
-  - classified villas render in `VillaMapView`
-  - leftover GIS plots render as orange diamonds
-  This is likely why “not all pins in radius” happens.
+- The current errors are from a partial refactor, not one root bug.
+- `VillaMapView.tsx` still contains stale references to removed GIS-layer logic (`gisLayerRef`, `renderedPlotIds`, `buildGisDiamond`, `hasActiveClassFilter`) while the component already has a newer unified marker path.
+- `VillaRightPanel.tsx` is missing imports for:
+  - `GISSearchResult`
+  - `formatDistance`
+- `PlotsPage.tsx` passes `onGoToPlotLocation`, but `VillaRightPanelProps` no longer defines that prop.
+- The filtering pipeline in `PlotsPage.tsx` is close to correct already:
+  - `radiusFilteredSearchableGISResults`
+  - `radiusFilteredGisMatchedVillas`
+  - `radiusFilteredAllVillas`
+  - `displayedVillas`
+  But it needs cleanup so only one final dataset drives both the sidebar and the map.
 
 Implementation plan:
-1. Unify the map/result source of truth
-   - Refactor the `/plots` pipeline so one radius-filtered, plot-key-deduped dataset drives:
-     - result count
-     - sidebar results
-     - map pins
-   - Stop relying on separate “classified villa layer + residual GIS layer” logic for parity.
-   - Ensure every in-radius searchable plot produces exactly one marker:
-     - classified villa pin if a class is resolved
-     - neutral fallback pin if it is still unclassified
 
-2. Fix map pin visibility/parity
-   - Update `PlotsPage.tsx` and `VillaMapView.tsx` so:
-     - no in-radius result is silently skipped because it already exists in another set
-     - deduping happens by normalized plot key, not by whichever array happened to render first
-     - fallback pins remain visible for unclassified plots, per your preference
-   - Keep multi-pin offsetting for same coordinates so overlapping units are still visible.
+1. Fix the TypeScript build errors first
+- In `VillaMapView.tsx`:
+  - ensure `normalizePlotKey` stays imported
+  - remove the leftover stale GIS marker effect/block that references:
+    - `gisLayerRef`
+    - `hasActiveClassFilter`
+    - `renderedPlotIds`
+    - `buildGisDiamond`
+- In `VillaRightPanel.tsx`:
+  - import `GISSearchResult` from `useVillaGISSearch`
+  - import `formatDistance` from `@/lib/geo`
+- In `PlotsPage.tsx`:
+  - either remove `onGoToPlotLocation` from the component call, or restore it consistently in `VillaRightPanelProps` only if still used by UI
+  - prefer removing it if there is no active control using it
 
-3. Repair class inference in the spatial engine
-   - Re-audit `engine.ts` for the three failing classes:
-     - `Backs Park`: rear exposure to real park polygon
-     - `Back-to-Back`: true rear residential adjacency only
-     - `Corner`: two meaningful road-exposed sides
-   - Tighten the end-unit fallback so plots are not incorrectly defaulting to `end`.
-   - Re-check front/rear orientation inference so side roads do not overpower the true community geometry.
+2. Make one shared filtered dataset the source of truth
+- Keep `displayedVillas` as the single final result set used by:
+  - `VillaMapView`
+  - `VillaRightPanel`
+  - result count / listing count input
+- Ensure this final set is built in this order:
+  1. GIS results filtered by radius
+  2. matched DB villas substituted by plot key where available
+  3. remaining filtered DB villas added after that
+  4. final dedupe by normalized plot key
+- This preserves fallback pins while preventing duplicates.
 
-4. Keep filter behavior aligned with your confirmed rules
-   - Preserve `Any selected class` matching for combined class toggles.
-   - Make sure a villa can still match a specific environmental class even if it also has another layout/position attribute.
-   - Keep `Vastu` independent from the primary visual class.
+3. Enforce radius filtering at one place only
+- Keep `isVillaWithinSearchRadius` + `resolveVillaSearchCoordinates` as the only radius rule.
+- Use plot-linked GIS coordinates first, villa lat/lng second.
+- Remove any leftover ad hoc radius checks from the map rendering layer except display-only distance labels.
+- Result: if an item appears in `displayedVillas`, it is inside radius; if not, it never renders.
 
-5. Add regression coverage
-   - Add tests for:
-     - all in-radius searchable plots producing one marker/result entry
-     - park-ring / internal-park `Backs Park`
-     - true rear row `Back-to-Back`
-     - genuine two-road `Corner`
-     - “not corner / not B2B / not Backs Park” negatives
-   - Add a parity test so map pins and sidebar counts stay 1:1.
+4. Align class filters with rendered class logic
+- Keep class filtering based on the same shared helpers:
+  - `matchesOrDefersActiveVillaClassFilters`
+  - `resolveDisplayedVillaClass`
+- Since you asked to remove unreliable illustrated classes, keep only the supported illustrated set:
+  - Back-to-Back
+  - Backs Road
+  - Single Row
+  - End Unit
+  - Vastu
+  - neutral fallback pin for unclassified matches
+- Ensure both sidebar badges and map pins use the same resolved class outcome.
+
+5. Remove duplicate/legacy rendering branches
+- In `VillaMapView.tsx`, keep only:
+  - main villa marker layer
+  - search radius layer
+  - amenity layer
+- Remove any second-pass GIS residual marker logic if it is still present.
+- Marker overlap handling should stay, but only operate on the final `villas` prop.
+
+6. Verify map/sidebar parity rules in code
+- Every item in `displayedVillas` should produce exactly:
+  - one sidebar card
+  - one map marker
+- Legend counts should be derived from `displayedVillas`, not from a broader source.
+- No separate “hidden GIS results” set should exist after final merge.
+
+7. Add/repair regression tests
+- Update `src/test/propertyIntelligence.test.ts` to cover:
+  - radius filtering excludes outside plots
+  - radius filtering includes GIS-linked villas with plot-coordinate lookup
+  - plot-key dedupe keeps one result per unique plot
+  - class filters only return supported matching classes
+  - fallback/unclassified results still render as neutral matches
 
 Files to update:
 - `src/pages/PlotsPage.tsx`
 - `src/components/villas/VillaMapView.tsx`
-- `src/components/villas/VillaRightPanel.tsx` (results/count parity if needed)
-- `src/services/property-intelligence/engine.ts`
-- `src/services/property-intelligence/unit-reference.ts`
+- `src/components/villas/VillaRightPanel.tsx`
 - `src/test/propertyIntelligence.test.ts`
 
+Filtering pipeline after fix:
+```text
+GIS/raw inputs
+  -> normalize coordinates
+  -> radius filter
+  -> merge DB villas + GIS-derived villas by plot key
+  -> apply class / amenity / size filters
+  -> final displayedVillas
+       -> map markers
+       -> sidebar cards
+       -> result counts / legend
+```
+
 Expected outcome:
-- all searchable plots inside the selected radius appear on the map
-- unclassified in-radius plots still show with a neutral fallback pin
-- `Backs Park`, `Back-to-Back`, and `Corner Unit` return real matches again
-- map pins, legend, and sidebar result count stay in sync
+- build errors are resolved
+- only plots inside the selected radius appear
+- class filters affect both sidebar and map consistently
+- unsupported classes no longer try to illustrate
+- no duplicate markers
+- map pins and result list stay 1:1
