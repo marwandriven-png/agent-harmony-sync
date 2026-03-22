@@ -163,6 +163,7 @@ import { resolveVillaClass, VILLA_CLASSES } from '@/services/property-intelligen
 import {
   getVillaPlotKey,
   hasVastu,
+  matchesActiveVillaClassFilters,
   mergeVillasByPlotKey,
   normalizePlotKey,
   resolveDisplayedVillaClass,
@@ -409,6 +410,26 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
     );
 
     expect(cls?.key).toBe('backs_park');
+  });
+
+  it('allows B2B villas through backs park filter when rear also faces park', () => {
+    expect(
+      matchesActiveVillaClassFilters(
+        baseVilla as any,
+        makeIntel('back_to_back', 'park') as any,
+        { backsPark: true },
+      )
+    ).toBe(true);
+  });
+
+  it('allows park-facing villas through back-to-back filter when layout is also B2B', () => {
+    expect(
+      matchesActiveVillaClassFilters(
+        baseVilla as any,
+        makeIntel('back_to_back', 'park') as any,
+        { isBackToBack: true },
+      )
+    ).toBe(true);
   });
 
   it('does not mark B2B when rear residential only touches at one corner', () => {
