@@ -358,19 +358,17 @@ class VillaGISService {
       for (const amenity of amenities) {
         if (amenity.type === 'pool' && amenity.distanceMeters <= 220) result.nearPool = true;
         if (amenity.type === 'school' && amenity.distanceMeters <= 500) result.nearSchool = true;
-        if ((amenity.type === 'park' || amenity.type === 'community_center') && amenity.distanceMeters <= 140) result.backsPark = true;
       }
     } else {
       const layout = propertyIntelligence.analyzeLayout(villaLat, villaLng, contextPlots);
       result.isCorner = layout.positionType === 'corner';
       result.isSingleRow = layout.layoutType === 'single_row';
       result.backsRoad = layout.backFacing === 'road';
-      result.backsPark = layout.backFacing === 'park' || layout.backFacing === 'open_space';
+      result.backsPark = layout.backFacing === 'park';
     }
 
     const amenities = this.calculateAmenityDistances(villaLat, villaLng, contextPlots);
     for (const amenity of amenities) {
-      if (amenity.type === 'Park' && amenity.distanceMeters <= 140) result.backsPark = true;
       if (amenity.type === 'Pool' && amenity.distanceMeters <= 220) result.nearPool = true;
       if (amenity.type === 'School' && amenity.distanceMeters <= 500) result.nearSchool = true;
         const amenityName = amenity.name.toLowerCase();

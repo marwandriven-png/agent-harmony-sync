@@ -492,6 +492,14 @@ export class PropertyIntelligenceEngine {
       return false;
     }
 
+    const hasRearEdgeAlignment = backEdges.some((edge) =>
+      Geo.sideFB(Geo.bearingFrom(edge.mid, candidate.centroid), frontBearing) === 'back'
+    );
+
+    if (!hasRearEdgeAlignment) {
+      return false;
+    }
+
     const minCentroidDistance = Math.min(
       ...backEdges.map((edge) => Geo.distanceM(edge.mid, candidate.centroid)),
     );
