@@ -607,7 +607,7 @@ export default function PlotsPage() {
                 onRadiusSearch={handleRadiusSearch}
                 searchCenter={villaSearchCenter}
                 searchRadius={villaSearchRadius}
-                matchedVillaIds={matchedVillaIds}
+                matchedVillaIds={displayedMatchedVillaIds}
                 gisResults={radiusFilteredSearchableGISResults}
                 amenities={allAmenities}
                 intelligenceMap={intelligenceMap}

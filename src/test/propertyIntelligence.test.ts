@@ -324,6 +324,58 @@ describe('search radius parity', () => {
     expect(isVillaWithinSearchRadius(villa as any, { lat: 25, lng: 55 }, 100, lookup)).toBe(true);
     expect(isVillaWithinSearchRadius(villa as any, { lat: 25, lng: 55 }, 40, lookup)).toBe(false);
   });
+
+  it('applies radius and class filters as an intersection', () => {
+    const insideVilla = {
+      ...baseVilla,
+      id: 'inside',
+      villa_number: '201',
+      plot_number: 'A-1',
+      plot_id: 'A-1',
+      latitude: 25.0002,
+      longitude: 55.0002,
+      community_name: 'Test',
+      sub_community: null,
+      cluster_name: null,
+      orientation: null,
+      facing_direction: null,
+      position_type: null,
+      near_pool: false,
+      near_entrance: false,
+      near_school: false,
+      near_community_center: false,
+      vastu_details: null,
+      land_usage: null,
+      plot_size_sqft: 3000,
+      built_up_area_sqft: null,
+      bedrooms: 4,
+      floors: null,
+      year_built: null,
+      notes: null,
+      metadata: {},
+      created_by: null,
+      created_at: '',
+      updated_at: '',
+    };
+
+    const outsideVilla = {
+      ...insideVilla,
+      id: 'outside',
+      villa_number: '202',
+      plot_number: 'A-2',
+      plot_id: 'A-2',
+      latitude: 25.02,
+      longitude: 55.02,
+    };
+
+    const filters = { isSingleRow: true };
+
+    expect(matchesOrDefersActiveVillaClassFilters(insideVilla as any, makeIntel('single_row', 'villa') as any, filters as any)).toBe(true);
+    expect(isVillaWithinSearchRadius(insideVilla as any, { lat: 25, lng: 55 }, 100, new Map())).toBe(true);
+
+    expect(matchesOrDefersActiveVillaClassFilters(outsideVilla as any, makeIntel('single_row', 'villa') as any, filters as any)).toBe(true);
+    expect(isVillaWithinSearchRadius(outsideVilla as any, { lat: 25, lng: 55 }, 100, new Map())).toBe(false);
+  });
 });
 
 describe('unit-reference integration regression', () => {
