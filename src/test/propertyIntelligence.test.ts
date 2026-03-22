@@ -170,6 +170,7 @@ import {
 } from '@/services/property-intelligence/unit-reference';
 import { applyIntelligenceFilters } from '@/services/property-intelligence/filter';
 import { isVillaWithinSearchRadius } from '@/services/property-intelligence/search-radius';
+import { villaGISService } from '@/services/VillaGISService';
 
 const baseVilla = {
   id: 'test', is_corner: false, is_single_row: false,
@@ -405,6 +406,34 @@ describe('PropertyIntelligenceEngine polygon layout regression', () => {
 
     expect(result.layout.layoutType).toBe('single_row');
     expect(result.layout.backFacing).toBe('park');
+  });
+
+  it('does not mark nearby side park or landscape as backs_park just because they are in search radius', () => {
+    propertyIntelligence.clearCache();
+    const villa = makePlot('villa', [[55.0000,25.0000],[55.0001,25.0000],[55.0001,25.0001],[55.0000,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
+    const frontRoad = makePlot('front-road', [[55.0000,24.9999],[55.0001,24.9999],[55.0001,25.0000],[55.0000,25.0000]], 'ROAD');
+    const sidePark = makePlot('side-park', [[55.0001,25.0000],[55.00025,25.0000],[55.00025,25.0001],[55.0001,25.0001]], 'NEIGHBORHOOD PARK');
+    const sideLandscape = makePlot('side-landscape', [[54.99985,25.0000],[55.0000,25.0000],[55.0000,25.0001],[54.99985,25.0001]], 'LANDSCAPE BUFFER');
+
+    const batch = propertyIntelligence.buildBatch([villa, frontRoad, sidePark, sideLandscape]);
+    const result = propertyIntelligence.analyzeWithBatch(villa, batch, 'N');
+
+    expect(result.layout.layoutType).toBe('single_row');
+    expect(result.layout.backFacing).not.toBe('park');
+    expect(result.layout.backFacing).not.toBe('open_space');
+  });
+
+  it('does not set backsPark in GIS sync from nearby amenity distance alone', () => {
+    propertyIntelligence.clearCache();
+    const villa = makePlot('villa', [[55.0000,25.0000],[55.0001,25.0000],[55.0001,25.0001],[55.0000,25.0001]], 'RESIDENTIAL ATTACHED VILLAS');
+    const frontRoad = makePlot('front-road', [[55.0000,24.9999],[55.0001,24.9999],[55.0001,25.0000],[55.0000,25.0000]], 'ROAD');
+    const sidePark = makePlot('side-park', [[55.0001,25.0000],[55.00025,25.0000],[55.00025,25.0001],[55.0001,25.0001]], 'NEIGHBORHOOD PARK');
+    const sideLandscape = makePlot('side-landscape', [[54.99985,25.0000],[55.0000,25.0000],[55.0000,25.0001],[54.99985,25.0001]], 'LANDSCAPE BUFFER');
+
+    const result = villaGISService.detectVillaPositionSync(25.00005, 55.00005, [villa, frontRoad, sidePark, sideLandscape], 'N');
+
+    expect(result.backsPark).toBe(false);
+    expect(result.isSingleRow).toBe(true);
   });
 
   it('keeps park-facing class even when vastu is also compliant', () => {
