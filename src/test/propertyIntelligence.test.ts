@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Geo, type Polygon } from '@/services/property-intelligence/geometry';
-import { classifyDistance, classifyLandUse, classifyVastu, proximityLabel, proximityColor } from '@/services/property-intelligence/classifiers';
+import { classifyDistance, classifyLandUse, classifyVastu, isEntranceLandUse, proximityLabel, proximityColor } from '@/services/property-intelligence/classifiers';
 import { parseNaturalLanguageQuery } from '@/services/property-intelligence/nl-parser';
 import { DEFAULT_THRESHOLDS } from '@/services/property-intelligence/types';
 import { propertyIntelligence } from '@/services/property-intelligence/engine';
@@ -112,6 +112,8 @@ describe('classifyLandUse', () => {
   it('keeps play area as playground amenity', () => expect(classifyLandUse('KIDS PLAY AREA')).toBe('playground'));
   it('normalizes clubhouse as community center', () => expect(classifyLandUse('COMMUNITY CLUBHOUSE')).toBe('community_center'));
   it('does not treat landscape as park', () => expect(classifyLandUse('LANDSCAPE BUFFER')).toBe('open_space'));
+  it('treats guard house as entrance/gate amenity', () => expect(classifyLandUse('GUARD HOUSE')).toBe('community_center'));
+  it('detects entrance land use aliases', () => expect(isEntranceLandUse('MAIN GATE GUARD HOUSE')).toBe(true));
 });
 
 // ─── NL Parser ───────────────────────────────────────────────────────────────

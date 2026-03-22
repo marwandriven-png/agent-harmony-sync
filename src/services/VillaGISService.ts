@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { gisService } from './DDAGISService';
 import type { PlotData } from './DDAGISService';
 import { propertyIntelligence } from './property-intelligence/engine';
-import { classifyLandUse } from './property-intelligence/classifiers';
+import { classifyLandUse, isEntranceLandUse } from './property-intelligence/classifiers';
 import { Geo, type Polygon, type Edge } from './property-intelligence/geometry';
 
 /**
@@ -200,7 +200,7 @@ class VillaGISService {
       else if (landUse.includes('HOSPITAL') || landUse.includes('CLINIC')) type = 'Healthcare';
       else if (landUse.includes('RETAIL') || landUse.includes('COMMERCIAL')) type = 'Retail';
       else if (landUse.includes('POOL') || landUse.includes('SWIMMING')) type = 'Pool';
-      else if (landUse.includes('COMMUNITY')) type = 'Community Center';
+      else if (landUse.includes('COMMUNITY') || isEntranceLandUse(landUse)) type = 'Community Center';
 
       if (type) {
         const coordinates = normalizePlotCoordinates(plot.y, plot.x);
@@ -373,7 +373,8 @@ class VillaGISService {
       if (amenity.type === 'Park' && amenity.distanceMeters <= 140) result.backsPark = true;
       if (amenity.type === 'Pool' && amenity.distanceMeters <= 220) result.nearPool = true;
       if (amenity.type === 'School' && amenity.distanceMeters <= 500) result.nearSchool = true;
-      if ((amenity.type === 'Community Center' || amenity.name.toLowerCase().includes('gate') || amenity.name.toLowerCase().includes('entrance')) && amenity.distanceMeters <= 160) {
+        const amenityName = amenity.name.toLowerCase();
+        if ((amenity.type === 'Community Center' || amenityName.includes('gate') || amenityName.includes('entrance') || amenityName.includes('guard house')) && amenity.distanceMeters <= 160) {
         result.nearEntrance = true;
       }
     }
