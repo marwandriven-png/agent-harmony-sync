@@ -358,11 +358,6 @@ export function useVillaGISSearch() {
 
       results.sort((a, b) => b.confidenceScore - a.confidenceScore);
 
-      // Exclude plots with zero or missing GFA — they have no buildable data
-      const validResults = results.filter(r => r.plot.gfa != null && r.plot.gfa > 0);
-      results.length = 0;
-      results.push(...validResults);
-
       if (!center && results.length > 0) {
         const firstGeoPlot = results.find((result) => Number.isFinite(result.plot.y) && Number.isFinite(result.plot.x));
         if (firstGeoPlot) {

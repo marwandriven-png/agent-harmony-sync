@@ -50,7 +50,6 @@ function mapGISResultToVilla(
   const plot = result.plot;
   const coords = normalizeCoordinatesForSearch(plot.y, plot.x);
   if (!coords) return null;
-  if (!plot.gfa || plot.gfa <= 0) return null;
 
   return {
     id:                    `${GIS_PLOT_ID_PREFIX}${plot.id}`,
@@ -319,7 +318,6 @@ export default function PlotsPage() {
     gisResults.forEach((result) => {
       const plotKey = normalizePlotKey(result.plot.id);
       if (!plotKey) return;
-      if (!result.plot.gfa || result.plot.gfa <= 0) return;
 
       const existing = unique.get(plotKey);
       if (!existing || result.confidenceScore > existing.confidenceScore) {
@@ -436,22 +434,6 @@ export default function PlotsPage() {
       ...baseCandidates,
     ]);
   }, [filteredCandidateVillas, hasRenderableVillaLocation, radiusFilteredSearchableGISResults.length, searchableGISVillas]);
-
-  const matchedPlotIds = useMemo(() => {
-    return new Set(
-      displayedVillas
-        .map(getVillaPlotKey)
-        .filter((plotId): plotId is string => Boolean(plotId))
-    );
-  }, [displayedVillas]);
-
-  const renderedPlotIds = useMemo(() => {
-    return new Set(
-      displayedVillas
-        .map(getVillaPlotKey)
-        .filter((plotId): plotId is string => Boolean(plotId))
-    );
-  }, [displayedVillas]);
 
   const villaIds = useMemo(() => displayedVillas.map(v => v.id), [displayedVillas]);
   const { data: listingCounts = {} } = useVillaListingCounts(villaIds, { enabled: isVillaMode && villaIds.length > 0 });
@@ -631,7 +613,6 @@ export default function PlotsPage() {
                 intelligenceMap={intelligenceMap}
                 activeFilters={villaFilters}
                 plotCoordinateLookup={plotCoordinateLookup}
-                renderedPlotIds={renderedPlotIds}
               />
             </Suspense>
           </div>
@@ -741,7 +722,6 @@ export default function PlotsPage() {
                   onClearGIS={clearVillaGIS}
                   searchCenter={villaSearchCenter}
                    matchedVillaIds={new Set(radiusFilteredGisMatchedVillas.map(v => v.id))}
-                  matchedPlotIds={matchedPlotIds}
                   searchRadius={villaSearchRadius}
                   onSearchRadiusChange={setVillaSearchRadius}
                   onGoToPlotLocation={(lat, lng) => setVillaManualCenter({ lat, lng })}
