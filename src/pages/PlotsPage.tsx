@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { RefreshCw, Target, Plus, Loader2, Map, Satellite, Home, Building2 } from 'lucide-react';
 import proj4 from 'proj4';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -14,9 +14,6 @@ import { PlotOffersDialog, PlotInterestedDialog } from '@/components/plots/PlotD
 import { CreatePlotDialog } from '@/components/plots/CreatePlotDialog';
 import { PlotDetailPanel } from '@/components/plots/PlotDetailPanel';
 import { MapOverlayHUD } from '@/components/plots/MapOverlayHUD';
-import { VillaMapView } from '@/components/villas/VillaMapView';
-import { VillaRightPanel } from '@/components/villas/VillaRightPanel';
-import { VillaDetailPanel } from '@/components/villas/VillaDetailPanel';
 import {
   usePlots, useDeletePlot, useRunFeasibility, type Plot,
 } from '@/hooks/usePlots';
@@ -28,6 +25,10 @@ import { parseNaturalLanguageQuery } from '@/services/PropertyIntelligenceServic
 import { usePropertyIntelligence } from '@/hooks/usePropertyIntelligence';
 import { MOCK_COMMUNITIES, convertMockCommunityToPlots } from '@/data/mock/communities';
 import { cn } from '@/lib/utils';
+
+const VillaMapView = lazy(() => import('@/components/villas/VillaMapView').then((module) => ({ default: module.VillaMapView })));
+const VillaRightPanel = lazy(() => import('@/components/villas/VillaRightPanel').then((module) => ({ default: module.VillaRightPanel })));
+const VillaDetailPanel = lazy(() => import('@/components/villas/VillaDetailPanel').then((module) => ({ default: module.VillaDetailPanel })));
 
 type LandOSView = 'map' | 'villas';
 
@@ -113,10 +114,11 @@ export default function PlotsPage() {
   const [selectedVillaId, setSelectedVillaId] = useState<string | null>(null);
   const [villaSearchRadius, setVillaSearchRadius] = useState(1000);
   const [villaManualCenter, setVillaManualCenter] = useState<{ lat: number; lng: number } | null>(null);
-  const { data: villas = [], isLoading: villasLoading, refetch: refetchVillas } = useVillas(villaFilters);
-  const { data: communities = [] } = useCommunities();
+  const isVillaMode = activeView === 'villas';
+  const { data: villas = [], isLoading: villasLoading, refetch: refetchVillas } = useVillas(villaFilters, { enabled: isVillaMode });
+  const { data: communities = [] } = useCommunities({ enabled: isVillaMode });
   const { gisResults, gisContextPlots, gisVillaIds, isSearching: isVillaGISSearching, searchGIS: searchVillaGIS, clearGISResults: clearVillaGIS, resolvedCenter } = useVillaGISSearch();
-  const { data: gisMatchedVillas = [] } = useVillasByIds(gisVillaIds);
+  const { data: gisMatchedVillas = [] } = useVillasByIds(gisVillaIds, { enabled: isVillaMode && gisVillaIds.length > 0 });
   
   // Property Intelligence Layer logic
   // Merge GIS results with any selected mock community plots for richer PI detection
@@ -213,7 +215,10 @@ export default function PlotsPage() {
     return [...villas, ...syntheticVillasFromGIS.filter(v => !supabaseIds.has(v.id))];
   }, [villas, syntheticVillasFromGIS]);
 
-  const { intelligenceMap, allAmenities, isProcessing: piIsProcessing } = usePropertyIntelligence(allVillasForIntel, nearbyPlots);
+  const { intelligenceMap, allAmenities, isProcessing: piIsProcessing } = usePropertyIntelligence(
+    isVillaMode ? allVillasForIntel : [],
+    isVillaMode ? nearbyPlots : [],
+  );
 
   // When a mock community is selected: clear stale filters and load that community's villas
   const handleMockCommunityChange = useCallback((communityId: string) => {
@@ -342,9 +347,7 @@ export default function PlotsPage() {
   }, [filteredAllVillas, filteredGisMatchedVillas, matchedVillaIds]);
 
   const villaIds = useMemo(() => mergedVillas.map(v => v.id), [mergedVillas]);
-  const { data: listingCounts = {} } = useVillaListingCounts(villaIds);
-
-  const isVillaMode = activeView === 'villas';
+  const { data: listingCounts = {} } = useVillaListingCounts(villaIds, { enabled: isVillaMode && villaIds.length > 0 });
 
   // Plot logic
   const allSearchablePlots = useMemo(() => {
@@ -508,22 +511,26 @@ export default function PlotsPage() {
           <LandOSMapView plots={filteredPlots} selectedPlotId={selectedPlotId} onSelectPlot={handleSelectPlot} />
           <MapOverlayHUD plots={allSearchablePlots} filteredCount={filteredPlots.length} selectedPlotId={selectedPlotId} />
         </div>
-        <div className="absolute inset-0" style={{ visibility: activeView === 'villas' ? 'visible' : 'hidden' }}>
-          <VillaMapView
-            villas={mergedVillas}
-            selectedVillaId={selectedVillaId}
-            onSelectVilla={handleSelectVilla}
-            onRadiusSearch={handleRadiusSearch}
-            searchCenter={villaSearchCenter}
-            searchRadius={villaSearchRadius}
-            matchedVillaIds={matchedVillaIds}
-            gisResults={gisResults}
-            amenities={allAmenities}
-            intelligenceMap={intelligenceMap}
-            activeFilters={villaFilters}
-            plotCoordinateLookup={plotCoordinateLookup}
-          />
-        </div>
+        {isVillaMode && (
+          <div className="absolute inset-0">
+            <Suspense fallback={<div className="h-full w-full bg-[hsl(220,25%,8%)]" />}>
+              <VillaMapView
+                villas={mergedVillas}
+                selectedVillaId={selectedVillaId}
+                onSelectVilla={handleSelectVilla}
+                onRadiusSearch={handleRadiusSearch}
+                searchCenter={villaSearchCenter}
+                searchRadius={villaSearchRadius}
+                matchedVillaIds={matchedVillaIds}
+                gisResults={gisResults}
+                amenities={allAmenities}
+                intelligenceMap={intelligenceMap}
+                activeFilters={villaFilters}
+                plotCoordinateLookup={plotCoordinateLookup}
+              />
+            </Suspense>
+          </div>
+        )}
       </>
     );
   };
@@ -630,27 +637,29 @@ export default function PlotsPage() {
           </div>
           <div className="w-[340px] shrink-0 min-h-0">
             {isVillaMode ? (
-              <VillaRightPanel
-                villas={mergedVillas}
-                selectedVillaId={selectedVillaId}
-                onSelectVilla={handleSelectVilla}
-                listingCounts={listingCounts}
-                isLoading={villasLoading}
-                filters={villaFilters}
-                onFiltersChange={setVillaFilters}
-                onAISearch={handleAISearch}
-                communities={communities}
-                onGISSearch={searchVillaGIS}
-                isGISSearching={isVillaGISSearching}
-                gisResults={gisResults}
-                onClearGIS={clearVillaGIS}
-                searchCenter={villaSearchCenter}
-                matchedVillaIds={matchedVillaIds}
-                searchRadius={villaSearchRadius}
-                onSearchRadiusChange={setVillaSearchRadius}
-                onGoToPlotLocation={(lat, lng) => setVillaManualCenter({ lat, lng })}
-                intelligenceMap={intelligenceMap}
-              />
+              <Suspense fallback={<div className="h-full bg-[hsl(220,25%,8%)] border-l border-[hsl(220,20%,16%)]" />}>
+                <VillaRightPanel
+                  villas={mergedVillas}
+                  selectedVillaId={selectedVillaId}
+                  onSelectVilla={handleSelectVilla}
+                  listingCounts={listingCounts}
+                  isLoading={villasLoading || piIsProcessing}
+                  filters={villaFilters}
+                  onFiltersChange={setVillaFilters}
+                  onAISearch={handleAISearch}
+                  communities={communities}
+                  onGISSearch={searchVillaGIS}
+                  isGISSearching={isVillaGISSearching}
+                  gisResults={gisResults}
+                  onClearGIS={clearVillaGIS}
+                  searchCenter={villaSearchCenter}
+                  matchedVillaIds={matchedVillaIds}
+                  searchRadius={villaSearchRadius}
+                  onSearchRadiusChange={setVillaSearchRadius}
+                  onGoToPlotLocation={(lat, lng) => setVillaManualCenter({ lat, lng })}
+                  intelligenceMap={intelligenceMap}
+                />
+              </Suspense>
             ) : detailPlot ? (
               <PlotDetailPanel plot={detailPlot} onClose={() => { setDetailPlot(null); setSelectedPlotId(null); }} />
             ) : (
@@ -676,7 +685,11 @@ export default function PlotsPage() {
         </div>
       </div>
 
-      {isVillaMode && <VillaDetailPanel villaId={selectedVillaId} onClose={() => setSelectedVillaId(null)} />}
+      {isVillaMode && (
+        <Suspense fallback={null}>
+          <VillaDetailPanel villaId={selectedVillaId} onClose={() => setSelectedVillaId(null)} />
+        </Suspense>
+      )}
 
       <PlotOffersDialog plot={selectedPlot} open={offersOpen} onOpenChange={setOffersOpen} />
       <PlotInterestedDialog plot={selectedPlot} open={interestedOpen} onOpenChange={setInterestedOpen} />
