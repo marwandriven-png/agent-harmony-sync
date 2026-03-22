@@ -526,21 +526,6 @@ export class PropertyIntelligenceEngine {
       return this._hasRearContextCandidate(villaCentroid, backEdges, candidate, frontBearing, maxGapM);
     }
 
-    const hasDirectRearSeparator = blockers.some((blocker) => {
-      if (blocker.polygon == null || blocker.plot.id === candidate.plot.id) return false;
-
-      const sharesRearBoundary = blocker.edges.length > 0
-        && Geo.sharedBoundaryOverlapM(backEdges, blocker.edges, this.tolM, 3) >= 3;
-
-      if (sharesRearBoundary) return true;
-
-      return this._hasRearContextCandidate(villaCentroid, backEdges, blocker, frontBearing, Math.min(maxGapM, 8));
-    });
-
-    if (hasDirectRearSeparator) {
-      return false;
-    }
-
     const candidatePoints: [number, number][] = [
       candidate.centroid,
       ...candidate.polygon,
@@ -577,6 +562,13 @@ export class PropertyIntelligenceEngine {
 
         const hasRearBlocker = blockers.some((blocker) => {
           if (blocker.plot.id === candidate.plot.id || blocker.polygon == null) return false;
+
+          const sharesRearBoundary = blocker.edges.length > 0
+            && Geo.sharedBoundaryOverlapM(backEdges, blocker.edges, this.tolM, 3) >= 3;
+
+          if (sharesRearBoundary) {
+            return true;
+          }
 
           const blockerDistance = Geo.distancePointToPolygonM(sample, blocker.polygon);
           if (blockerDistance >= candidateDistance - 0.25) return false;
