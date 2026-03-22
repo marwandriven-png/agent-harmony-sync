@@ -236,7 +236,8 @@ export class PropertyIntelligenceEngine {
     roads: ClassifiedPlot[], parks: ClassifiedPlot[], opens: ClassifiedPlot[],
     residential: ClassifiedPlot[], fb: number | null,
   ): { layoutType: LayoutType; backFacing: BackFacingType } {
-    const backEdges = this._backEdges(villaEdges, villaCentroid, fb);
+    const resolvedFrontBearing = this._resolveFrontBearing(villaCentroid, villaEdges, roads, fb);
+    const backEdges = this._backEdges(villaEdges, villaCentroid, resolvedFrontBearing);
 
     const backsRoad = roads.some(r  => r.edges.length && Geo.sharesBoundary(backEdges, r.edges, this.tolM));
     const backsPark = parks.some(p  => p.edges.length && Geo.sharesBoundary(backEdges, p.edges, this.tolM));
@@ -339,6 +340,8 @@ export class PropertyIntelligenceEngine {
     villaEdges: Edge[],
     roads: ClassifiedPlot[], residential: ClassifiedPlot[], fb: number | null,
   ): PositionType {
+    const resolvedFrontBearing = this._resolveFrontBearing(villaCentroid, villaEdges, roads, fb);
+
     // Corner: 2+ distinct sides of the plot border a road
     const roadSides = new Set<string>();
     for (const road of roads) {
@@ -347,8 +350,8 @@ export class PropertyIntelligenceEngine {
         for (const re of road.edges) {
           if (Geo.distanceM(ve.mid, re.mid) < this.tolM) {
             const bearing = Geo.bearingFrom(villaCentroid, ve.mid);
-            const side = fb !== null
-              ? Geo.sideFB(bearing, fb)
+            const side = resolvedFrontBearing !== null
+              ? Geo.sideFB(bearing, resolvedFrontBearing)
               : String(Math.floor(((bearing + 45) % 360) / 90));
             roadSides.add(side);
           }
@@ -391,6 +394,38 @@ export class PropertyIntelligenceEngine {
     if (fb === null) return edges;
     const back = edges.filter(e => Geo.sideFB(Geo.bearingFrom(centroid, e.mid), fb) === 'back');
     return back.length > 0 ? back : edges;
+  }
+
+  private _resolveFrontBearing(
+    villaCentroid: [number, number],
+    villaEdges: Edge[],
+    roads: ClassifiedPlot[],
+    fb: number | null,
+  ): number | null {
+    if (fb !== null || villaEdges.length === 0 || roads.length === 0) return fb;
+
+    let nearestRoadEdge: Edge | null = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (const road of roads) {
+      for (const roadEdge of road.edges) {
+        const edgeDistance = villaEdges.reduce((min, villaEdge) => {
+          const dist = Geo.distanceM(villaEdge.mid, roadEdge.mid);
+          return dist < min ? dist : min;
+        }, Number.POSITIVE_INFINITY);
+
+        if (edgeDistance < nearestDistance) {
+          nearestDistance = edgeDistance;
+          nearestRoadEdge = roadEdge;
+        }
+      }
+    }
+
+    if (!nearestRoadEdge || !Number.isFinite(nearestDistance) || nearestDistance > 80) {
+      return null;
+    }
+
+    return Geo.bearingFrom(villaCentroid, nearestRoadEdge.mid);
   }
 
   private _countAdjacent(
