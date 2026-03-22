@@ -25,6 +25,18 @@ import { parseNaturalLanguageQuery } from '@/services/PropertyIntelligenceServic
 import { usePropertyIntelligence } from '@/hooks/usePropertyIntelligence';
 import { MOCK_COMMUNITIES, convertMockCommunityToPlots } from '@/data/mock/communities';
 import { cn } from '@/lib/utils';
+import {
+  getVillaPlotKey,
+  matchesBackToBack,
+  matchesBacksPark,
+  matchesBacksRoad,
+  matchesCorner,
+  matchesEndUnit,
+  matchesOpenView,
+  matchesSingleRow,
+  mergeVillasByPlotKey,
+  hasVastu,
+} from '@/services/property-intelligence/unit-reference';
 
 const VillaMapView = lazy(() => import('@/components/villas/VillaMapView').then((module) => ({ default: module.VillaMapView })));
 const VillaRightPanel = lazy(() => import('@/components/villas/VillaRightPanel').then((module) => ({ default: module.VillaRightPanel })));
@@ -338,24 +350,17 @@ export default function PlotsPage() {
 
   const mergedVillas = useMemo(() => {
     const matchedSet = matchedVillaIds;
-    // GIS-matched Supabase villas first, then all filtered villas (Supabase + synthetic), deduped
     const ordered = [
       ...filteredGisMatchedVillas,
       ...filteredAllVillas.filter(v => !matchedSet.has(v.id)),
     ];
-    const seen = new Set<string>();
-    return ordered.filter(v => {
-      if (seen.has(v.id)) return false;
-      seen.add(v.id);
-      return true;
-    });
+    return mergeVillasByPlotKey(ordered);
   }, [filteredAllVillas, filteredGisMatchedVillas, matchedVillaIds]);
 
   const matchedPlotIds = useMemo(() => {
     return new Set(
       mergedVillas
-        .filter(v => v.id.startsWith('gis:'))
-        .map(v => v.plot_number ?? v.plot_id ?? v.id.replace(/^gis:/, ''))
+        .map(getVillaPlotKey)
         .filter((plotId): plotId is string => Boolean(plotId))
     );
   }, [mergedVillas]);
@@ -363,7 +368,7 @@ export default function PlotsPage() {
   const renderedPlotIds = useMemo(() => {
     return new Set(
       mergedVillas
-        .map(v => v.plot_number ?? v.plot_id ?? (v.id.startsWith('gis:') ? v.id.replace(/^gis:/, '') : null))
+        .map(getVillaPlotKey)
         .filter((plotId): plotId is string => Boolean(plotId))
     );
   }, [mergedVillas]);
