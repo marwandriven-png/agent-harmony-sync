@@ -1,39 +1,67 @@
 
-Goal: make the yellow-circled villas classify and appear under `Backs Park` when their rear boundary directly faces the red park polygon.
+Goal: fix `/plots` so every in-radius result is visible on the map, and make `Backs Park`, `Back-to-Back`, and `Corner Unit` filters classify and return the correct villas.
 
 What I found:
-- The label mismatch is already addressed; this is now a classification/mapping problem.
-- `Backs Park` filtering ultimately depends on `intel.layout.backFacing === 'park'` in `src/services/property-intelligence/unit-reference.ts`.
-- So if those villas are missing, the real failure is upstream in `src/services/property-intelligence/engine.ts`, where the rear-facing class is inferred.
-- The screenshot symptom (`Backs Park` toggle on, `0 results`, some pins still showing `No classes detected`) strongly suggests the villas are being found, but their rear-facing class is resolving to the wrong side or to no class at all.
+- Do I know what the issue is? Yes — it looks like 2 separate bugs:
+  1. Map/result parity bug: the page builds pins from multiple sources (`displayedVillas`, residual GIS pins, matched plot IDs), so some in-radius plots are dropped or hidden.
+  2. Classification bug: the spatial engine is collapsing too many villas into `End Unit`, so `Backs Park`, `Back-to-Back`, and `Corner` rarely survive into filters/results.
+- The screenshot confirms this: the legend shows `End Unit (24)` while the community layout should contain mixed classes.
+- The current class filter behavior already matches your preference (`Any selected class`), so the issue is not the filter operator — it is bad upstream classification plus inconsistent map rendering.
+- The current fallback-pin behavior is split across two layers:
+  - classified villas render in `VillaMapView`
+  - leftover GIS plots render as orange diamonds
+  This is likely why “not all pins in radius” happens.
 
 Implementation plan:
-1. Fix rear-side inference for park-ring villas
-   - Refine `_resolveFrontBearing()` / `_backEdges()` so villas around an inner park do not pick a side road as the “front” and accidentally classify the wrong edge as rear.
-   - Prefer the true road-facing frontage when multiple nearby roads exist, instead of relying on a weak nearest-edge fallback.
+1. Unify the map/result source of truth
+   - Refactor the `/plots` pipeline so one radius-filtered, plot-key-deduped dataset drives:
+     - result count
+     - sidebar results
+     - map pins
+   - Stop relying on separate “classified villa layer + residual GIS layer” logic for parity.
+   - Ensure every in-radius searchable plot produces exactly one marker:
+     - classified villa pin if a class is resolved
+     - neutral fallback pin if it is still unclassified
 
-2. Relax the right part of park detection, not the wrong part
-   - Update `_hasDirectRearPolygonExposure()` so it recognizes direct rear park contact when the park only overlaps part of the rear edge or has an irregular/curved boundary.
-   - Keep the strict “direct rear park only” rule:
-     - direct rear park = `Backs Park`
-     - road/open-space/residential separator = not `Backs Park`
-     - side park = not `Backs Park`
+2. Fix map pin visibility/parity
+   - Update `PlotsPage.tsx` and `VillaMapView.tsx` so:
+     - no in-radius result is silently skipped because it already exists in another set
+     - deduping happens by normalized plot key, not by whichever array happened to render first
+     - fallback pins remain visible for unclassified plots, per your preference
+   - Keep multi-pin offsetting for same coordinates so overlapping units are still visible.
 
-3. Keep filter/map/result parity intact
-   - Continue using `resolveDisplayedVillaClass()` as the shared source for pins and results.
-   - Ensure villas that truly resolve to rear park are no longer falling through to neutral/no-class display when the `Backs Park` filter is active.
+3. Repair class inference in the spatial engine
+   - Re-audit `engine.ts` for the three failing classes:
+     - `Backs Park`: rear exposure to real park polygon
+     - `Back-to-Back`: true rear residential adjacency only
+     - `Corner`: two meaningful road-exposed sides
+   - Tighten the end-unit fallback so plots are not incorrectly defaulting to `end`.
+   - Re-check front/rear orientation inference so side roads do not overpower the true community geometry.
 
-4. Add targeted regression coverage
-   - Add a test that models the screenshot case: a row of villas wrapping an internal park, where the villas’ rear edges touch the park and must classify as `park`.
-   - Add a test where a side road is closer than the real frontage, to ensure front/rear inference still selects the correct rear edge.
-   - Keep negative tests for road-buffer, open-space buffer, and side-park false positives.
+4. Keep filter behavior aligned with your confirmed rules
+   - Preserve `Any selected class` matching for combined class toggles.
+   - Make sure a villa can still match a specific environmental class even if it also has another layout/position attribute.
+   - Keep `Vastu` independent from the primary visual class.
+
+5. Add regression coverage
+   - Add tests for:
+     - all in-radius searchable plots producing one marker/result entry
+     - park-ring / internal-park `Backs Park`
+     - true rear row `Back-to-Back`
+     - genuine two-road `Corner`
+     - “not corner / not B2B / not Backs Park” negatives
+   - Add a parity test so map pins and sidebar counts stay 1:1.
 
 Files to update:
+- `src/pages/PlotsPage.tsx`
+- `src/components/villas/VillaMapView.tsx`
+- `src/components/villas/VillaRightPanel.tsx` (results/count parity if needed)
 - `src/services/property-intelligence/engine.ts`
+- `src/services/property-intelligence/unit-reference.ts`
 - `src/test/propertyIntelligence.test.ts`
 
-Expected outcome after the fix:
-- the yellow-circled plots classify under `Backs Park`
-- the red area remains the park context only, not a villa result
-- `Backs Park` filter returns those villas instead of `0 results`
-- selected villas stop showing `No classes detected` when they truly back onto the park
+Expected outcome:
+- all searchable plots inside the selected radius appear on the map
+- unclassified in-radius plots still show with a neutral fallback pin
+- `Backs Park`, `Back-to-Back`, and `Corner Unit` return real matches again
+- map pins, legend, and sidebar result count stay in sync
